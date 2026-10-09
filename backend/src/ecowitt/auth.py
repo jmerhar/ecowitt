@@ -90,21 +90,38 @@ def csrf_token(secret: bytes) -> str:
     return hmac.new(secret, b"form", hashlib.sha256).hexdigest()
 
 
+def host_name(netloc: str) -> str:
+    """The host name in a Host header or URL authority, without port or IPv6 brackets."""
+    return (urlsplit("//" + netloc).hostname or "").lower()
+
+
+def host_allowed(host: str, allowed: frozenset[str]) -> bool:
+    """Whether a request's Host header names one of the host names this server answers to."""
+    return "*" in allowed or host_name(host) in allowed
+
+
 def form_allowed(
-    token: str, secret: bytes, origin: str | None, referer: str | None, host: str
+    token: str,
+    secret: bytes,
+    origin: str | None,
+    referer: str | None,
+    host: str,
+    allowed: frozenset[str] = frozenset(),
 ) -> bool:
     """Whether a form submission comes from this server's own pages.
 
     The token must match, and the browser's Origin header -- or Referer, when a browser omits
-    Origin -- must name this host. A request carrying neither is refused: every browser that
-    could be tricked into posting cross-site sends at least one of them.
+    Origin -- must name this host, or one of the host names in `allowed`: a reverse proxy may
+    hand the request on with its own address as the Host. A request carrying neither header is
+    refused: every browser that could be tricked into posting cross-site sends at least one.
     """
-    if not hmac.compare_digest(token, csrf_token(secret)):
+    if not hmac.compare_digest(token.encode(), csrf_token(secret).encode()):
         return False
     claimed = origin if origin and origin != "null" else referer
     if not claimed:
         return False
-    return urlsplit(claimed).netloc.lower() == host.lower()
+    netloc = urlsplit(claimed).netloc.lower()
+    return netloc == host.lower() or host_name(netloc) in (allowed - {"*"})
 
 
 def _scrypt(password: str, salt: bytes, n: int, r: int, p: int) -> bytes:

@@ -137,6 +137,12 @@ its own, set on the setup page (HTTP Basic, stored as a salted scrypt hash); use
 that requires one, if anyone you do not trust can reach these pages. Every form on them is
 protected against submission from other sites.
 
+The admin listener answers only to the host names in `ADMIN_HOSTS` — by default `localhost`,
+`127.0.0.1` and `::1` — and refuses any other with `421`, so a hostile web page cannot point its
+own domain at this address and drive the setup page from your browser. Behind a reverse proxy, add
+the name the proxy serves it under: `ADMIN_HOSTS=localhost,127.0.0.1,::1,weather.example`.
+`/healthz` answers under any name.
+
 The ingest endpoint authenticates the station by its `PASSKEY`, which the console sends on
 every report; reports from an unlisted station are discarded. Requests are rate limited and
 size capped. Note that `PASSKEY` is derived from the station's MAC address, so it cannot be
@@ -252,6 +258,7 @@ file:
 | `INGEST_PATH` | `/data/report/` | both slash spellings are served |
 | `INGEST_HOST` / `INGEST_PORT` | `0.0.0.0` / `2551` | inside the container; keep the port equal to the published one |
 | `ADMIN_HOST` / `ADMIN_PORT` | `0.0.0.0` / `2552` | same |
+| `ADMIN_HOSTS` | `localhost,127.0.0.1,::1` | host names the admin listener answers to; `*` for any |
 | `INGEST_RATE` / `INGEST_BURST` | `2` / `20` | requests per second per address, and the burst before that applies |
 | `DATA_DIR` | `/data` | holds `config.yaml` and the spool |
 | `SPOOL_MAX_BYTES` | `104857600` | most the spool keeps while InfluxDB is unreachable |

@@ -78,5 +78,7 @@ def ingest_client(
 def admin_client(settings: Settings, state: State) -> Iterator[TestClient]:
     """A client for the admin listener."""
     context = admin.AdminContext(settings, state, secret=b"test-secret")
-    with TestClient(admin.build_app(context), follow_redirects=False) as client:
+    with TestClient(
+        base_url="http://localhost", app=admin.build_app(context), follow_redirects=False
+    ) as client:
         yield client

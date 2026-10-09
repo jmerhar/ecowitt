@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
+from ecowitt import admin
 from ecowitt.config import Settings
 from ecowitt.state import State
 
@@ -41,7 +44,9 @@ def test_status_never_returns_the_influx_token(state: State, tmp_path) -> None:
     settings = Settings(data_dir=tmp_path, influx_token=secret)
     from ecowitt import admin
 
-    with TestClient(admin.build_app(admin.AdminContext(settings, state))) as client:
+    with TestClient(
+        base_url="http://localhost", app=admin.build_app(admin.AdminContext(settings, state))
+    ) as client:
         response = client.get("/api/status")
 
     assert response.json()["influx"]["token_configured"] is True
@@ -61,7 +66,10 @@ def test_status_reports_writes_and_rate_limiting(state: State, tmp_path) -> None
     state.record_write(False)
     state.record_rate_limited()
     with TestClient(
-        admin.build_app(admin.AdminContext(Settings(data_dir=tmp_path), state, stations=["Home"]))
+        base_url="http://localhost",
+        app=admin.build_app(
+            admin.AdminContext(Settings(data_dir=tmp_path), state, stations=["Home"])
+        ),
     ) as client:
         body = client.get("/api/status").json()
 
@@ -97,9 +105,10 @@ def test_status_reports_what_is_waiting_in_the_spool(state: State, tmp_path) -> 
     state.record_spooled()
     state.record_spooled()
     with TestClient(
-        admin.build_app(
+        base_url="http://localhost",
+        app=admin.build_app(
             admin.AdminContext(Settings(data_dir=tmp_path), state, stations=["Home"], spool=spool)
-        )
+        ),
     ) as client:
         body = client.get("/api/status").json()
 
@@ -109,3 +118,23 @@ def test_status_reports_what_is_waiting_in_the_spool(state: State, tmp_path) -> 
     assert body["spool"]["spooled_total"] == 2
     assert body["spool"]["dropped"] == 0
     assert body["spool"]["rejected_kept"] == 1
+
+
+def test_a_request_naming_another_host_is_refused(tmp_path: Path) -> None:
+    """DNS rebinding: a hostile page points its own name at this listener's address."""
+    state = State()
+    app = admin.build_app(admin.AdminContext(Settings(data_dir=tmp_path), state))
+    with TestClient(base_url="http://rebind.attacker.example", app=app) as client:
+        page = client.get("/setup")
+        health = client.get("/healthz")
+
+    assert page.status_code == 421
+    assert health.status_code == 200
+
+
+def test_a_configured_host_name_is_answered(tmp_path: Path) -> None:
+    settings = Settings(data_dir=tmp_path, admin_hosts="wx.example")
+    with TestClient(
+        base_url="https://wx.example", app=admin.build_app(admin.AdminContext(settings, State()))
+    ) as client:
+        assert client.get("/").status_code == 200

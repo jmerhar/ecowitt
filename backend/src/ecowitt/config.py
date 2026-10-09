@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     admin_host: str = "0.0.0.0"  # noqa: S104
     admin_port: int = 2552
 
+    #: Host names the admin listener answers to, comma-separated; `*` answers to any. A request
+    #: naming any other host is refused, so a hostile page cannot rebind its own domain to this
+    #: listener's address and drive the setup page from a browser that can reach it. Add the
+    #: name a reverse proxy serves it under.
+    admin_hosts: str = "localhost,127.0.0.1,::1"
+
     #: The ingest listener's per-address budget: requests per second, and the burst allowed
     #: before that applies. A console reports at most once every 8 seconds.
     ingest_rate: float = 2.0
@@ -136,6 +142,11 @@ class Settings(BaseSettings):
         if not bare:
             return ("/",)
         return (bare, bare + "/")
+
+    @property
+    def admin_host_names(self) -> frozenset[str]:
+        """The admin listener's host names, lowercased."""
+        return frozenset(h.strip().lower() for h in self.admin_hosts.split(",") if h.strip())
 
     @property
     def config_file(self) -> Path:

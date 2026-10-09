@@ -166,13 +166,24 @@ def build_app(context: AdminContext) -> FastAPI:
 
     @app.middleware("http")
     async def require_login(request: Request, call_next: Any) -> Response:
-        """Ask for the admin login on everything but `/healthz`, once a login is set.
+        """Refuse unknown host names, and ask for the admin login once one is set.
+
+        `/healthz` is exempt from both, so a health probe works under any name.
 
         Failed attempts spend from a small per-address budget, so the password cannot be
         guessed at speed even by someone who can reach the listener.
         """
+        if request.url.path == "/healthz":
+            return await call_next(request)
+        if not auth.host_allowed(
+            request.headers.get("host", ""), context.settings.admin_host_names
+        ):
+            return PlainTextResponse(
+                "This server does not answer for that host name; see ADMIN_HOSTS.",
+                status_code=421,
+            )
         login = context.document.admin
-        if login is None or request.url.path == "/healthz":
+        if login is None:
             return await call_next(request)
         if auth.check_basic(
             request.headers.get("authorization"), login.username, login.password_hash
@@ -725,6 +736,7 @@ async def _form(request: Request, context: AdminContext) -> dict[str, str] | Res
         request.headers.get("origin"),
         request.headers.get("referer"),
         request.headers.get("host", ""),
+        context.settings.admin_host_names,
     )
     if not allowed:
         return PlainTextResponse(

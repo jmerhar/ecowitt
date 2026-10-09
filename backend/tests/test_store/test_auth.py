@@ -121,3 +121,49 @@ class TestForms:
         assert auth.form_allowed(
             self.token(), self.secret, "https://WX.example", None, "wx.EXAMPLE"
         )
+
+
+class TestHosts:
+    allowed = frozenset({"localhost", "127.0.0.1", "::1", "wx.example"})
+
+    @pytest.mark.parametrize(
+        "host", ["localhost", "localhost:2552", "127.0.0.1:2552", "[::1]:2552", "WX.example"]
+    )
+    def test_a_known_host_is_answered(self, host: str) -> None:
+        assert auth.host_allowed(host, self.allowed)
+
+    @pytest.mark.parametrize("host", ["rebind.attacker.example", "wx.example.attacker.example", ""])
+    def test_any_other_host_is_refused(self, host: str) -> None:
+        """A rebound domain still names itself in Host, which is how it is caught."""
+        assert not auth.host_allowed(host, self.allowed)
+
+    def test_a_wildcard_answers_any_host(self) -> None:
+        assert auth.host_allowed("anything.example", frozenset({"*"}))
+
+
+class TestFormsBehindAProxy:
+    secret = b"s" * 32
+
+    def test_an_allowed_origin_passes_when_a_proxy_rewrote_the_host(self) -> None:
+        """nginx's default hands the request on with Host set to the upstream's address."""
+        assert auth.form_allowed(
+            auth.csrf_token(self.secret),
+            self.secret,
+            "https://wx.example",
+            None,
+            "127.0.0.1:2552",
+            frozenset({"wx.example"}),
+        )
+
+    def test_a_wildcard_does_not_widen_the_origin_check(self) -> None:
+        assert not auth.form_allowed(
+            auth.csrf_token(self.secret),
+            self.secret,
+            "https://evil.example",
+            None,
+            "127.0.0.1:2552",
+            frozenset({"*"}),
+        )
+
+    def test_a_non_ascii_token_is_refused_not_an_error(self) -> None:
+        assert not auth.form_allowed("é", self.secret, "https://wx.example", None, "wx.example")

@@ -91,3 +91,13 @@ def test_published_and_listening_ports_match_by_default() -> None:
     settings = Settings()
 
     assert (settings.ingest_port, settings.admin_port) == (2551, 2552)
+
+
+def test_admin_host_names_are_split_and_lowercased() -> None:
+    settings = Settings(admin_hosts=" WX.example, localhost ,, ")
+
+    assert settings.admin_host_names == frozenset({"wx.example", "localhost"})
+
+
+def test_the_admin_listener_answers_only_to_loopback_names_by_default() -> None:
+    assert Settings().admin_host_names == frozenset({"localhost", "127.0.0.1", "::1"})
