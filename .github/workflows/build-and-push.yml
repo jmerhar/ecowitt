@@ -9,6 +9,11 @@ on:
     branches: [main]
   workflow_dispatch: {}
 
+# Read-only unless a job asks for more, so a compromised step in a test or lint job cannot
+# push to the repository or the registry.
+permissions:
+  contents: read
+
 env:
   REGISTRY: ghcr.io
   IMAGE: ${{ github.repository }}
