@@ -248,7 +248,7 @@ async def test_run_without_a_handler_loads_the_configured_stations(
 
     monkeypatch.setattr(serve.InfluxWriter, "aclose", track_close)
     woken: list[bool] = []
-    monkeypatch.setattr(serve.ReferenceUpdater, "wake", lambda self: woken.append(True))
+    monkeypatch.setattr(serve.ReferenceUpdater, "wake", lambda _self: woken.append(True))
     listeners: list[serve._Listener] = []
     real_build = serve.build
 
