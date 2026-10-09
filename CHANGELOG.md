@@ -5,6 +5,13 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 [Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
 says what under *Upgrading*.
 
+## 0.2.0 — 2026-10-09
+
+### Added
+
+- A bounded on-disk spool: reports InfluxDB cannot take are kept and replayed in arrival order,
+  across restarts. Reports InfluxDB refuses outright are set aside rather than retried.
+
 ## 0.1.0 — 2026-10-09
 
 The first release: a collector for the reports an Ecowitt console uploads.
