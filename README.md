@@ -221,6 +221,8 @@ file:
 | `INGEST_RATE` / `INGEST_BURST` | `2` / `20` | requests per second per address, and the burst before that applies |
 | `DATA_DIR` | `/data` | holds `config.yaml` and the spool |
 | `SPOOL_MAX_BYTES` | `104857600` | most the spool keeps while InfluxDB is unreachable |
+| `HEARTBEAT_URL` / `HEARTBEAT_URL_FILE` | — | a push monitor's URL, called after readings are written; see below |
+| `HEARTBEAT_INTERVAL_SECONDS` | `60` | the least time between two heartbeat calls |
 | `LOG_LEVEL` | `INFO` | |
 
 Everything describing *your* stations — units, sensor names, the `PASSKEY` allowlist, the
@@ -228,6 +230,13 @@ altitude — is in `data/config.yaml`, shown above. Sensor names and altitude ar
 because `ch1` at one house is not `ch1` at another; units are shared, so one database never
 holds two stations in different units. A malformed file stops the server from starting, with
 the reason, rather than letting it run and discard every report.
+
+A push monitor — Uptime Kuma's *Push* type, healthchecks.io — alerts when its URL stops being
+called. Set its URL as `HEARTBEAT_URL` and the server calls it after each write InfluxDB accepts,
+at most once a minute, so the monitor alerts whenever readings stop reaching the database: the
+console has stopped uploading, the server is unreachable or down, or InfluxDB is refusing writes
+or unreachable. Reports held in the spool do not count until they are written. Give the monitor a
+grace period of a few upload intervals.
 
 Both listeners bind every interface *inside the container*, where a loopback bind would be
 unreachable even through a published port. Which of them the outside world can reach is
