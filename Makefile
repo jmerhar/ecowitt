@@ -1,4 +1,4 @@
-.PHONY: help install dev up down logs shell build test coverage lint check clean
+.PHONY: help install dev up down logs shell build test test-js coverage lint check clean
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*##|^##@' $(MAKEFILE_LIST) | \
@@ -38,13 +38,16 @@ build: ## Build the image without starting anything
 test: ## Run the suite (arguments pass through to pytest, e.g. ARGS="-k slash")
 	bin/test-backend.sh $(ARGS)
 
+test-js: ## Run the tests for the scripts the admin pages load (needs node)
+	bin/test-js.sh
+
 coverage: ## Run the suite with coverage and print the summary
 	bin/coverage.sh --format md
 
 lint: ## ShellCheck, ruff, and the compose files
 	bin/lint.sh
 
-check: lint test coverage ## Everything (gate a commit on this)
+check: lint test test-js coverage ## Everything (gate a commit on this)
 
 ##@ Housekeeping
 

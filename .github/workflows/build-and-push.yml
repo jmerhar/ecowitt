@@ -59,6 +59,13 @@ jobs:
       - name: Shell scripts
         run: shellcheck bin/*.sh
 
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Page script tests
+        run: bin/test-js.sh
+
       - name: Install ruff
         run: pip install ruff
 
