@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import json
 
 import httpx2
@@ -139,25 +141,48 @@ class TestReferenceUpdater:
     async def test_run_survives_an_unexpected_error_and_keeps_its_cycle(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
-        pauses: list[float] = []
-
-        class Stop(Exception):
-            pass
-
-        async def sleep(seconds: float) -> None:
-            pauses.append(seconds)
-            if len(pauses) == 2:
-                raise Stop
-
         def explode() -> StationConfig:
             raise RuntimeError("config gone")
 
         async with httpx2.AsyncClient() as client:
             updater = ReferenceUpdater(
-                explode, CalibrationMonitor(), client, url=DEAD, interval_seconds=1800, sleep=sleep
+                explode, CalibrationMonitor(), client, url=DEAD, interval_seconds=0.01
             )
-            with pytest.raises(Stop):
-                await updater.run()
+            task = asyncio.create_task(updater.run())
+            try:
+                async with asyncio.timeout(5):
+                    while caplog.text.count("reference pressure refresh failed") < 3:
+                        await asyncio.sleep(0.005)
+            finally:
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
 
-        assert pauses == [1800, 1800]
-        assert caplog.text.count("reference pressure refresh failed") == 2
+        assert caplog.text.count("reference pressure refresh failed") >= 3
+
+    async def test_waking_refreshes_without_waiting_out_the_interval(self) -> None:
+        """Coordinates saved on the setup page are checked within moments."""
+        refreshes: list[int] = []
+
+        def stations() -> StationConfig:
+            refreshes.append(1)
+            return StationConfig()
+
+        async with httpx2.AsyncClient() as client:
+            updater = ReferenceUpdater(
+                stations, CalibrationMonitor(), client, url=DEAD, interval_seconds=3600
+            )
+            task = asyncio.create_task(updater.run())
+            try:
+                async with asyncio.timeout(5):
+                    while len(refreshes) < 1:
+                        await asyncio.sleep(0.005)
+                    updater.wake()
+                    while len(refreshes) < 2:
+                        await asyncio.sleep(0.005)
+            finally:
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
+
+        assert len(refreshes) == 2
