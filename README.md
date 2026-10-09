@@ -183,6 +183,26 @@ series under the new name, so group by `sensor` in dashboards and use `name` for
 Retention is whatever the database was created with, and InfluxDB 3 cannot change it later.
 Create it before first use if you want anything other than keeping everything.
 
+## Grafana dashboard
+
+[`grafana/weather.json`](grafana/weather.json) is a dashboard for InfluxDB 3:
+
+- current outdoor conditions;
+- whether airing would dry or dampen each room: its dew point against the outdoor one, and
+  the humidity it would settle at;
+- indoor humidity, temperature, dew point and absolute humidity, room by room;
+- outdoor temperature, humidity, wind, pressure, rain and sun;
+- battery flags, sensors that have stopped changing, and the console's pressure calibration.
+
+To install it, add an InfluxDB data source with query language **SQL**, the database this server
+writes to, and a token that can read it (`influxdb3 create token --permission
+"db:weather:read" --name grafana`). Then import the file under *Dashboards → New → Import* and
+choose that data source. It expects a data source named `weather` and offers a choice of the
+others.
+
+Its queries name fields in the default units (°C, hPa, km/h, mm). If you store other units,
+change the field names in the queries to match.
+
 ## Configuration
 
 Infrastructure comes from the environment, so a deployment is reproducible from its compose
