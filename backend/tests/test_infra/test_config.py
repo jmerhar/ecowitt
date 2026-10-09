@@ -122,3 +122,29 @@ def test_influxdb_2_needs_an_organisation() -> None:
     with pytest.raises(ValueError, match="INFLUX_ORG"):
         Settings(influx_api="v2")
     assert Settings(influx_api="v2", influx_org="home").influx_org == "home"
+
+
+#: Settings the shipped compose file deliberately does not pass through: the bind addresses and
+#: data directory are fixed by the container, and the lookup services and their refresh are
+#: overrides for tests and air-gapped hosts, set by editing the file.
+NOT_FORWARDED = {
+    "ingest_host",
+    "admin_host",
+    "data_dir",
+    "opentopodata_url",
+    "open_elevation_url",
+    "open_meteo_url",
+    "reference_interval_seconds",
+}
+
+
+def test_the_shipped_compose_file_forwards_every_setting() -> None:
+    """A setting missing here is documented but silently ignored for anyone using the file."""
+    import yaml
+
+    compose = Path(__file__).parents[3] / "docker-compose.yml"
+    service = yaml.safe_load(compose.read_text(encoding="utf-8"))["services"]["ecowitt"]
+    forwarded = {key.lower() for key in service["environment"]}
+
+    assert set(Settings.model_fields) - NOT_FORWARDED <= forwarded
+    assert set(Settings.model_fields) >= NOT_FORWARDED
