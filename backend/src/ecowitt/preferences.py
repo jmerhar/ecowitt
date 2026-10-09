@@ -1,6 +1,6 @@
 """What the operator has said about their station: units, names and where it is.
 
-Loaded from the configuration file the setup wizard writes; built directly in tests.
+Built per station from the configuration file; built directly in tests.
 """
 
 from __future__ import annotations

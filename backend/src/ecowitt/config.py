@@ -2,8 +2,8 @@
 
 Infrastructure lives here, in the environment: where to listen, where InfluxDB is, how much
 to log. Everything describing a particular station -- channel names, unit preferences, the
-PASSKEY allowlist, the site location -- belongs to the configuration file the setup wizard
-writes, because none of it is pleasant to express as environment variables.
+PASSKEY allowlist, the site location -- belongs to the station configuration file, because
+none of it is pleasant to express as environment variables.
 
 Every credential also accepts a `*_FILE` variant naming a file to read it from, which is what
 makes a Docker secret usable without putting the value in a compose file.
@@ -32,7 +32,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    #: Holds the configuration file the wizard writes and the write spool.
+    #: Holds the station configuration file and the write spool.
     data_dir: Path = Path("/data")
 
     # Both listeners bind every interface because the shipped artefact is a container, where
@@ -57,13 +57,9 @@ class Settings(BaseSettings):
     #: Required by InfluxDB 2.x only, which scopes a bucket to an organisation.
     influx_org: str = ""
 
-    #: An Apache-style htpasswd file guarding the admin listener. The wizard can store
-    #: credentials in the configuration file instead; this is for hosts that already keep one.
-    htpasswd_file: Path | None = None
-
     log_level: str = "INFO"
 
-    @field_validator("influx_token_file", "htpasswd_file", mode="before")
+    @field_validator("influx_token_file", mode="before")
     @classmethod
     def _blank_is_unset(cls, value: object) -> object:
         """Treat an empty value as absent rather than as a path.
@@ -111,7 +107,7 @@ class Settings(BaseSettings):
 
     @property
     def config_file(self) -> Path:
-        """The file the setup wizard writes."""
+        """The station configuration file."""
         return self.data_dir / "config.yaml"
 
     @property

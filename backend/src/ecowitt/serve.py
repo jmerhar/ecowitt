@@ -88,24 +88,20 @@ def build(settings: Settings, handler: ReportHandler, state: State) -> tuple[_Li
     return ingest_listener, admin_listener
 
 
-def warn_if_admin_unauthenticated(settings: Settings) -> bool:
-    """Say so when the admin listener has no authentication, returning whether it warned.
+def warn_if_admin_unauthenticated(settings: Settings) -> None:
+    """Say that the admin listener has no authentication of its own.
 
-    The bind address cannot be the signal here. The shipped artefact is a container, where a
-    loopback bind is unreachable even through a published port, so the admin listener always
-    binds every interface and a warning keyed on that would fire every single start -- which
-    is how a warning gets ignored. What is left is the thing the operator controls: whether a
-    login is configured at all. Where the port is published is said in the message rather
-    than guessed at.
+    The bind address cannot tell whether that matters. The shipped artefact is a container,
+    where a loopback bind is unreachable even through a published port, so the admin listener
+    always binds every interface; what keeps it private is where the host publishes it, which
+    the process cannot see. So the message states the requirement rather than guessing whether
+    it is met.
     """
-    if settings.htpasswd_file is not None:
-        return False
     logger.warning(
-        "the admin interface has no authentication configured: publish port %d on loopback "
-        "only, or behind a reverse proxy that requires a login",
+        "the admin interface has no authentication: publish port %d on loopback only, or "
+        "behind a reverse proxy that requires a login",
         settings.admin_port,
     )
-    return True
 
 
 async def run(settings: Settings | None = None, handler: ReportHandler | None = None) -> None:
