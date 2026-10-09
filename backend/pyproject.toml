@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ecowitt"
-version = "0.0.0"
+version = "0.1.0"
 description = "Ecowitt Server: store the metrics an Ecowitt weather station reports in InfluxDB"
 requires-python = ">=3.14"
 dependencies = [
