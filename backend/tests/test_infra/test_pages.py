@@ -448,7 +448,7 @@ class TestStatus:
 
         assert "<h2>Home</h2>" in page
         assert "Altitude not set" in page
-        assert "Pressure: absolute" in page
+        assert "Pressure: absolute 1009.0 hPa, relative 1009.0 hPa</p>" in page
         assert readings["name"] == "Home"
         assert [s["sensor"] for s in readings["sensors"]][:2] == ["indoor", "ch1"]
         assert readings["sensors"][0]["temp"] == {"value": 23.2222, "unit": "c"}

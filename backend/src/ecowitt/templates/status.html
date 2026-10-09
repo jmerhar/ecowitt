@@ -67,8 +67,10 @@
   {% endif %}
 
   {% if station.pressure %}
-  <p>Pressure: absolute {{ station.pressure.abs }}, relative {{ station.pressure.rel }}
-    {%- if station.pressure.sea is defined %}, sea level {{ station.pressure.sea }}{% endif %} {{ station.pressure.unit }}</p>
+  {% set p = station.pressure %}{% set digits = 2 if p.unit == "inhg" else 1 %}
+  {% set unit = {"hpa": "hPa", "inhg": "inHg", "mmhg": "mmHg"}.get(p.unit, p.unit) %}
+  <p>Pressure: absolute {{ "%.*f"|format(digits, p.abs) }} {{ unit }}, relative {{ "%.*f"|format(digits, p.rel) }} {{ unit }}
+    {%- if p.sea is defined %}, sea level {{ "%.*f"|format(digits, p.sea) }} {{ unit }}{% endif %}</p>
   {% endif %}
 </section>
 {% endfor %}
