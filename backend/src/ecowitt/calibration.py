@@ -13,7 +13,10 @@ the calibrations, each catching what the others cannot:
 * **Absolute step.** A change in absolute pressure faster than the weather can produce. An
   absolute offset shifts the relative reading and the reduction alike, so the first check
   cannot see one; a sudden jump is how a changed absolute offset shows in the data. Steps that
-  cancel out -- an offset changed and then put back -- raise nothing.
+  cancel out -- an offset changed and then put back -- raise nothing, and neither does a step
+  after which the absolute reading agrees with the weather model: that one was a correction.
+  The second rule matters because steps are held in memory: after a restart, the step that put
+  a mistake right is the only one remembered.
 * **Absolute reference.** The absolute reading against a weather model's surface pressure for
   the station's coordinates. The only check that catches an absolute offset that has always
   been wrong, rather than one that changed.
@@ -26,6 +29,7 @@ from __future__ import annotations
 
 import statistics
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from .readings import Reading
@@ -85,10 +89,15 @@ class _Track:
 
 
 class CalibrationMonitor:
-    """Watches each station's pressure readings and says what is wrong with them."""
+    """Watches each station's pressure readings and says what is wrong with them.
 
-    def __init__(self) -> None:
+    `on_step` is called whenever a step is seen, so the model reference can be fetched at once
+    and a correction recognised within moments rather than at the next scheduled refresh.
+    """
+
+    def __init__(self, on_step: Callable[[], None] | None = None) -> None:
         self._tracks: dict[str, _Track] = {}
+        self.on_step = on_step
 
     def observe(self, station: str, timestamp: int, readings: list[Reading]) -> None:
         """Take note of one report's pressure readings, in canonical hPa."""
@@ -103,6 +112,8 @@ class CalibrationMonitor:
             then, previous = track.absolutes[-1]
             if 0 < timestamp - then <= STEP_WINDOW_SECONDS and abs(absolute - previous) > STEP_HPA:
                 track.steps.append((timestamp, absolute - previous))
+                if self.on_step is not None:
+                    self.on_step()
         track.absolutes.append((timestamp, absolute))
         track.steps = [s for s in track.steps if timestamp - s[0] <= STEP_MEMORY_SECONDS]
 
@@ -117,7 +128,7 @@ class CalibrationMonitor:
             w
             for w in (
                 self._location(station),
-                self._step(track),
+                self._step(track, now),
                 self._reference(track, now),
                 self._relative(station, track),
             )
@@ -136,12 +147,15 @@ class CalibrationMonitor:
             "console's relative offset. Set it, or give the coordinates and look it up.",
         )
 
-    @staticmethod
-    def _step(track: _Track) -> Warning | None:
+    @classmethod
+    def _step(cls, track: _Track, now: int) -> Warning | None:
         if not track.steps:
             return None
         net = sum(delta for _, delta in track.steps)
         if abs(net) < STEP_CANCELLED_HPA:
+            return None
+        offset = cls._reference_offset(track, now)
+        if offset is not None and abs(offset) <= REFERENCE_THRESHOLD_HPA:
             return None
         return Warning(
             "absolute_step",
@@ -157,18 +171,33 @@ class CalibrationMonitor:
         )
 
     @staticmethod
-    def _reference(track: _Track, now: int) -> Warning | None:
+    def _reference_offset(track: _Track, now: int) -> float | None:
+        """How far absolute pressure is from a current model value, or None if not comparable.
+
+        Only readings taken after the most recent step count, so a correction is judged by
+        what the console reads since, not by the mistake before it.
+        """
         if track.reference is None:
             return None
         fetched, model = track.reference
         if now - fetched > REFERENCE_MAX_AGE_SECONDS:
             return None
-        nearby = [v for t, v in track.absolutes if abs(t - fetched) <= REFERENCE_MATCH_SECONDS]
+        since = track.steps[-1][0] if track.steps else None
+        nearby = [
+            v
+            for t, v in track.absolutes
+            if abs(t - fetched) <= REFERENCE_MATCH_SECONDS and (since is None or t >= since)
+        ]
         if not nearby:
             return None
-        offset = statistics.median(nearby) - model
-        if abs(offset) <= REFERENCE_THRESHOLD_HPA:
+        return statistics.median(nearby) - model
+
+    @classmethod
+    def _reference(cls, track: _Track, now: int) -> Warning | None:
+        offset = cls._reference_offset(track, now)
+        if offset is None or abs(offset) <= REFERENCE_THRESHOLD_HPA:
             return None
+        model = track.reference[1]  # type: ignore[index]
         return Warning(
             "absolute_reference",
             "Absolute pressure disagrees with the weather model",

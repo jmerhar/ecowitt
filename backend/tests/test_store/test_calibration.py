@@ -145,6 +145,51 @@ class TestAbsoluteStep:
         assert kinds(monitor, station(), week + 200) == []
 
 
+class TestStepAndReferenceTogether:
+    """A step judged by whether the absolute reading agrees with the model afterwards."""
+
+    def test_a_step_that_brings_absolute_pressure_right_is_a_correction(self) -> None:
+        """After a restart, the step that put a mistake right is the only one remembered."""
+        monitor = CalibrationMonitor()
+        feed(
+            monitor,
+            [(0, 1033.8, None), (60, 1033.8, None), (120, 1009.9, None), (180, 1009.8, None)],
+        )
+        monitor.set_reference("Home", 150, 1009.3)
+
+        assert kinds(monitor, station(), 200) == []
+
+    def test_a_step_that_takes_it_away_from_the_model_is_reported_twice_over(self) -> None:
+        monitor = CalibrationMonitor()
+        feed(
+            monitor,
+            [(0, 1009.8, None), (60, 1009.8, None), (120, 1033.7, None), (180, 1033.8, None)],
+        )
+        monitor.set_reference("Home", 150, 1009.3)
+
+        assert kinds(monitor, station(), 200) == ["absolute_step", "absolute_reference"]
+
+    def test_only_readings_since_the_step_are_judged(self) -> None:
+        """The mistake before a correction must not make the correction look wrong."""
+        monitor = CalibrationMonitor()
+        feed(
+            monitor,
+            [(0, 1033.8, None), (60, 1033.8, None), (90, 1033.8, None), (120, 1009.9, None)],
+        )
+        monitor.set_reference("Home", 100, 1009.3)
+
+        assert kinds(monitor, station(), 200) == []
+
+    def test_seeing_a_step_asks_for_a_fresh_reference(self) -> None:
+        asked: list[bool] = []
+        monitor = CalibrationMonitor(on_step=lambda: asked.append(True))
+
+        feed(monitor, [(0, 1009.8, None), (60, 1009.9, None)])
+        assert asked == []
+        feed(monitor, [(120, 1033.7, None)])
+        assert asked == [True]
+
+
 class TestReference:
     def test_an_absolute_reading_far_from_the_model_is_reported(self) -> None:
         """Catches an absolute error that was always there, which a step check cannot."""
