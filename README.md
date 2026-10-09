@@ -47,8 +47,29 @@ docker compose up -d
 One file is all it takes; there is nothing to clone or build. `data` is created first because
 Docker would otherwise create it as root, and the container does not run as root.
 
-Set `INFLUX_URL` and a token in the environment (see [Configuration](#configuration)), and
-describe your station in `data/config.yaml`:
+Set `INFLUX_URL` and a token in the environment (see [Configuration](#configuration)). Then, on
+the console — *Menu → Weather Services → Customized*:
+
+| Field | Value |
+|---|---|
+| State | Enable |
+| Protocol Type | Same As Ecowitt |
+| IP / Hostname | the host running this |
+| Port | `2551` |
+| Path | `/data/report/` |
+| Interval | see below |
+
+Open <http://127.0.0.1:2552/setup>. Within one upload interval the console appears under
+*Stations reporting, not configured*, by model and fingerprint; give it a name and adopt it.
+Its PASSKEY — the credential every upload carries — is copied into the configuration without
+ever being shown. From then on its reports are stored; there is nothing to restart.
+
+On the same page: the altitude (looked up from coordinates if you give them), what each sensor
+is called, the units you keep, and an optional login for these pages. The status page at
+<http://127.0.0.1:2552/> shows each room's latest readings, whether airing it would help, and
+anything wrong with the console's pressure calibration.
+
+Everything the setup page writes goes to `data/config.yaml`, which can also be written by hand:
 
 ```yaml
 units:            # optional; these are the defaults
@@ -61,29 +82,39 @@ stations:
   - name: Home
     passkey: 0123456789ABCDEF0123456789ABCDEF
     altitude_m: 180          # enables sea-level pressure
+    latitude: 52.37          # optional; enables the absolute-pressure check
+    longitude: 4.90
     sensors:                 # display names; anything unnamed keeps its identifier
       indoor: Lounge
       ch1: Bathroom
 ```
 
-Reports from a PASSKEY that is not listed are discarded. The console sends its PASSKEY with every
-upload; a discarded one is logged by fingerprint so you can tell which console it was, but the
-PASSKEY itself never is, so read it from an upload — for example with
-`tcpdump -A -c 5 'tcp port 2551' | grep -o 'PASSKEY=[0-9A-F]*'`. Restart the container after
-editing the file. A browser-based setup page is planned.
+Restart the container after editing it by hand. Saving from the setup page rewrites the file
+whole, so comments added by hand do not survive a save.
 
-The status page is at <http://127.0.0.1:2552/api/status>.
+## Pressure calibration
 
-Finally, on the console — *Menu → Weather Services → Customized*:
+Consoles have two pressure settings, and they are easy to confuse. The **absolute** one corrects
+the barometer itself; a good barometer needs none. The **relative** one turns absolute pressure
+into the sea-level pressure forecasts quote. Some firmware takes the relative one as an offset in
+hPa; others — the HP2551 among them — take an *Altitude for REL* and compute it, and set the
+absolute reading directly with an *ABS Barometer* field.
 
-| Field | Value |
-|---|---|
-| State | Enable |
-| Protocol Type | Same As Ecowitt |
-| IP / Hostname | the host running this |
-| Port | `2551` |
-| Path | `/data/report/` |
-| Interval | see below |
+The status page checks both, and says what to change:
+
+- **Relative**: the console's relative pressure against this server's own reduction of the
+  absolute reading for the station's altitude.
+- **Absolute, sudden**: a jump in absolute pressure faster than any weather — almost always
+  someone changing the absolute calibration when they meant the relative one.
+- **Absolute, constant**: for a station with coordinates, the absolute reading against a weather
+  model's surface pressure there ([Open-Meteo](https://open-meteo.com)), refreshed every half
+  hour.
+
+The stored sea-level pressure (`pressure.sea_hpa`) is computed here from the absolute reading and
+the altitude, so it is right whatever the console's relative setting says.
+
+Coordinates are sent to public services, and only when you enter them: to OpenTopoData or
+Open-Elevation when you look up an altitude, and to Open-Meteo for the absolute check.
 
 ## Two ports, and why it matters
 
@@ -94,15 +125,16 @@ exposed on its own listener:
 | Listener | Default publish | Serves |
 |---|---|---|
 | ingest | `0.0.0.0:2551` | the configured path, and nothing else |
-| admin | `127.0.0.1:2552` | status page, read API, health |
+| admin | `127.0.0.1:2552` | status and setup pages, read API, health |
 
 The admin routes are not merely *refused* on the ingest listener — they are not mounted on it,
 so no mistake in a guard can expose them. Ask the ingest port for the status page and it
 answers `404`, because there is nothing there.
 
-The admin listener has no login of its own, so keep it on loopback and reach it through a
-reverse proxy — one that requires a login, if anyone you do not trust can reach it. The server
-says so on every start.
+Keep the admin listener on loopback and reach it through a reverse proxy. It can have a login of
+its own, set on the setup page (HTTP Basic, stored as a salted scrypt hash); use it, or a proxy
+that requires one, if anyone you do not trust can reach these pages. Every form on them is
+protected against submission from other sites.
 
 The ingest endpoint authenticates the station by its `PASSKEY`, which the console sends on
 every report; reports from an unlisted station are discarded. Requests are rate limited and

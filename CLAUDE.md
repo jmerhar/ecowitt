@@ -13,7 +13,6 @@ backend/src/ecowitt/
   config.py       environment settings; every credential also accepts a *_FILE variant
   serve.py        builds both apps and runs both listeners in one event loop
   ingest.py       the public app -- one route, and deliberately nothing else
-  admin.py        the admin app -- status, health, read API
   http.py         read_capped_body, shared by both
   state.py        in-process counters both listeners see
   healthcheck.py  module entrypoint for the container's HEALTHCHECK
@@ -29,6 +28,14 @@ backend/src/ecowitt/
   preferences.py  units, sensor names, altitude
   staleness.py    how long each sensor's values have gone unchanged
 
+  admin.py        status and setup pages, the read API, the login and form checks
+  templates/      the pages, Jinja2 with autoescaping
+  auth.py         scrypt password hashes, Basic login, CSRF token and origin check
+  configstore.py  the live configuration: validate, save, then apply and notify
+  pending.py      unconfigured stations offered for adoption, by fingerprint
+  calibration.py  the relative, absolute-step and absolute-reference pressure checks
+  lookups.py      elevation and model surface pressure from public services
+  reference.py    the background refresh of model surface pressure
   handler.py      authenticate a report against the stations, process it, write it
   stationconfig.py  /data/config.yaml: the PASSKEY allowlist and per-station preferences
   writer.py       one write to InfluxDB 3 or 2.x, classified OK / RETRY / REJECT
@@ -72,11 +79,24 @@ bin/              every script the Makefile and CI run
 - **Bodies are streamed against a cap, not read whole.** `request.body()` would allocate
   whatever an anonymous caller chose to send; `read_capped_body` checks a declared
   Content-Length first and aborts mid-stream otherwise.
-- **The admin listener has no authentication of its own**, so its host-side publish is the
-  only gate. The process cannot tell whether that publish is safe: in a container both
-  listeners must bind every interface, since a loopback bind there is unreachable even through
-  a published port. `warn_if_admin_unauthenticated` therefore states the requirement on every
-  start rather than guessing.
+- **The admin listener's login is optional**, set on the setup page and stored as a salted
+  scrypt hash. Without one, its host-side publish is the only gate, and the process cannot
+  tell whether that publish is safe: in a container both listeners must bind every interface,
+  since a loopback bind there is unreachable even through a published port. So
+  `warn_if_admin_unauthenticated` keys on whether a login is set, the one thing it can see.
+- **Every POST on the admin listener goes through `admin._form`**, which checks the CSRF token
+  and that Origin (or Referer) names this host. Browsers attach a Basic login to every request
+  automatically, so without both any site the operator visits could post forms here. A new
+  form route must use `_form`; `test_no_form_from_elsewhere_changes_anything` lists every
+  route and must be extended with it.
+- **Adopting a station never displays its PASSKEY.** `PendingStations` keeps it in memory; the
+  page refers to an entry by fingerprint. An entry leaves the list only after the station is
+  saved, so a refused form or an altitude lookup leaves it there to adopt.
+- **The HP2551's calibration screen has no relative offset.** It has *ABS Barometer*, which sets
+  the absolute reading itself, and *Altitude for REL*, which it reduces with. Advice in
+  `calibration.py` gives both forms because other firmware uses offsets instead. An absolute
+  error moves the relative reading and its reduction together, so the relative check cannot see
+  one; the step and reference checks exist for exactly that.
 - **The unit belongs in the field name** (`temp_c`, `abs_hpa`). A bare `temp` whose unit
   depends on configuration history would silently mix °F and °C in one series.
 - **Every number is written as a float**, `60.0` and never `60i`. InfluxDB fixes a field's type
@@ -139,6 +159,9 @@ UPDATE_GOLDEN=1 bin/test-backend.sh tests/test_data/test_pipeline.py   # after a
   output to review line by line, not a file to regenerate and commit unread; the values behind it
   are pinned independently by `test_units` and `test_psychro`, which check against published
   reference tables rather than against this code.
+- **`TestClient` blocks the test's event loop while a request runs.** A stand-in server a
+  request must reach -- an elevation service, say -- cannot live on that loop; run it on its own
+  thread (`test_pages.json_server`).
 - **New tests are checked by mutating the code they cover**, not by reading them. A suite that
   survives a deliberate break is not testing that code. A client that follows redirects is the
   standing example: an ingest route reachable only through a 307 passes every assertion on its
