@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Setup · Ecowitt Server{% endblock %}
+{% block content %}
+{% macro value(entry, name, default="") -%}
+  {%- if draft and draft.get("original", "") == (entry.name if entry else "") and name in draft -%}
+    {{ draft[name] }}
+  {%- elif entry and entry[name] is not none -%}
+    {{ entry[name] }}
+  {%- else -%}{{ default }}{%- endif -%}
+{%- endmacro %}
+
+{% if not editable %}
+  <div class="notice error">This process was started without a configuration file, so nothing here can be saved.</div>
+{% endif %}
+
+{% if pending %}
+<section>
+  <h2>Stations reporting, not configured</h2>
+  <p class="muted">Each console sends its PASSKEY with every report. Adopting one stores it without
+     showing it; the fingerprint tells consoles apart.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Model</th><th>Firmware</th><th>Fingerprint</th><th>From</th><th class="num">Reports</th><th>Adopt as</th></tr></thead>
+    <tbody>
+    {% for p in pending %}
+      <tr>
+        <td>{{ p.model or "unknown" }}</td>
+        <td>{{ p.stationtype }}</td>
+        <td><code>{{ p.fingerprint }}</code></td>
+        <td>{{ p.source }}</td>
+        <td class="num">{{ p.reports }}</td>
+        <td>
+          <form method="post" action="/setup/station" class="inline">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <input type="hidden" name="adopt" value="{{ p.fingerprint }}">
+            <input name="name" placeholder="Station name" required aria-label="Station name">
+            <button type="submit">Adopt</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endif %}
+
+{% for item in stations %}
+{% set entry = item.entry %}
+<section>
+  <h2>{{ entry.name }}</h2>
+  <form method="post" action="/setup/station">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="original" value="{{ entry.name }}">
+    <div class="row">
+      <div><label for="name-{{ loop.index }}">Name</label>
+        <input id="name-{{ loop.index }}" name="name" value="{{ value(entry, 'name') }}" required></div>
+    </div>
+    <div class="row">
+      <div><label for="lat-{{ loop.index }}">Latitude</label>
+        <input id="lat-{{ loop.index }}" name="latitude" inputmode="decimal" value="{{ value(entry, 'latitude') }}"></div>
+      <div><label for="lon-{{ loop.index }}">Longitude</label>
+        <input id="lon-{{ loop.index }}" name="longitude" inputmode="decimal" value="{{ value(entry, 'longitude') }}"></div>
+      <div><label for="alt-{{ loop.index }}">Altitude of the barometer (m)</label>
+        <input id="alt-{{ loop.index }}" name="altitude_m" inputmode="decimal" value="{{ value(entry, 'altitude_m') }}"></div>
+    </div>
+    <p class="muted">Coordinates are optional. With them the altitude can be looked up, and absolute
+      pressure is checked against a weather model; both send the coordinates to a public service
+      (OpenTopoData or Open-Elevation, and Open-Meteo).</p>
+    <button class="secondary" type="submit" name="action" value="lookup">Look up altitude</button>
+
+    <h3 style="margin-top:1.2rem">Sensor names</h3>
+    <div class="row">
+    {% for sid in item.sensor_ids %}
+      <div><label for="s-{{ loop.index }}-{{ sid }}">{{ sid }}</label>
+        <input id="s-{{ loop.index }}-{{ sid }}" name="sensor_{{ sid }}"
+               value="{{ draft.get('sensor_' ~ sid, entry.sensors.get(sid, '')) if draft and draft.get('original') == entry.name else entry.sensors.get(sid, '') }}"></div>
+    {% endfor %}
+    </div>
+    {% if not item.sensor_ids %}<p class="muted">Sensors appear here once the station has reported.</p>{% endif %}
+    <div class="row">
+      <div><label>Another sensor's identifier</label><input name="new_sensor_id" placeholder="ch3"></div>
+      <div><label>Its name</label><input name="new_sensor_name" placeholder="Kitchen"></div>
+    </div>
+    <button type="submit" name="action" value="save">Save</button>
+    <button class="danger" type="submit" name="action" value="delete"
+            onclick="return confirm('Remove {{ entry.name }}? Its reports will be discarded until it is added again.')">Remove</button>
+  </form>
+</section>
+{% endfor %}
+
+<section>
+  <h2>Add a station by PASSKEY</h2>
+  <p class="muted">Usually easier: let the console report, then adopt it above.</p>
+  <form method="post" action="/setup/station">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="row">
+      <div><label for="new-name">Name</label><input id="new-name" name="name" required></div>
+      <div><label for="new-passkey">PASSKEY</label><input id="new-passkey" name="passkey" required autocomplete="off"></div>
+    </div>
+    <button type="submit" name="action" value="save">Add</button>
+  </form>
+</section>
+
+<section>
+  <h2>Units</h2>
+  <p class="muted">Shared by every station. Each field's unit is part of its name, so changing one
+    starts new fields rather than mixing units; dashboards need updating to match.</p>
+  <form method="post" action="/setup/units">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="row">
+    {% for field, choices in [("temperature", [("c","°C"),("f","°F")]),
+                              ("pressure", [("hpa","hPa"),("inhg","inHg"),("mmhg","mmHg")]),
+                              ("rain", [("mm","mm"),("in","in")]),
+                              ("wind", [("kmh","km/h"),("ms","m/s"),("mph","mph"),("kn","kn")]),
+                              ("distance", [("km","km"),("mi","mi")])] %}
+      <div><label for="u-{{ field }}">{{ field|capitalize }}</label>
+        <select id="u-{{ field }}" name="{{ field }}">
+        {% for code, label in choices %}
+          <option value="{{ code }}" {% if document.units[field] == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+        </select></div>
+    {% endfor %}
+    </div>
+    <button type="submit">Save units</button>
+  </form>
+</section>
+
+<section>
+  <h2>Login</h2>
+  <p class="muted">Optional. This page is meant to sit behind a reverse proxy on a private network;
+    set a login if anyone you do not trust can reach it.</p>
+  <form method="post" action="/setup/admin">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="row">
+      <div><label for="a-user">Username</label><input id="a-user" name="username" autocomplete="username"
+            value="{{ document.admin.username if document.admin else '' }}"></div>
+      <div><label for="a-pass">Password</label><input id="a-pass" name="password" type="password" autocomplete="new-password"></div>
+      <div><label for="a-pass2">Password again</label><input id="a-pass2" name="password_again" type="password" autocomplete="new-password"></div>
+    </div>
+    <button type="submit" name="action" value="set">{{ "Change login" if login_set else "Set login" }}</button>
+    {% if login_set %}<button class="danger" type="submit" name="action" value="clear" formnovalidate>Remove login</button>{% endif %}
+  </form>
+</section>
+{% endblock %}

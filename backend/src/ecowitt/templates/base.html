@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Ecowitt Server{% endblock %}</title>
+  {% block head %}{% endblock %}
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1f21; --muted: #6b6f75; --line: #e3e0d8; --card: #ffffff;
+            --accent: #2f6f5e; --warn-bg: #fff4dc; --warn-line: #e3b04b; --bad: #a33a2b; --good: #2f6f5e; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #16181a; --fg: #e6e4df; --muted: #9a9ea4; --line: #2c2f33; --card: #1e2124;
+              --accent: #7cc4ad; --warn-bg: #3a2f17; --warn-line: #b8892f; --bad: #e0806f; --good: #7cc4ad; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg);
+           font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    header { display: flex; gap: 1.5rem; align-items: baseline; padding: 1rem 1.25rem;
+             border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+    header strong { font-size: 1.05rem; }
+    header a { color: var(--muted); text-decoration: none; }
+    header a.here, header a:hover { color: var(--fg); }
+    .badge { background: var(--accent); color: var(--bg); border-radius: 1rem; padding: 0 .45rem; font-size: .8rem; }
+    main { max-width: 64rem; margin: 0 auto; padding: 1rem 1.25rem 3rem; }
+    section, .card { background: var(--card); border: 1px solid var(--line); border-radius: .5rem;
+                     padding: 1rem 1.25rem; margin: 1rem 0; }
+    h1, h2, h3 { line-height: 1.2; margin: .2rem 0 .6rem; }
+    h2 { font-size: 1.2rem; } h3 { font-size: 1rem; }
+    .muted { color: var(--muted); }
+    .table-wrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+    th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th { color: var(--muted); font-weight: 500; font-size: .85rem; }
+    td.num, th.num { text-align: right; }
+    .good { color: var(--good); } .bad { color: var(--bad); }
+    .notice { padding: .7rem 1rem; border-radius: .4rem; margin: 1rem 0; border: 1px solid var(--line); }
+    .notice.ok { border-color: var(--accent); }
+    .notice.error { border-color: var(--bad); color: var(--bad); }
+    .warning { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: .4rem;
+               padding: .7rem 1rem; margin: .6rem 0; }
+    .warning form { margin-top: .4rem; }
+    form.inline { display: inline; }
+    label { display: block; font-size: .85rem; color: var(--muted); margin-top: .5rem; }
+    input, select { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line);
+                    border-radius: .3rem; padding: .3rem .5rem; width: 100%; max-width: 22rem; }
+    .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .row > div { flex: 1 1 10rem; }
+    button { font: inherit; padding: .35rem .9rem; border-radius: .3rem; border: 1px solid var(--accent);
+             background: var(--accent); color: var(--bg); cursor: pointer; margin-top: .7rem; }
+    button.secondary { background: transparent; color: var(--accent); }
+    button.danger { background: transparent; border-color: var(--bad); color: var(--bad); }
+    code { font-size: .9em; }
+    footer { color: var(--muted); font-size: .85rem; margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Ecowitt Server</strong>
+    <a href="/" class="{% if request.url.path == '/' %}here{% endif %}">Status</a>
+    <a href="/setup" class="{% if request.url.path.startswith('/setup') %}here{% endif %}">Setup
+      {% if pending_count %}<span class="badge" title="stations reporting but not configured">{{ pending_count }}</span>{% endif %}</a>
+  </header>
+  <main>
+    {% if message %}<div class="notice ok">{{ message }}</div>{% endif %}
+    {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

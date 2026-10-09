@@ -1,15 +1,18 @@
-"""What the ingest listener does with a report: authenticate, process, write."""
+"""What the ingest listener does with a report: authenticate, process, deliver, remember."""
 
 from __future__ import annotations
 
-import hashlib
 import logging
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Protocol
 
+from .calibration import CalibrationMonitor
 from .lineprotocol import encode
-from .pipeline import process
+from .pending import PendingStations, fingerprint
+from .pipeline import process_report
+from .points import Point
 from .staleness import StalenessTracker
 from .stationconfig import StationConfig
 
@@ -27,21 +30,39 @@ class Sink(Protocol):
         """Accept one report's rows for delivery."""
 
 
+@dataclass(frozen=True)
+class LatestReport:
+    """A station's most recent report, as rows in the operator's units."""
+
+    timestamp: int
+    received_at: datetime
+    points: list[Point] = field(default_factory=list)
+
+
 class StationHandler:
-    """Accepts reports from configured stations and writes what they measured."""
+    """Accepts reports from configured stations and delivers what they measured.
+
+    `config` is replaced whenever the configuration changes, so a station added on the setup
+    page is accepted from its next report without a restart.
+    """
 
     def __init__(
         self,
         config: StationConfig,
         sink: Sink,
         *,
+        pending: PendingStations | None = None,
+        calibration: CalibrationMonitor | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
-        self._config = config
+        self.config = config
         self._sink = sink
+        self._pending = pending or PendingStations()
+        self._calibration = calibration or CalibrationMonitor()
         self._clock = clock
         self._tracker = StalenessTracker()
         self._announced: set[str] = set()
+        self.latest: dict[str, LatestReport] = {}
 
     async def handle(self, fields: Mapping[str, str], source: str) -> bool:
         """Process one report, returning whether it came from a configured station.
@@ -50,35 +71,39 @@ class StationHandler:
         write: it was authentic, and delivery records its own outcome.
         """
         passkey = fields.get("PASSKEY", "")
-        station = self._config.lookup(passkey)
+        station = self.config.lookup(passkey)
         if station is None:
             self._announce_unknown(passkey, source)
+            self._pending.record(passkey, source, fields)
             return False
 
-        points = process(
+        received = self._clock()
+        processed = process_report(
             fields,
-            received_at=self._clock(),
+            received_at=received,
             station=station.name,
             preferences=station.preferences,
             tracker=self._tracker,
         )
-        await self._sink.submit(encode(points))
+        self.latest[station.name] = LatestReport(processed.timestamp, received, processed.points)
+        self._calibration.observe(station.name, processed.timestamp, processed.readings)
+        await self._sink.submit(encode(processed.points))
         return True
 
     def _announce_unknown(self, passkey: str, source: str) -> None:
         """Log a report from an unlisted station, once per PASSKEY.
 
         The PASSKEY itself is never logged. Its fingerprint is: enough to tell one console from
-        another and to confirm which entry a newly added one should be, without putting the
+        another and to match it to the entry the setup page offers, without putting the
         credential in a file anyone can read.
         """
-        fingerprint = hashlib.sha256(passkey.encode()).hexdigest()[:12] if passkey else "none"
-        if fingerprint in self._announced or len(self._announced) >= MAX_ANNOUNCED_UNKNOWN:
+        key = fingerprint(passkey)
+        if key in self._announced or len(self._announced) >= MAX_ANNOUNCED_UNKNOWN:
             return
-        self._announced.add(fingerprint)
+        self._announced.add(key)
         logger.warning(
             "report from %s discarded: no configured station has this PASSKEY "
-            "(sha256 fingerprint %s)",
+            "(sha256 fingerprint %s); it can be adopted on the setup page",
             source,
-            fingerprint,
+            key,
         )

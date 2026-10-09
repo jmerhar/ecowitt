@@ -99,3 +99,51 @@ async def test_staleness_carries_across_reports() -> None:
     await handler.handle(second, "192.0.2.9")
 
     assert "unchanged_s=60.0" in writer.bodies[1]
+
+
+async def test_the_latest_report_is_kept_per_station() -> None:
+    handler = StationHandler(CONFIG, MemorySink(), clock=CLOCK)
+
+    await handler.handle(report(), "192.0.2.9")
+
+    latest = handler.latest["Home"]
+    assert latest.received_at == CLOCK()
+    assert any(p.table == "indoor" for p in latest.points)
+
+
+async def test_an_unknown_station_is_offered_for_adoption() -> None:
+    from ecowitt.pending import PendingStations
+
+    pending = PendingStations()
+    handler = StationHandler(CONFIG, MemorySink(), pending=pending, clock=CLOCK)
+
+    await handler.handle(report() | {"PASSKEY": "NEWCONSOLE"}, "192.0.2.9")
+
+    (entry,) = pending.list()
+    assert (entry.passkey, entry.model) == ("NEWCONSOLE", "HP2551AE_Pro_V2.1.4")
+
+
+async def test_reports_feed_the_calibration_checks_in_canonical_units() -> None:
+    """The monitor sees hPa whatever units the operator stores in."""
+    from ecowitt.calibration import CalibrationMonitor
+    from ecowitt.units import Units
+
+    monitor = CalibrationMonitor()
+    inhg = StationConfig(
+        (Station("Home", Preferences(units=Units(pressure="inhg")), FIXTURE_PASSKEY),)
+    )
+    handler = StationHandler(inhg, MemorySink(), calibration=monitor, clock=CLOCK)
+
+    await handler.handle(report(), "192.0.2.9")
+
+    ((_, absolute),) = monitor._tracks["Home"].absolutes
+    assert absolute == pytest.approx(29.796 * 33.8638866667)
+
+
+async def test_a_replaced_configuration_takes_effect_on_the_next_report() -> None:
+    handler = StationHandler(StationConfig(), MemorySink(), clock=CLOCK)
+    assert await handler.handle(report(), "192.0.2.9") is False
+
+    handler.config = CONFIG
+
+    assert await handler.handle(report(), "192.0.2.9") is True

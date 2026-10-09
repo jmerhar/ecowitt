@@ -84,15 +84,20 @@ async def _noop_app(scope: object, receive: object, send: object) -> None:
     """An ASGI app that is never called; uvicorn.Config only needs something callable."""
 
 
-def test_the_admin_listener_warns_that_it_has_no_authentication(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """The publish is the only gate, so startup says where to publish it."""
+def test_the_admin_listener_warns_when_it_has_no_login(caplog: pytest.LogCaptureFixture) -> None:
+    """The publish is then the only gate, so startup says where to publish it."""
     with caplog.at_level(logging.WARNING, logger="ecowitt.serve"):
-        serve.warn_if_admin_unauthenticated(Settings(admin_port=2552))
+        assert serve.warn_if_admin_unauthenticated(Settings(admin_port=2552)) is True
 
-    assert "no authentication" in caplog.text
+    assert "no login" in caplog.text
     assert "2552" in caplog.text
+
+
+def test_with_a_login_set_there_is_nothing_to_warn_about(caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level(logging.WARNING, logger="ecowitt.serve"):
+        assert serve.warn_if_admin_unauthenticated(Settings(), login_set=True) is False
+
+    assert caplog.text == ""
 
 
 def test_configure_logging_sets_the_level() -> None:
@@ -264,9 +269,12 @@ async def test_run_without_a_handler_loads_the_configured_stations(
     assert "stations: Home" in caplog.text
     assert ("INFLUX_URL is not set" in caplog.text) is (influx_url == "")
     assert closed == [True]
-    # The spool exists under the data directory, and its replay loop did not outlive `run`.
+    # The spool and the form-signing secret exist under the data directory, and no background
+    # task outlived `run`.
     assert (tmp_path / "spool" / "pending").is_dir()
-    assert not [t for t in asyncio.all_tasks() if t.get_name() == "spool-replay"]
+    assert (tmp_path / "secret.key").is_file()
+    names = {t.get_name() for t in asyncio.all_tasks()}
+    assert not names & {"spool-replay", "reference-pressure"}
 
 
 async def test_run_refuses_to_start_on_a_malformed_configuration(tmp_path: Path) -> None:

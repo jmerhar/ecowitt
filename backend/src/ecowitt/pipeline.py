@@ -3,13 +3,44 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import datetime
 
 from .derive import derive
 from .parse import parse
 from .points import Point, render
 from .preferences import Preferences
+from .readings import Reading
 from .staleness import StalenessTracker
+
+
+@dataclass(frozen=True)
+class Processed:
+    """One report after processing: canonical readings, and the rows rendered from them."""
+
+    timestamp: int
+    #: Parsed and derived readings in canonical units, for anything that reasons about values
+    #: -- the calibration checks -- rather than displaying them.
+    readings: list[Reading]
+    points: list[Point]
+
+
+def process_report(
+    raw: Mapping[str, str],
+    *,
+    received_at: datetime,
+    station: str,
+    preferences: Preferences,
+    tracker: StalenessTracker,
+) -> Processed:
+    """Parse, derive and render one report, keeping the canonical readings."""
+    report = parse(raw, received_at)
+    derived = derive(
+        report.readings, preferences, tracker, station=station, timestamp=report.timestamp
+    )
+    readings = [*report.readings, *derived]
+    points = render(readings, preferences, station=station, timestamp=report.timestamp)
+    return Processed(report.timestamp, readings, points)
 
 
 def process(
@@ -20,11 +51,7 @@ def process(
     preferences: Preferences,
     tracker: StalenessTracker,
 ) -> list[Point]:
-    """Parse, derive and render one report."""
-    report = parse(raw, received_at)
-    derived = derive(
-        report.readings, preferences, tracker, station=station, timestamp=report.timestamp
-    )
-    return render(
-        [*report.readings, *derived], preferences, station=station, timestamp=report.timestamp
-    )
+    """Parse, derive and render one report, returning only the rows."""
+    return process_report(
+        raw, received_at=received_at, station=station, preferences=preferences, tracker=tracker
+    ).points

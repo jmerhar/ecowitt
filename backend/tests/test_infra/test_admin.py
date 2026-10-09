@@ -41,7 +41,7 @@ def test_status_never_returns_the_influx_token(state: State, tmp_path) -> None:
     settings = Settings(data_dir=tmp_path, influx_token=secret)
     from ecowitt import admin
 
-    with TestClient(admin.build_app(settings, state)) as client:
+    with TestClient(admin.build_app(admin.AdminContext(settings, state))) as client:
         response = client.get("/api/status")
 
     assert response.json()["influx"]["token_configured"] is True
@@ -60,7 +60,9 @@ def test_status_reports_writes_and_rate_limiting(state: State, tmp_path) -> None
     state.record_write(True)
     state.record_write(False)
     state.record_rate_limited()
-    with TestClient(admin.build_app(Settings(data_dir=tmp_path), state, ["Home"])) as client:
+    with TestClient(
+        admin.build_app(admin.AdminContext(Settings(data_dir=tmp_path), state, stations=["Home"]))
+    ) as client:
         body = client.get("/api/status").json()
 
     assert body["writes"]["succeeded"] == 1
@@ -94,7 +96,11 @@ def test_status_reports_what_is_waiting_in_the_spool(state: State, tmp_path) -> 
     spool.quarantine_body("refused")
     state.record_spooled()
     state.record_spooled()
-    with TestClient(admin.build_app(Settings(data_dir=tmp_path), state, ["Home"], spool)) as client:
+    with TestClient(
+        admin.build_app(
+            admin.AdminContext(Settings(data_dir=tmp_path), state, stations=["Home"], spool=spool)
+        )
+    ) as client:
         body = client.get("/api/status").json()
 
     assert body["spool"]["waiting"] == 2

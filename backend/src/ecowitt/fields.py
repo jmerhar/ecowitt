@@ -257,6 +257,7 @@ SPECS: list[FieldSpec] = [
 NAMED_TABLES = frozenset(
     {
         "indoor",
+        "outdoor",
         "battery",
         "channel",
         "soil",

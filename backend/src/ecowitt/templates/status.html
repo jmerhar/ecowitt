@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block head %}<meta http-equiv="refresh" content="60">{% endblock %}
+{% block content %}
+{% macro reading(r, digits=1) %}{% if r %}{{ "%.*f"|format(digits, r.value) }} {{ {"c": "°C", "f": "°F", "pct": "%"}.get(r.unit, r.unit) }}{% else %}<span class="muted">–</span>{% endif %}{% endmacro %}
+
+{% if not stations %}
+  <section>
+    <h2>No station is configured yet</h2>
+    {% if pending_count %}
+      <p>{{ pending_count }} station{{ "s are" if pending_count > 1 else " is" }} reporting but not configured.
+         <a href="/setup">Adopt {{ "one" if pending_count > 1 else "it" }} in Setup</a>.</p>
+    {% else %}
+      <p class="muted">Point a console's <em>Customized</em> upload at this server's ingest port; it will
+         appear in <a href="/setup">Setup</a> as soon as it reports.</p>
+    {% endif %}
+  </section>
+{% endif %}
+
+{% for station in stations %}
+<section>
+  <h2>{{ station.name }}</h2>
+  <p class="muted">
+    {% if station.timestamp %}Last report {{ station.age_seconds|round|int }} s ago.
+    {% else %}No report since this server started.{% endif %}
+  </p>
+
+  {% for w in station.warnings %}
+  <div class="warning">
+    <strong>{{ w.title }}</strong>
+    <div>{{ w.detail }}</div>
+    <form method="post" action="/dismiss">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="station" value="{{ station.name }}">
+      <input type="hidden" name="kind" value="{{ w.kind }}">
+      <input type="hidden" name="correction" value="{{ w.correction_hpa if w.correction_hpa is not none else '' }}">
+      <button class="secondary" type="submit">Dismiss</button>
+    </form>
+  </div>
+  {% endfor %}
+
+  {% if station.sensors %}
+  <div class="table-wrap">
+  <table>
+    <thead><tr>
+      <th>Sensor</th><th class="num">Temperature</th><th class="num">Humidity</th><th class="num">Dew point</th>
+      <th title="What airing would do: the dew-point difference from outdoors, and the humidity the room would settle at">Airing</th>
+      <th class="num" title="How long the readings have been identical">Unchanged</th><th>Battery</th>
+    </tr></thead>
+    <tbody>
+    {% for s in station.sensors %}
+      <tr>
+        <td>{{ s.name }}{% if s.name != s.sensor %} <span class="muted">{{ s.sensor }}</span>{% endif %}</td>
+        <td class="num">{{ reading(s.temp) }}</td>
+        <td class="num">{{ reading(s.humidity, 0) }}</td>
+        <td class="num">{{ reading(s.dewpoint) }}</td>
+        <td>{% if s.airing_delta %}
+              {% if s.airing_delta.value > 0 %}<span class="good">drier outside</span>{% else %}<span class="bad">damper outside</span>{% endif %}
+              → {{ "%.0f"|format(s.airing_humidity) }} %
+            {% else %}<span class="muted">–</span>{% endif %}</td>
+        <td class="num">{% if s.unchanged is not none %}{{ s.unchanged|int }} s{% endif %}</td>
+        <td>{% if s.battery_low %}<span class="bad">low</span>{% elif s.battery_low is false %}ok{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endif %}
+
+  {% if station.pressure %}
+  <p>Pressure: absolute {{ station.pressure.abs }}, relative {{ station.pressure.rel }}
+    {%- if station.pressure.sea is defined %}, sea level {{ station.pressure.sea }}{% endif %} {{ station.pressure.unit }}</p>
+  {% endif %}
+</section>
+{% endfor %}
+
+<footer>
+  {{ status.writes.succeeded }} writes, {{ status.writes.failed }} failed attempts{% if status.spool %},
+  {{ status.spool.waiting }} waiting for InfluxDB{% endif %}.
+  Up {{ (status.uptime_seconds / 3600)|round(1) }} h.
+  <a href="/api/status">status</a> · <a href="/api/readings">readings</a> (JSON)
+</footer>
+{% endblock %}
