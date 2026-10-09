@@ -16,3 +16,7 @@ flags:
     paths:
       - backend/
     carryforward: true
+  pages:
+    paths:
+      - backend/src/ecowitt/static/
+    carryforward: true

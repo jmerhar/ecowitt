@@ -38,7 +38,7 @@ build: ## Build the image without starting anything
 test: ## Run the suite (arguments pass through to pytest, e.g. ARGS="-k slash")
 	bin/test-backend.sh $(ARGS)
 
-test-js: ## Run the tests for the scripts the admin pages load (needs node)
+test-js: ## Run the page script tests with coverage (needs node)
 	bin/test-js.sh
 
 coverage: ## Run the suite with coverage and print the summary
@@ -47,12 +47,12 @@ coverage: ## Run the suite with coverage and print the summary
 lint: ## ShellCheck, ruff, and the compose files
 	bin/lint.sh
 
-check: lint test test-js coverage ## Everything (gate a commit on this)
+check: lint test coverage ## Everything (gate a commit on this; coverage runs both suites)
 
 ##@ Housekeeping
 
 clean: ## Remove build and coverage artefacts (all regenerable)
-	rm -rf backend/htmlcov backend/coverage.xml backend/coverage.json backend/.coverage \
+	rm -rf backend/htmlcov backend/coverage.xml backend/coverage.json backend/.coverage backend/coverage-js \
 	       backend/junit backend/.ruff_cache backend/.pytest_cache \
 	       coverage-upload .coverage-report.py
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +

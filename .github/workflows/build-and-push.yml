@@ -47,6 +47,25 @@ jobs:
             backend/junit
           if-no-files-found: error
 
+  test-js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Page script tests with coverage
+        run: bin/test-js.sh
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-pages
+          path: backend/coverage-js
+          if-no-files-found: error
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -58,13 +77,6 @@ jobs:
 
       - name: Shell scripts
         run: shellcheck bin/*.sh
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: "22"
-
-      - name: Page script tests
-        run: bin/test-js.sh
 
       - name: Install ruff
         run: pip install ruff
@@ -81,7 +93,7 @@ jobs:
           docker compose -f docker-compose.yml -f docker-compose.dev.yml config -q
 
   coverage:
-    needs: [test]
+    needs: [test, test-js]
     runs-on: ubuntu-latest
     # contents: read for checkout; statuses: write to link the coverage report from the commit.
     permissions:
@@ -95,11 +107,17 @@ jobs:
           python-version: "3.14"
 
       # Restore the report to the path coverage.toml declares (backend/coverage.json).
-      - name: Download coverage
+      - name: Download backend coverage
         uses: actions/download-artifact@v6
         with:
           name: coverage-backend
           path: backend
+
+      - name: Download page script coverage
+        uses: actions/download-artifact@v6
+        with:
+          name: coverage-pages
+          path: backend/coverage-js
 
       # At-a-glance coverage on the run's summary page. The suite, its label and its gate are
       # declared in coverage.toml; the tooling is shared by every project publishing to the
