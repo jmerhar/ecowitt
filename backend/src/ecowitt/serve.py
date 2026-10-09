@@ -82,6 +82,28 @@ def stop_all(listeners: Iterable[_Listener]) -> None:
         listener.should_exit = True
 
 
+#: Most a request's line and headers may take together. A console's request is a few hundred
+#: bytes; the cap stops an anonymous caller making the process buffer megabytes of headers,
+#: which happens before the application, its body cap or its rate limit sees the request.
+MAX_HEADER_BYTES = 16 * 1024
+
+#: Most connections each listener holds at once; beyond it, new requests get a 503. A station
+#: holds one for a moment per report, so this bounds what slow or idle callers can pin open.
+MAX_CONNECTIONS = 64
+
+
+def _limits() -> dict[str, object]:
+    """Connection and header bounds shared by both listeners.
+
+    h11 rather than httptools, because only h11 has a limit on incomplete headers.
+    """
+    return {
+        "http": "h11",
+        "h11_max_incomplete_event_size": MAX_HEADER_BYTES,
+        "limit_concurrency": MAX_CONNECTIONS,
+    }
+
+
 def build(
     settings: Settings,
     handler: ReportHandler,
@@ -101,6 +123,7 @@ def build(
             # on every report. The handler logs an accepted report itself.
             access_log=False,
             log_config=None,
+            **_limits(),  # type: ignore[arg-type]
         )
     )
     admin_listener = _Listener(
@@ -109,6 +132,7 @@ def build(
             host=settings.admin_host,
             port=settings.admin_port,
             log_config=None,
+            **_limits(),  # type: ignore[arg-type]
         )
     )
     return ingest_listener, admin_listener
