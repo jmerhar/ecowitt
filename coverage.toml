@@ -1,0 +1,17 @@
+# Coverage configuration for the shared tooling in jmerhar/coverage, which renders the CI
+# summary table, enforces the gate, and publishes the HTML report.
+#
+# One suite: the backend. The JSON summary is read rather than the XML coverage.py can also
+# emit, because the JSON totals are exact.
+
+# The gate sits just under the measured line coverage: tight enough to catch a real
+# regression, loose enough to tolerate the odd defensive line. Raise it as coverage climbs;
+# never lower it to make a red build pass -- and never delete a guard to flatter the number
+# either, since an unreachable branch is better described by a pragma than removed.
+
+[suites.backend]
+label = "Backend (Python)"
+format = "coveragepy"
+report = "backend/coverage.json"
+html = "backend/htmlcov"
+gate = 98.0
