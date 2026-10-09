@@ -614,6 +614,9 @@ class TestStatus:
         assert groups["Solar"] == {"Radiation": "615 W/m²", "UV index": "5"}
         page = rig.client.get("/").text
         assert "Strongest gust today" in page and "125° SE" in page
+        # Spaced from the climate table above it rather than butting against its last row.
+        assert '<div class="row sections">' in page
+        assert ".sections { margin-top:" in page
 
     async def test_the_weather_follows_the_operators_units(self, rig: Rig) -> None:
         station = await self.ws69(rig, wind="mph", rain="in")
