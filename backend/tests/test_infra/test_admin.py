@@ -51,3 +51,27 @@ def test_status_never_returns_the_influx_token(state: State, tmp_path) -> None:
 def test_status_before_any_report(admin_client: TestClient) -> None:
     """With nothing received, the age of the last report is null rather than zero."""
     assert admin_client.get("/api/status").json()["seconds_since_last_report"] is None
+
+
+def test_status_reports_writes_and_rate_limiting(state: State, tmp_path) -> None:
+    """Write outcomes and refused floods are visible without reading the log."""
+    from ecowitt import admin
+
+    state.record_write(True)
+    state.record_write(False)
+    state.record_rate_limited()
+    with TestClient(admin.build_app(Settings(data_dir=tmp_path), state, ["Home"])) as client:
+        body = client.get("/api/status").json()
+
+    assert body["writes"]["succeeded"] == 1
+    assert body["writes"]["failed"] == 1
+    assert body["writes"]["seconds_since_last_success"] is not None
+    assert body["reports_rate_limited"] == 1
+    assert body["stations"] == ["Home"]
+
+
+def test_status_before_any_write(admin_client: TestClient) -> None:
+    body = admin_client.get("/api/status").json()
+
+    assert body["writes"] == {"succeeded": 0, "failed": 0, "seconds_since_last_success": None}
+    assert body["stations"] == []

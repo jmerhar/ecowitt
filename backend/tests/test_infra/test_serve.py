@@ -7,6 +7,7 @@ import contextlib
 import logging
 import signal
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 import pytest
 import uvicorn
@@ -200,3 +201,65 @@ def test_main_configures_logging_and_runs(monkeypatch: pytest.MonkeyPatch) -> No
         serve.get_settings.cache_clear()
 
     assert len(ran) == 1
+
+
+@pytest.mark.parametrize("influx_url", ["", "http://127.0.0.1:1"])
+async def test_run_without_a_handler_loads_the_configured_stations(
+    influx_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The production path: stations from the file, a writer, a warning only with no database."""
+    (tmp_path / "config.yaml").write_text(
+        "stations: [{name: Home, passkey: AAAA}]\n", encoding="utf-8"
+    )
+    settings = Settings(data_dir=tmp_path, ingest_port=0, admin_port=0, influx_url=influx_url)
+    state = State()
+    monkeypatch.setattr(serve, "State", lambda: state)
+    closed: list[bool] = []
+    real_aclose = serve.InfluxWriter.aclose
+
+    async def track_close(self: serve.InfluxWriter) -> None:
+        closed.append(True)
+        await real_aclose(self)
+
+    monkeypatch.setattr(serve.InfluxWriter, "aclose", track_close)
+    listeners: list[serve._Listener] = []
+    real_build = serve.build
+
+    def capture(*args: object, **kwargs: object) -> tuple[serve._Listener, serve._Listener]:
+        built = real_build(*args, **kwargs)  # type: ignore[arg-type]
+        listeners.extend(built)
+        return built
+
+    monkeypatch.setattr(serve, "build", capture)
+
+    with caplog.at_level(logging.INFO, logger="ecowitt.serve"):
+        task = asyncio.create_task(serve.run(settings))
+        async with asyncio.timeout(10):
+            while not (state.ingest_serving and state.admin_serving):
+                await asyncio.sleep(0.05)
+        serve.stop_all(listeners)
+        async with asyncio.timeout(10):
+            await task
+
+    assert "stations: Home" in caplog.text
+    assert ("INFLUX_URL is not set" in caplog.text) is (influx_url == "")
+    assert closed == [True]
+
+
+async def test_run_refuses_to_start_on_a_malformed_configuration(tmp_path: Path) -> None:
+    """Better a container that will not start than one that discards every report.
+
+    Bounded, because the failure this guards against is `run` starting normally -- and a
+    server that starts normally serves until stopped, which would hang the suite rather than
+    fail it.
+    """
+    from ecowitt.stationconfig import ConfigError
+
+    (tmp_path / "config.yaml").write_text("stattions: []\n", encoding="utf-8")
+
+    with pytest.raises(ConfigError, match="stattions"):
+        async with asyncio.timeout(5):
+            await serve.run(Settings(data_dir=tmp_path, ingest_port=0, admin_port=0))

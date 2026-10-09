@@ -28,11 +28,18 @@ backend/src/ecowitt/
   lineprotocol.py rows -> InfluxDB line protocol
   preferences.py  units, sensor names, altitude
   staleness.py    how long each sensor's values have gone unchanged
+
+  handler.py      authenticate a report against the stations, process it, write it
+  stationconfig.py  /data/config.yaml: the PASSKEY allowlist and per-station preferences
+  writer.py       line protocol to InfluxDB 3 or 2.x
+  ratelimit.py    the ingest listener's per-address token bucket
 backend/tests/
   conftest.py     settings/state fixtures and the recorded console payloads
   fixtures/       recorded payloads, the golden line protocol, the known-keys list
   test_infra/     wiring: the two listeners, config resolution, the health probe
   test_data/      the data path, module by module, and the golden end-to-end test
+  test_store/     configuration, rate limiting, the handler, and the writer against a real
+                  HTTP server standing in for InfluxDB
 bin/              every script the Makefile and CI run
 ```
 
