@@ -247,6 +247,8 @@ async def test_run_without_a_handler_loads_the_configured_stations(
         await real_aclose(self)
 
     monkeypatch.setattr(serve.InfluxWriter, "aclose", track_close)
+    woken: list[bool] = []
+    monkeypatch.setattr(serve.ReferenceUpdater, "wake", lambda self: woken.append(True))
     listeners: list[serve._Listener] = []
     real_build = serve.build
 
@@ -275,6 +277,8 @@ async def test_run_without_a_handler_loads_the_configured_stations(
     assert (tmp_path / "secret.key").is_file()
     names = {t.get_name() for t in asyncio.all_tasks()}
     assert not names & {"spool-replay", "reference-pressure"}
+    # Configuration changes wake the reference refresh; subscribing delivers the first at once.
+    assert woken
 
 
 async def test_run_refuses_to_start_on_a_malformed_configuration(tmp_path: Path) -> None:
