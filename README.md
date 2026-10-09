@@ -64,8 +64,8 @@ Open <http://127.0.0.1:2552/setup>. Within one upload interval the console appea
 Its PASSKEY — the credential every upload carries — is copied into the configuration without
 ever being shown. From then on its reports are stored; there is nothing to restart.
 
-On the same page: the altitude (looked up from coordinates if you give them), what each sensor
-is called, the units you keep, and an optional login for these pages. The status page at
+On the same page: the altitude (looked up from coordinates if you give them — or from the
+location of the device you are using, when you are at the station), what each sensor is called, the units you keep, and an optional login for these pages. The status page at
 <http://127.0.0.1:2552/> shows each room's latest readings, whether airing it would help, and
 anything wrong with the console's pressure calibration.
 
