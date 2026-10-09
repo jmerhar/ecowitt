@@ -5,6 +5,21 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 [Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
 says what under *Upgrading*.
 
+## 0.3.0 — 2026-10-09
+
+### Added
+
+- The status and setup pages: adopt a reporting console without ever seeing its PASSKEY, edit
+  names, coordinates and altitude (with an elevation lookup and the browser's location), set the
+  units, and set an optional login. Changes apply without a restart.
+- Pressure calibration checks with the fix for the console's own settings: relative against the
+  server's reduction, absolute against sudden steps, and absolute against a weather model's
+  surface pressure.
+
+### Fixed
+
+- The status page showed a sea-level pressure's temperature source in place of the pressure.
+
 ## 0.2.0 — 2026-10-09
 
 ### Added
