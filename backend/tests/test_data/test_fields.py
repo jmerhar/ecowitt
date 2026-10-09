@@ -70,6 +70,9 @@ def test_every_spec_declares_a_unit_its_kind_converts_from(spec: fields.FieldSpe
         ("tf_ch2", "probe", "temp", "probe2", (("channel", "2"),)),
         ("batt5", "battery", "low", "ch5", ()),
         ("wh25batt", "battery", "low", "indoor", ()),
+        ("wh65batt", "battery", "low", "outdoor", ()),
+        ("wh90batt", "battery", "voltage", "outdoor", ()),
+        ("wh40batt", "battery", "voltage", "wh40", ()),
     ],
 )
 def test_representative_keys_land_where_expected(

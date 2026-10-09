@@ -218,19 +218,22 @@ SPECS: list[FieldSpec] = [
     spec("ldsheat_ch" + CH, "depth", "heater_count", Kind.COUNT, sensor="depth{ch}"),
     # Batteries.
     battery("batt" + CH, Kind.FLAG, "ch{ch}"),
-    # The WH25 and WN32P are indoor sensors that take over from the console's own, and the
-    # WH26 is the plain outdoor thermo-hygrometer; their batteries share the identifier their
-    # readings use.
+    # A battery takes the identifier of the readings it powers, so it shows beside them and
+    # shares their name. The WH25 and WN32P are indoor sensors that take over from the console's
+    # own; the WH26 is the plain outdoor thermo-hygrometer, and the WH65 (the WS69 array), WS80
+    # and WS90 are arrays whose outdoor temperature and humidity come from the same unit.
     battery("wh25batt", Kind.FLAG, "indoor"),
     battery("wh26batt", Kind.FLAG, "outdoor"),
-    battery("wh65batt", Kind.FLAG, "wh65"),
+    battery("wh65batt", Kind.FLAG, "outdoor"),
+    battery("wh80batt", Kind.VOLTAGE, "outdoor"),
+    battery("wh90batt", Kind.VOLTAGE, "outdoor"),
     battery("wh57batt", Kind.LEVEL, "wh57"),
     battery("co2_batt", Kind.LEVEL, "air"),
     battery("pm25batt" + CH, Kind.LEVEL, "pm{ch}"),
     battery("leakbatt" + CH, Kind.LEVEL, "leak{ch}"),
     *[
         battery(f"{device}batt", Kind.VOLTAGE, device)
-        for device in ("wh40", "wh68", "wh80", "wh85", "wh90", "bgt", "wn20")
+        for device in ("wh40", "wh68", "wh85", "bgt", "wn20")
     ],
     battery("console_batt", Kind.VOLTAGE, "console"),
     battery("soilbatt" + CH, Kind.VOLTAGE, "soil{ch}"),
