@@ -31,7 +31,9 @@ backend/src/ecowitt/
 
   handler.py      authenticate a report against the stations, process it, write it
   stationconfig.py  /data/config.yaml: the PASSKEY allowlist and per-station preferences
-  writer.py       line protocol to InfluxDB 3 or 2.x
+  writer.py       one write to InfluxDB 3 or 2.x, classified OK / RETRY / REJECT
+  delivery.py     write now or spool; the replay loop that drains the spool
+  spool.py        the bounded on-disk queue, one atomically written file per report
   ratelimit.py    the ingest listener's per-address token bucket
 backend/tests/
   conftest.py     settings/state fixtures and the recorded console payloads
@@ -100,6 +102,19 @@ bin/              every script the Makefile and CI run
   year and the calibration warning would come and go with the weather. Sea-level reduction
   falls back to the standard atmosphere without an outdoor sensor, never to indoor
   temperature, which in a heated house says nothing about the air outside.
+- **A write outcome is RETRY unless InfluxDB refused the data itself.** Connection errors,
+  timeouts, 5xx, 408 and 429 retry; so do 401, 403 and 404, because a revoked token or a
+  dropped database is a fault to fix and the readings should be waiting when it is. Other 4xx
+  are REJECT and the report goes to `spool/rejected/`: retrying data InfluxDB will never accept
+  would block every report queued behind it.
+- **Replays may duplicate, and that is fine.** A crash between InfluxDB accepting a write and
+  the spool file's removal replays it; a point with the same series and timestamp overwrites
+  itself. Do not add bookkeeping to prevent it.
+- **The spool keeps its queue and file sizes in memory** after one listing at startup. That is
+  sound only because one process owns the directory. Sizes are remembered rather than re-read,
+  because a file deleted from outside can no longer be measured and the total would drift up.
+- **While anything is spooled, new reports queue behind it** instead of being written live, so
+  an outage costs one attempt per backoff pause rather than one per report.
 - **Retention is set once, at database creation, and InfluxDB 3 cannot change it afterwards.**
   The `weather` database is created without any, deliberately.
 
