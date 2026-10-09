@@ -163,7 +163,8 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
         delivery = Delivery(
             writer, spool, state, on_written=heartbeat.beat if heartbeat else lambda: None
         )
-        pending, calibration = PendingStations(), CalibrationMonitor()
+        secret = auth.load_secret(settings.secret_file)
+        pending, calibration = PendingStations(key=secret), CalibrationMonitor()
         station_handler = StationHandler(
             store.stations, delivery, pending=pending, calibration=calibration
         )
@@ -172,7 +173,7 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
         context = AdminContext(
             settings,
             state,
-            secret=auth.load_secret(settings.secret_file),
+            secret=secret,
             store=store,
             handler=station_handler,
             pending=pending,

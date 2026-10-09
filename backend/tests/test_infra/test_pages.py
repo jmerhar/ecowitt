@@ -21,7 +21,7 @@ from ecowitt.calibration import CalibrationMonitor
 from ecowitt.config import Settings
 from ecowitt.configstore import ConfigStore
 from ecowitt.handler import StationHandler
-from ecowitt.pending import PendingStations, fingerprint
+from ecowitt.pending import PendingStations
 from ecowitt.state import State
 from ecowitt.stationconfig import ConfigDocument, StationEntry, load_document
 
@@ -126,7 +126,9 @@ def json_server(reply: object) -> Iterator[str]:
 
 
 def adopt(rig: Rig, name: str = "Home") -> None:
-    response = rig.post("/setup/station", {"adopt": fingerprint(FIXTURE_PASSKEY), "name": name})
+    response = rig.post(
+        "/setup/station", {"adopt": rig.pending.fingerprint(FIXTURE_PASSKEY), "name": name}
+    )
     assert response.status_code == 303, response.text
 
 
@@ -145,7 +147,7 @@ class TestFirstRun:
 
         assert "1 station is reporting" in status
         assert "HP2551AE_Pro_V2.1.4" in setup
-        assert fingerprint(FIXTURE_PASSKEY) in setup
+        assert rig.pending.fingerprint(FIXTURE_PASSKEY) in setup
         assert FIXTURE_PASSKEY not in setup and FIXTURE_PASSKEY not in status
 
     async def test_adopting_stores_the_passkey_and_accepts_the_next_report(self, rig: Rig) -> None:
@@ -161,7 +163,9 @@ class TestFirstRun:
     async def test_a_refused_adoption_leaves_the_station_on_offer(self, rig: Rig) -> None:
         await rig.report()
 
-        response = rig.post("/setup/station", {"adopt": fingerprint(FIXTURE_PASSKEY), "name": ""})
+        response = rig.post(
+            "/setup/station", {"adopt": rig.pending.fingerprint(FIXTURE_PASSKEY), "name": ""}
+        )
 
         assert response.status_code == 400
         assert [p.passkey for p in rig.pending.list()] == [FIXTURE_PASSKEY]
@@ -362,7 +366,7 @@ class TestElevationLookup:
         response = rig.post(
             "/setup/station",
             {
-                "adopt": fingerprint(FIXTURE_PASSKEY),
+                "adopt": rig.pending.fingerprint(FIXTURE_PASSKEY),
                 "name": "Home",
                 "latitude": "45.8",
                 "longitude": "7.4",
