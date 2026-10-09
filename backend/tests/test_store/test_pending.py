@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+
 from ecowitt.pending import FORGET_AFTER_SECONDS, MAX_PENDING, PendingStations, fingerprint
 
 
@@ -24,7 +26,7 @@ def test_a_station_is_remembered_with_what_it_announced() -> None:
     pending.record("KEY1", "192.0.2.9", {})
 
     (entry,) = pending.list()
-    assert entry.fingerprint == fingerprint("KEY1")
+    assert entry.fingerprint == pending.fingerprint("KEY1")
     assert (entry.model, entry.stationtype, entry.reports) == (
         "HP2551AE_Pro_V2.1.4",
         "EasyWeatherPro_V5.2.7",
@@ -72,8 +74,8 @@ def test_get_leaves_the_entry_and_discard_forgets() -> None:
     pending = PendingStations(Clock())
     pending.record("A", "x", {})
 
-    assert pending.get(fingerprint("A")).passkey == "A"  # type: ignore[union-attr]
-    assert pending.get(fingerprint("A")) is not None
+    assert pending.get(pending.fingerprint("A")).passkey == "A"  # type: ignore[union-attr]
+    assert pending.get(pending.fingerprint("A")) is not None
     assert pending.get("nope") is None
     pending.discard("A")
     assert pending.list() == []
@@ -84,4 +86,17 @@ def test_a_report_without_a_passkey_is_not_remembered() -> None:
     pending.record("", "x", {})
 
     assert pending.list() == []
-    assert fingerprint("") == "none"
+    assert pending.fingerprint("") == "none"
+
+
+def test_a_fingerprint_cannot_be_computed_without_the_key() -> None:
+    """An unkeyed hash of an MD5(MAC) PASSKEY can be reversed by trying a vendor's MACs."""
+    passkey = "0123456789ABCDEF0123456789ABCDEF"
+
+    assert fingerprint(passkey, b"one") != fingerprint(passkey, b"two")
+    assert fingerprint(passkey, b"one") == fingerprint(passkey, b"one")
+    assert hashlib.sha256(passkey.encode()).hexdigest()[:12] != fingerprint(passkey, b"one")
+
+
+def test_the_server_key_keeps_fingerprints_stable_across_restarts() -> None:
+    assert PendingStations(key=b"k").fingerprint("A") == PendingStations(key=b"k").fingerprint("A")

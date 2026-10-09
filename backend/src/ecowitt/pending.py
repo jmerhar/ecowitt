@@ -13,6 +13,8 @@ recently heard stations are kept, and only for an hour after they were last hear
 from __future__ import annotations
 
 import hashlib
+import hmac
+import os
 import time
 from collections import OrderedDict
 from collections.abc import Callable, Mapping
@@ -22,9 +24,16 @@ MAX_PENDING = 20
 FORGET_AFTER_SECONDS = 3600
 
 
-def fingerprint(passkey: str) -> str:
-    """A short, stable, non-reversible name for a PASSKEY."""
-    return hashlib.sha256(passkey.encode()).hexdigest()[:12] if passkey else "none"
+def fingerprint(passkey: str, key: bytes) -> str:
+    """A short, stable name for a PASSKEY that cannot be reversed without `key`.
+
+    Keyed, because a PASSKEY is the MD5 of a MAC address: an unkeyed hash of one could be
+    reversed by trying the few million addresses of a single vendor prefix, and fingerprints
+    are written to the log and shown on the setup page.
+    """
+    if not passkey:
+        return "none"
+    return hmac.new(key, passkey.encode(), hashlib.sha256).hexdigest()[:12]
 
 
 @dataclass
@@ -44,8 +53,10 @@ class PendingStation:
 class PendingStations:
     """The recently heard, unconfigured stations."""
 
-    def __init__(self, clock: Callable[[], float] = time.time) -> None:
+    def __init__(self, clock: Callable[[], float] = time.time, *, key: bytes | None = None) -> None:
         self._clock = clock
+        # Without the server's own key the fingerprints are stable only for this process.
+        self._key = key if key is not None else os.urandom(32)
         self._entries: OrderedDict[str, PendingStation] = OrderedDict()
 
     def record(self, passkey: str, source: str, fields: Mapping[str, str]) -> None:
@@ -53,7 +64,7 @@ class PendingStations:
         if not passkey:
             return
         now = self._clock()
-        key = fingerprint(passkey)
+        key = self.fingerprint(passkey)
         entry = self._entries.pop(key, None)
         if entry is None:
             entry = PendingStation(
@@ -69,6 +80,10 @@ class PendingStations:
         while len(self._entries) > MAX_PENDING:
             self._entries.popitem(last=False)
 
+    def fingerprint(self, passkey: str) -> str:
+        """The name this list gives a PASSKEY."""
+        return fingerprint(passkey, self._key)
+
     def list(self) -> list[PendingStation]:
         """Stations heard within the last hour, most recent first."""
         self._expire()
@@ -81,7 +96,7 @@ class PendingStations:
 
     def discard(self, passkey: str) -> None:
         """Forget a station that has since been configured."""
-        self._entries.pop(fingerprint(passkey), None)
+        self._entries.pop(self.fingerprint(passkey), None)
 
     def _expire(self) -> None:
         """Forget entries not heard from within the last hour."""

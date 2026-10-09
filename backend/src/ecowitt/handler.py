@@ -10,7 +10,7 @@ from typing import Protocol
 
 from .calibration import CalibrationMonitor
 from .lineprotocol import encode
-from .pending import PendingStations, fingerprint
+from .pending import PendingStations
 from .pipeline import process_report
 from .points import Point
 from .staleness import StalenessTracker
@@ -97,13 +97,13 @@ class StationHandler:
         another and to match it to the entry the setup page offers, without putting the
         credential in a file anyone can read.
         """
-        key = fingerprint(passkey)
+        key = self._pending.fingerprint(passkey)
         if key in self._announced or len(self._announced) >= MAX_ANNOUNCED_UNKNOWN:
             return
         self._announced.add(key)
         logger.warning(
             "report from %s discarded: no configured station has this PASSKEY "
-            "(sha256 fingerprint %s); it can be adopted on the setup page",
+            "(fingerprint %s); it can be adopted on the setup page",
             source,
             key,
         )
