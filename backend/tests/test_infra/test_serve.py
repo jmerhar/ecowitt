@@ -106,6 +106,23 @@ def test_configure_logging_sets_the_level() -> None:
         root.setLevel(original)
 
 
+@pytest.mark.parametrize(
+    ("level", "expected"), [("info", logging.WARNING), ("error", logging.ERROR)]
+)
+def test_per_request_library_logging_is_quieted(level: str, expected: int) -> None:
+    """An INFO line per write would be one per report, for ever; warnings still get through."""
+    root = logging.getLogger()
+    original = root.level
+    try:
+        serve.configure_logging(level)
+        for name in serve.CHATTY_LOGGERS:
+            assert logging.getLogger(name).level == expected
+    finally:
+        root.setLevel(original)
+        for name in serve.CHATTY_LOGGERS:
+            logging.getLogger(name).setLevel(logging.NOTSET)
+
+
 @contextlib.asynccontextmanager
 async def _running(
     monkeypatch: pytest.MonkeyPatch, state: State
