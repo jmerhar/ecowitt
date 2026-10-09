@@ -376,6 +376,44 @@ class TestElevationLookup:
         assert [p.passkey for p in rig.pending.list()] == [FIXTURE_PASSKEY]
 
 
+class TestDeviceLocation:
+    def test_each_station_form_has_a_location_button_wired_to_its_own_fields(
+        self, rig: Rig
+    ) -> None:
+        """The script finds its inputs by these ids; a button naming a missing one does nothing."""
+        rig.store.replace(
+            ConfigDocument(
+                stations=[StationEntry(name="A", passkey="1"), StationEntry(name="B", passkey="2")]
+            )
+        )
+
+        page = rig.client.get("/setup").text
+        buttons = re.findall(
+            r'data-geolocate data-lat="([^"]+)"\s+data-lon="([^"]+)" data-status="([^"]+)"', page
+        )
+
+        assert len(buttons) == 2
+        assert len(set(buttons)) == 2
+        for ids in buttons:
+            for element_id in ids:
+                assert page.count(f'id="{element_id}"') == 1, element_id
+        assert '<script src="/static/geolocate.js" defer></script>' in page
+
+    def test_the_button_does_not_submit_the_form(self, rig: Rig) -> None:
+        rig.store.replace(ConfigDocument(stations=[StationEntry(name="A", passkey="1")]))
+
+        page = rig.client.get("/setup").text
+
+        assert re.search(r'<button class="secondary" type="button" data-geolocate', page)
+
+    def test_the_script_is_served(self, rig: Rig) -> None:
+        response = rig.client.get("/static/geolocate.js")
+
+        assert response.status_code == 200
+        assert "javascript" in response.headers["content-type"]
+        assert "getCurrentPosition" in response.text
+
+
 class TestUnitsAndLogin:
     def test_units(self, rig: Rig) -> None:
         response = rig.post(

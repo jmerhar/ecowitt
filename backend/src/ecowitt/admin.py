@@ -21,6 +21,7 @@ from urllib.parse import parse_qsl, urlencode
 
 import httpx2
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 from starlette.requests import Request
@@ -42,6 +43,8 @@ from .units import Units
 logger = logging.getLogger(__name__)
 
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+#: Scripts the pages load. Served as files rather than inlined so they can be tested on their own.
+STATIC_DIR = Path(__file__).parent / "static"
 #: Largest form this listener will read.
 MAX_FORM_BYTES = 64 * 1024
 #: Shortest admin password accepted from the setup page.
@@ -85,6 +88,7 @@ def build_app(context: AdminContext) -> FastAPI:
         description="Status and configuration for Ecowitt Server.",
     )
     failed_logins = RateLimiter(rate=0.2, burst=10)
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     @app.middleware("http")
     async def require_login(request: Request, call_next: Any) -> Response:
