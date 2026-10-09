@@ -47,7 +47,7 @@ def redact(fields: Mapping[str, str]) -> dict[str, str]:
 def build_app(settings: Settings, state: State, handler: ReportHandler) -> FastAPI:
     """Build the public application, serving only the configured ingest path."""
     app = FastAPI(
-        title="Ecowitt ingest",
+        title="Ecowitt Server ingest",
         # No interactive docs and no schema: they would describe this server to anyone who
         # found the port.
         docs_url=None,
