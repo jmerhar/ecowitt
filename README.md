@@ -203,6 +203,32 @@ others.
 Its queries name fields in the default units (°C, hPa, km/h, mm). If you store other units,
 change the field names in the queries to match.
 
+## Grafana alerts
+
+[`grafana/alerts.json`](grafana/alerts.json) holds alert rules in Grafana's provisioning format,
+one alert per room or station:
+
+| Rule | Fires when | Severity |
+|---|---|---|
+| Good time to air | a room is at 70% humidity or more and the outdoor dew point is at least 2 °C below the room's, for 15 minutes | info |
+| Damp room | a room has not dropped below 70% humidity in 6 hours | warning |
+| Sensor not updating | a room or outdoor sensor's readings have not changed, or not arrived, for 3 hours | warning |
+| Battery low | a sensor's low-battery flag has been set for an hour | warning |
+| Room too cold / too hot | a room is below 8 °C or above 32 °C for 15 minutes | warning |
+| Strong wind | a gust above 60 km/h in the last 10 minutes | info |
+| Heavy rain | a rain rate above 10 mm/h in the last 10 minutes | info |
+| Pressure falling fast | sea-level pressure more than 3 hPa lower than 3 hours ago | info |
+
+- The rules read the data source whose uid is `weather`. Give yours that uid, or replace it in
+  the file before loading it.
+- Load the file through Grafana's file provisioning or its alerting API.
+- Routing is yours to set up. Every rule carries the labels `app=ecowitt` and `severity`
+  (`warning` or `info`, the second suiting quiet hours); *Good time to air* also carries
+  `resolve_message=off`, for a contact point that sends no message when the window closes.
+- Each rule's `summary` annotation is a complete sentence, ready to send as the notification.
+- A query that fails raises Grafana's own *DatasourceError* alert, with the rule's labels.
+- Like the dashboard, the queries name fields in the default units.
+
 ## Configuration
 
 Infrastructure comes from the environment, so a deployment is reproducible from its compose
