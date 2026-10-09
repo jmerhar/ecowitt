@@ -33,10 +33,10 @@ def test_true_is_true() -> None:
 
 
 def test_tag_values_and_keys_are_escaped() -> None:
-    """A room called `Guest room, east` must not split the tag set."""
-    line = encode_point(point({"t": 1.0}, (("name", "Guest room, east=1"), ("station", "home"))))
+    """A room called `Spare room, east` must not split the tag set."""
+    line = encode_point(point({"t": 1.0}, (("name", "Spare room, east=1"), ("station", "home"))))
 
-    assert line.startswith("indoor,name=Guest\\ room\\,\\ east\\=1,station=home ")
+    assert line.startswith("indoor,name=Spare\\ room\\,\\ east\\=1,station=home ")
 
 
 def test_field_keys_and_measurements_are_escaped() -> None:
@@ -65,3 +65,18 @@ def test_a_row_with_nothing_writable_is_dropped() -> None:
         encode([point({"a": float("nan")}), point({"b": 1.0})])
         == "indoor,station=home b=1.0 1791500484"
     )
+
+
+def test_a_line_break_anywhere_stays_on_one_line() -> None:
+    """One newline would split the point, and InfluxDB would refuse the whole write."""
+    line = encode_point(
+        point(
+            {"odd\nkey": 1.0, "note": "first\r\nsecond"},
+            (("name", "Living\nroom"), ("station", "home")),
+            table="un\nmapped",
+        )
+    )
+
+    assert "\n" not in line and "\r" not in line
+    assert line.startswith("un\\ mapped,name=Living\\ room,station=home ")
+    assert 'note="first second"' in line
