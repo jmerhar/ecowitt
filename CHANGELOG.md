@@ -5,6 +5,22 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 [Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
 says what under *Upgrading*.
 
+## 0.6.0 — 2026-10-09
+
+### Added
+
+- A heartbeat: `HEARTBEAT_URL` is called after readings are written, at most once per
+  `HEARTBEAT_INTERVAL_SECONDS`, so one push monitor covers the console, the server and the
+  database.
+- Grafana alert rules for the house and the weather: airing, damp rooms, silent sensors, low
+  batteries, cold and hot rooms, strong wind, heavy rain and falling pressure. The dashboard lists
+  those firing.
+
+### Fixed
+
+- Silent sensors stay flagged, measured against the station's last report, and the weather alerts
+  no longer flap at their thresholds.
+
 ## 0.5.0 — 2026-10-09
 
 ### Added
