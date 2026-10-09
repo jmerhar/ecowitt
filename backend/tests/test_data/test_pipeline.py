@@ -104,4 +104,4 @@ def test_a_full_outdoor_report_derives_ventilation_and_sea_level() -> None:
     assert rows[("pressure", None)]["sea_temp_source"] == "outdoor"
     assert rows[("rain", None)]["daily_mm"] == 3.048
     assert rows[("wind", None)]["speed_kmh"] == 9.0123
-    assert rows[("battery", "wh65")]["low"] is False
+    assert rows[("battery", "outdoor")]["low"] is False
