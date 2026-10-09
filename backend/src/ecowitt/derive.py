@@ -58,12 +58,18 @@ def derive(
     return derived
 
 
+#: The air temperatures derivations are made from, in °C: a margin beyond the lowest and highest
+#: ever recorded.
+PLAUSIBLE_TEMP_C = (-95.0, 75.0)
+
+
 def _climate(readings: list[Reading]) -> dict[str, tuple[float, float]]:
-    """Temperature and humidity for every sensor that reported both, with usable humidity.
+    """Temperature and humidity for every sensor that reported both, with usable values.
 
     Humidity outside (0, 100] is dropped rather than derived from: zero makes the dew point's
     logarithm undefined, and either end means a faulty sensor whose derivations would only
-    mislead.
+    mislead. Temperature outside the range air on Earth reaches is dropped for the same reason,
+    and because the formulas overflow or divide by zero far enough beyond it.
     """
     temps: dict[str, float] = {}
     humidities: dict[str, float] = {}
@@ -77,7 +83,9 @@ def _climate(readings: list[Reading]) -> dict[str, tuple[float, float]]:
     return {
         sensor: (temps[sensor], humidity)
         for sensor, humidity in humidities.items()
-        if sensor in temps and 0 < humidity <= 100
+        if sensor in temps
+        and 0 < humidity <= 100
+        and PLAUSIBLE_TEMP_C[0] <= temps[sensor] <= PLAUSIBLE_TEMP_C[1]
     }
 
 
