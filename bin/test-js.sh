@@ -13,4 +13,13 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 
-exec node --test backend/tests/js/
+# Files rather than the directory: Node before 23 treats a directory argument as a module to
+# load, and fails with MODULE_NOT_FOUND instead of running the tests in it.
+shopt -s nullglob
+tests=(backend/tests/js/*.test.js)
+if [ "${#tests[@]}" -eq 0 ]; then
+  echo "no page script tests found in backend/tests/js" >&2
+  exit 1
+fi
+
+exec node --test "${tests[@]}"
