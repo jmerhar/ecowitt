@@ -11,15 +11,21 @@ import asyncio
 import contextlib
 import logging
 import signal
-from collections.abc import Iterable, Iterator
+from collections.abc import Awaitable, Callable, Iterable, Iterator
 
+import httpx2
 import uvicorn
 
-from . import admin, ingest, stationconfig
+from . import admin, auth, ingest
+from .admin import AdminContext
+from .calibration import CalibrationMonitor
 from .config import Settings, get_settings
+from .configstore import ConfigStore
 from .delivery import Delivery
 from .handler import StationHandler
 from .ingest import ReportHandler
+from .pending import PendingStations
+from .reference import ReferenceUpdater
 from .spool import Spool
 from .state import State
 from .writer import InfluxWriter
@@ -79,10 +85,9 @@ def build(
     settings: Settings,
     handler: ReportHandler,
     state: State,
-    stations: list[str] | None = None,
-    spool: Spool | None = None,
+    context: AdminContext | None = None,
 ) -> tuple[_Listener, _Listener]:
-    """Build the two listeners."""
+    """Build the two listeners. Without an admin context, the admin pages edit nothing."""
     ingest_listener = _Listener(
         uvicorn.Config(
             app=ingest.build_app(settings, state, handler),
@@ -99,7 +104,7 @@ def build(
     )
     admin_listener = _Listener(
         uvicorn.Config(
-            app=admin.build_app(settings, state, stations, spool),
+            app=admin.build_app(context or AdminContext(settings, state)),
             host=settings.admin_host,
             port=settings.admin_port,
             log_config=None,
@@ -108,20 +113,23 @@ def build(
     return ingest_listener, admin_listener
 
 
-def warn_if_admin_unauthenticated(settings: Settings) -> None:
-    """Say that the admin listener has no authentication of its own.
+def warn_if_admin_unauthenticated(settings: Settings, login_set: bool = False) -> bool:
+    """Say so when the admin listener has no login, returning whether it warned.
 
     The bind address cannot tell whether that matters. The shipped artefact is a container,
     where a loopback bind is unreachable even through a published port, so the admin listener
     always binds every interface; what keeps it private is where the host publishes it, which
-    the process cannot see. So the message states the requirement rather than guessing whether
-    it is met.
+    the process cannot see. Whether a login is set is the one thing it can see, so that is what
+    the warning keys on.
     """
+    if login_set:
+        return False
     logger.warning(
-        "the admin interface has no authentication: publish port %d on loopback only, or "
-        "behind a reverse proxy that requires a login",
+        "the admin interface has no login: publish port %d on loopback only, behind a reverse "
+        "proxy, or set a login on the setup page",
         settings.admin_port,
     )
+    return True
 
 
 async def run(settings: Settings | None = None, handler: ReportHandler | None = None) -> None:
@@ -134,24 +142,52 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
     """
     settings = settings or get_settings()
     state = State()
-    stations: list[str] = []
-    writer: InfluxWriter | None = None
-    spool: Spool | None = None
-    replay: asyncio.Task[None] | None = None
+    background: list[asyncio.Task[None]] = []
+    closers: list[Callable[[], Awaitable[None]]] = []
+    context: AdminContext | None = None
     if handler is None:
-        config = stationconfig.load(settings.config_file)
+        store = ConfigStore(settings.config_file)
         writer = InfluxWriter(settings)
+        lookup_client = httpx2.AsyncClient()
+        closers += [writer.aclose, lookup_client.aclose]
         spool = Spool(settings.spool_dir, settings.spool_max_bytes)
         delivery = Delivery(writer, spool, state)
-        handler = StationHandler(config, delivery)
-        stations = config.names
-        logger.info("stations: %s", ", ".join(stations) or "none configured")
+        pending, calibration = PendingStations(), CalibrationMonitor()
+        station_handler = StationHandler(
+            store.stations, delivery, pending=pending, calibration=calibration
+        )
+        store.subscribe(lambda stations: setattr(station_handler, "config", stations))
+        handler = station_handler
+        context = AdminContext(
+            settings,
+            state,
+            secret=auth.load_secret(settings.secret_file),
+            store=store,
+            handler=station_handler,
+            pending=pending,
+            calibration=calibration,
+            spool=spool,
+            http=lookup_client,
+        )
+        reference = ReferenceUpdater(
+            lambda: store.stations,
+            calibration,
+            lookup_client,
+            url=settings.open_meteo_url,
+            interval_seconds=settings.reference_interval_seconds,
+        )
+        logger.info("stations: %s", ", ".join(store.stations.names) or "none configured")
         if not writer.configured:
             logger.warning("INFLUX_URL is not set: reports will be spooled until it is")
-        replay = asyncio.create_task(delivery.run(), name="spool-replay")
-    ingest_listener, admin_listener = build(settings, handler, state, stations, spool)
+        background += [
+            asyncio.create_task(delivery.run(), name="spool-replay"),
+            asyncio.create_task(reference.run(), name="reference-pressure"),
+        ]
+    ingest_listener, admin_listener = build(settings, handler, state, context)
 
-    warn_if_admin_unauthenticated(settings)
+    warn_if_admin_unauthenticated(
+        settings, context is not None and context.document.admin is not None
+    )
 
     listeners = (ingest_listener, admin_listener)
     loop = asyncio.get_running_loop()
@@ -174,12 +210,12 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
             admin_listener.notify_serving(state, "admin_serving"),
         )
     finally:
-        if replay is not None:
-            replay.cancel()
+        for task in background:
+            task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
-                await replay
-        if writer is not None:
-            await writer.aclose()
+                await task
+        for close in closers:
+            await close()
 
 
 def main() -> None:

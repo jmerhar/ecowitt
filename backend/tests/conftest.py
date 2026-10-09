@@ -77,5 +77,6 @@ def ingest_client(
 @pytest.fixture
 def admin_client(settings: Settings, state: State) -> Iterator[TestClient]:
     """A client for the admin listener."""
-    with TestClient(admin.build_app(settings, state), follow_redirects=False) as client:
+    context = admin.AdminContext(settings, state, secret=b"test-secret")
+    with TestClient(admin.build_app(context), follow_redirects=False) as client:
         yield client

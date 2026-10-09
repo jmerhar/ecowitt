@@ -34,10 +34,11 @@ services:
       # because the station is a device on your network (or beyond it) rather than on this
       # host. Narrow it to one address -- "192.0.2.10" -- if this machine has several.
       - "${ECOWITT_INGEST_BIND:-0.0.0.0}:${ECOWITT_INGEST_PORT:-2551}:${ECOWITT_INGEST_PORT:-2551}"
-      # The admin listener: status page and read API. Published on loopback, and that publish
-      # is what keeps it off your network -- the application mounts none of these routes on
-      # the ingest listener above, so the two surfaces cannot be confused. It has no login of
-      # its own: put a reverse proxy in front of it rather than widening the bind.
+      # The admin listener: status and setup pages, and the read API. Published on loopback, and
+      # that publish is what keeps it off your network -- the application mounts none of these
+      # routes on the ingest listener above, so the two surfaces cannot be confused. Put a
+      # reverse proxy in front of it rather than widening the bind, and set a login on the
+      # setup page if anyone you do not trust can reach it.
       - "${ECOWITT_ADMIN_BIND:-127.0.0.1}:${ECOWITT_ADMIN_PORT:-2552}:${ECOWITT_ADMIN_PORT:-2552}"
     volumes:
       - ./data:/data
