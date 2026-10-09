@@ -53,6 +53,7 @@ backend/tests/
   js/             node:test suites for static/, against stand-in DOM and browser APIs
 grafana/          weather.json, the dashboard; test_dashboard checks its queries against the golden
                   output, so a renamed table or field fails there rather than blanking a panel
+TODO/             one note per planned feature; delete a note when its feature ships
 bin/              every script the Makefile and CI run; its Python is linted with the backend's
                   ruff configuration (bin/ci-ruff.sh)
 ```
