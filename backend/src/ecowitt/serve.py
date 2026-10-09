@@ -177,6 +177,7 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
             interval_seconds=settings.reference_interval_seconds,
         )
         store.subscribe(lambda _: reference.wake())
+        calibration.on_step = reference.wake
         logger.info("stations: %s", ", ".join(store.stations.names) or "none configured")
         if not writer.configured:
             logger.warning("INFLUX_URL is not set: reports will be spooled until it is")

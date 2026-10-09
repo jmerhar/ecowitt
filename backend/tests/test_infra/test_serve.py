@@ -249,6 +249,14 @@ async def test_run_without_a_handler_loads_the_configured_stations(
     monkeypatch.setattr(serve.InfluxWriter, "aclose", track_close)
     woken: list[bool] = []
     monkeypatch.setattr(serve.ReferenceUpdater, "wake", lambda _self: woken.append(True))
+    monitors: list[serve.CalibrationMonitor] = []
+    real_monitor = serve.CalibrationMonitor
+
+    def capture_monitor() -> serve.CalibrationMonitor:
+        monitors.append(real_monitor())
+        return monitors[-1]
+
+    monkeypatch.setattr(serve, "CalibrationMonitor", capture_monitor)
     listeners: list[serve._Listener] = []
     real_build = serve.build
 
@@ -277,8 +285,10 @@ async def test_run_without_a_handler_loads_the_configured_stations(
     assert (tmp_path / "secret.key").is_file()
     names = {t.get_name() for t in asyncio.all_tasks()}
     assert not names & {"spool-replay", "reference-pressure"}
-    # Configuration changes wake the reference refresh; subscribing delivers the first at once.
+    # Configuration changes and pressure steps both wake the reference refresh; subscribing
+    # delivers the first configuration at once.
     assert woken
+    assert monitors[0].on_step is not None
 
 
 async def test_run_refuses_to_start_on_a_malformed_configuration(tmp_path: Path) -> None:
