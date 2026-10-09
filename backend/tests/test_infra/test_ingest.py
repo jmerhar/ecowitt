@@ -127,12 +127,13 @@ def test_admin_routes_are_absent_from_the_public_listener(
     assert response.text == ""
 
 
-def test_redact_hides_the_passkey() -> None:
-    """A report is loggable only with its credential replaced."""
-    redacted = ingest.redact({"PASSKEY": FIXTURE_PASSKEY, "tempinf": "73.8"})
+@pytest.mark.parametrize("credential", ["PASSKEY", "PASSWORD"])
+def test_redact_hides_credentials(credential: str) -> None:
+    """A report is loggable only with its credential replaced, whichever protocol sent it."""
+    redacted = ingest.redact({credential: "s3cret-value", "tempinf": "73.8"})
 
-    assert redacted == {"PASSKEY": "<redacted>", "tempinf": "73.8"}
-    assert FIXTURE_PASSKEY not in str(redacted)
+    assert redacted == {credential: "<redacted>", "tempinf": "73.8"}
+    assert "s3cret-value" not in str(redacted)
 
 
 async def test_the_logging_handler_records_and_accepts() -> None:
