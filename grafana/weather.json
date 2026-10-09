@@ -630,73 +630,6 @@
     {
       "id": 8,
       "type": "stat",
-      "title": "Rain today",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 5,
-        "w": 3,
-        "h": 4
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${datasource}"
-          },
-          "dataset": "iox",
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT time, daily_mm AS \"Rain today\" FROM rain\nWHERE station = '${station}' AND $__timeFilter(time)\nORDER BY time",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "suffix: mm",
-          "decimals": 1,
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "text",
-                "value": null
-              },
-              {
-                "color": "blue",
-                "value": 0.1
-              }
-            ]
-          },
-          "mappings": []
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "graphMode": "area",
-        "colorMode": "value",
-        "textMode": "value",
-        "justifyMode": "center",
-        "wideLayout": true
-      }
-    },
-    {
-      "id": 9,
-      "type": "stat",
       "title": "Pressure",
       "datasource": {
         "type": "influxdb",
@@ -758,7 +691,7 @@
       }
     },
     {
-      "id": 10,
+      "id": 9,
       "type": "stat",
       "title": "Trend",
       "datasource": {
@@ -834,7 +767,7 @@
       "description": "Sea-level pressure now against three hours ago. A fall of more than 3 hPa usually means a front is approaching."
     },
     {
-      "id": 11,
+      "id": 10,
       "type": "stat",
       "title": "Sun",
       "datasource": {
@@ -844,7 +777,7 @@
       "gridPos": {
         "x": 6,
         "y": 5,
-        "w": 3,
+        "w": 4,
         "h": 4
       },
       "targets": [
@@ -897,17 +830,17 @@
       }
     },
     {
-      "id": 12,
+      "id": 11,
       "type": "stat",
-      "title": "UV index",
+      "title": "UV",
       "datasource": {
         "type": "influxdb",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "x": 9,
+        "x": 10,
         "y": 5,
-        "w": 3,
+        "w": 2,
         "h": 4
       },
       "targets": [
@@ -976,7 +909,7 @@
       }
     },
     {
-      "id": 13,
+      "id": 12,
       "type": "stat",
       "title": "Rain rate",
       "datasource": {
@@ -984,7 +917,7 @@
         "uid": "${datasource}"
       },
       "gridPos": {
-        "x": 15,
+        "x": 12,
         "y": 5,
         "w": 3,
         "h": 4
@@ -1043,133 +976,75 @@
       }
     },
     {
+      "id": 13,
+      "type": "stat",
+      "title": "Rain",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 15,
+        "y": 5,
+        "w": 9,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT time, daily_mm AS \"Today\", last24h_mm AS \"24 h\",\n  monthly_mm AS \"Month\" FROM rain\nWHERE station = '${station}' AND $__timeFilter(time)\nORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: mm",
+          "decimals": 1,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              },
+              {
+                "color": "blue",
+                "value": 0.1
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "orientation": "vertical"
+      }
+    },
+    {
       "id": 14,
-      "type": "stat",
-      "title": "Rain, 24 h",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "x": 18,
-        "y": 5,
-        "w": 3,
-        "h": 4
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${datasource}"
-          },
-          "dataset": "iox",
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT time, last24h_mm AS \"Last 24 h\" FROM rain\nWHERE station = '${station}' AND $__timeFilter(time)\nORDER BY time",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "suffix: mm",
-          "decimals": 1,
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "text",
-                "value": null
-              }
-            ]
-          },
-          "mappings": []
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "graphMode": "none",
-        "colorMode": "value",
-        "textMode": "value",
-        "justifyMode": "center",
-        "wideLayout": true
-      }
-    },
-    {
-      "id": 15,
-      "type": "stat",
-      "title": "Rain, month",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "x": 21,
-        "y": 5,
-        "w": 3,
-        "h": 4
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${datasource}"
-          },
-          "dataset": "iox",
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT time, monthly_mm AS \"Month\" FROM rain\nWHERE station = '${station}' AND $__timeFilter(time)\nORDER BY time",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "suffix: mm",
-          "decimals": 1,
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "text",
-                "value": null
-              }
-            ]
-          },
-          "mappings": []
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "graphMode": "none",
-        "colorMode": "value",
-        "textMode": "value",
-        "justifyMode": "center",
-        "wideLayout": true
-      }
-    },
-    {
-      "id": 16,
       "type": "row",
       "title": "Airing: should the windows be open?",
       "collapsed": false,
@@ -1182,7 +1057,7 @@
       "panels": []
     },
     {
-      "id": 17,
+      "id": 15,
       "type": "table",
       "title": "Airing now",
       "datasource": {
@@ -1214,12 +1089,25 @@
           "decimals": 1,
           "custom": {
             "align": "auto",
+            "minWidth": 80,
             "cellOptions": {
               "type": "auto"
             }
           }
         },
         "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Room"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
           {
             "matcher": {
               "id": "byName",
@@ -1372,7 +1260,7 @@
       "description": "For each room: its dew point against the outdoor one, and the humidity it would settle at if its air were replaced with outside air at the room's temperature. Green means airing would dry the room, red that it would add moisture."
     },
     {
-      "id": 18,
+      "id": 16,
       "type": "timeseries",
       "title": "Dew point above outside",
       "datasource": {
@@ -1457,7 +1345,7 @@
       "description": "Room dew point minus outdoor dew point. Above the shaded band airing dries the room; below it, airing brings moisture in."
     },
     {
-      "id": 19,
+      "id": 17,
       "type": "row",
       "title": "Indoor",
       "collapsed": false,
@@ -1470,7 +1358,7 @@
       "panels": []
     },
     {
-      "id": 20,
+      "id": 18,
       "type": "timeseries",
       "title": "Humidity",
       "datasource": {
@@ -1564,7 +1452,7 @@
       "description": "Shading marks the usual comfort range of 40-60%; mould becomes likely when a room stays above 70%."
     },
     {
-      "id": 21,
+      "id": 19,
       "type": "timeseries",
       "title": "Temperature",
       "datasource": {
@@ -1628,7 +1516,7 @@
       }
     },
     {
-      "id": 22,
+      "id": 20,
       "type": "timeseries",
       "title": "Dew point",
       "datasource": {
@@ -1739,7 +1627,7 @@
       "description": "Each room's dew point, with the outdoor one dashed. The room whose line sits highest above it gains most from airing."
     },
     {
-      "id": 23,
+      "id": 21,
       "type": "timeseries",
       "title": "Absolute humidity",
       "datasource": {
@@ -1804,7 +1692,7 @@
       "description": "Water vapour per cubic metre of air. Unlike relative humidity it does not change with temperature, so rooms can be compared directly."
     },
     {
-      "id": 24,
+      "id": 22,
       "type": "row",
       "title": "Outdoor",
       "collapsed": false,
@@ -1817,7 +1705,7 @@
       "panels": []
     },
     {
-      "id": 25,
+      "id": 23,
       "type": "timeseries",
       "title": "Temperature and dew point",
       "datasource": {
@@ -1917,7 +1805,7 @@
       }
     },
     {
-      "id": 26,
+      "id": 24,
       "type": "timeseries",
       "title": "Humidity",
       "datasource": {
@@ -1977,7 +1865,7 @@
       }
     },
     {
-      "id": 27,
+      "id": 25,
       "type": "timeseries",
       "title": "Wind",
       "datasource": {
@@ -2052,7 +1940,7 @@
       }
     },
     {
-      "id": 28,
+      "id": 26,
       "type": "timeseries",
       "title": "Wind direction",
       "datasource": {
@@ -2108,7 +1996,7 @@
       "description": "Ten-minute average direction the wind blows from: 0° north, 90° east, 180° south, 270° west."
     },
     {
-      "id": 29,
+      "id": 27,
       "type": "timeseries",
       "title": "Pressure",
       "datasource": {
@@ -2166,7 +2054,7 @@
       "description": "Reduced to sea level from the absolute reading, the station's altitude and the outdoor temperature."
     },
     {
-      "id": 30,
+      "id": 28,
       "type": "timeseries",
       "title": "Rain",
       "datasource": {
@@ -2283,7 +2171,7 @@
       }
     },
     {
-      "id": 31,
+      "id": 29,
       "type": "timeseries",
       "title": "Sun",
       "datasource": {
@@ -2396,7 +2284,7 @@
       }
     },
     {
-      "id": 32,
+      "id": 30,
       "type": "row",
       "title": "Station",
       "collapsed": false,
@@ -2409,7 +2297,7 @@
       "panels": []
     },
     {
-      "id": 33,
+      "id": 31,
       "type": "stat",
       "title": "Last report",
       "datasource": {
@@ -2420,7 +2308,7 @@
         "x": 0,
         "y": 101,
         "w": 4,
-        "h": 6
+        "h": 7
       },
       "targets": [
         {
@@ -2481,9 +2369,9 @@
       "description": "Time since the console's last accepted report."
     },
     {
-      "id": 34,
+      "id": 32,
       "type": "table",
-      "title": "Batteries",
+      "title": "Sensors",
       "datasource": {
         "type": "influxdb",
         "uid": "${datasource}"
@@ -2491,8 +2379,8 @@
       "gridPos": {
         "x": 4,
         "y": 101,
-        "w": 5,
-        "h": 12
+        "w": 10,
+        "h": 15
       },
       "targets": [
         {
@@ -2504,7 +2392,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT last_value(name ORDER BY time) AS \"Sensor\",\n  last_value(low ORDER BY time) AS \"Battery\"\nFROM battery\nWHERE station = '${station}' AND $__timeFilter(time)\nGROUP BY sensor\nORDER BY 1",
+          "rawSql": "WITH names AS (SELECT sensor, last_value(name ORDER BY time) AS room FROM derived WHERE station = '${station}' AND $__timeFilter(time) GROUP BY sensor),\nbat AS (SELECT sensor, last_value(low ORDER BY time) AS low, max(time) AS seen\n  FROM battery WHERE station = '${station}' AND $__timeFilter(time) GROUP BY sensor),\nlatest AS (SELECT max(seen) AS seen FROM bat),\nstale AS (SELECT sensor, last_value(unchanged_s ORDER BY time) AS unchanged\n  FROM derived WHERE station = '${station}' AND $__timeFilter(time) AND unchanged_s IS NOT NULL\n  AND sensor <> 'rain' GROUP BY sensor),\nids AS (SELECT b.sensor FROM bat b CROSS JOIN latest l\n  WHERE b.seen >= l.seen - interval '10 minutes'\n  UNION SELECT sensor FROM stale)\nSELECT CASE WHEN n.room IS NULL OR n.room = i.sensor THEN initcap(i.sensor)\n  ELSE n.room END AS \"Sensor\",\n  b.low AS \"Battery\", s.unchanged AS \"Unchanged\"\nFROM ids i LEFT JOIN names n ON n.sensor = i.sensor\n  LEFT JOIN bat b ON b.sensor = i.sensor LEFT JOIN stale s ON s.sensor = i.sensor\nORDER BY s.unchanged DESC NULLS LAST",
           "refId": "A"
         }
       ],
@@ -2512,6 +2400,7 @@
         "defaults": {
           "custom": {
             "align": "auto",
+            "minWidth": 60,
             "cellOptions": {
               "type": "auto"
             }
@@ -2526,7 +2415,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 80
+                "value": 75
               },
               {
                 "id": "custom.cellOptions",
@@ -2553,72 +2442,7 @@
                 ]
               }
             ]
-          }
-        ]
-      },
-      "options": {
-        "showHeader": true,
-        "cellHeight": "sm"
-      },
-      "description": "Each sensor's most recent low-battery flag."
-    },
-    {
-      "id": 35,
-      "type": "table",
-      "title": "Last change",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "x": 9,
-        "y": 101,
-        "w": 6,
-        "h": 12
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${datasource}"
           },
-          "dataset": "iox",
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "WITH names AS (SELECT sensor, last_value(name ORDER BY time) AS room FROM derived WHERE station = '${station}' AND $__timeFilter(time) GROUP BY sensor)\nSELECT CASE WHEN n.room = r.sensor THEN initcap(n.room) ELSE n.room END AS \"Sensor\",\n  last_value(r.unchanged_s ORDER BY r.time) AS \"Unchanged for\"\nFROM derived r JOIN names n ON n.sensor = r.sensor\nWHERE r.station = '${station}' AND $__timeFilter(r.time) AND r.unchanged_s IS NOT NULL\n  AND r.sensor <> 'rain'\nGROUP BY n.room, r.sensor\nORDER BY 2 DESC",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "decimals": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 600
-              },
-              {
-                "color": "red",
-                "value": 1800
-              }
-            ]
-          },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            }
-          }
-        },
-        "overrides": [
           {
             "matcher": {
               "id": "byName",
@@ -2626,8 +2450,36 @@
             },
             "properties": [
               {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
                 "id": "custom.width",
-                "value": 110
+                "value": 100
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 600
+                    },
+                    {
+                      "color": "red",
+                      "value": 1800
+                    }
+                  ]
+                }
               },
               {
                 "id": "custom.cellOptions",
@@ -2643,10 +2495,10 @@
         "showHeader": true,
         "cellHeight": "sm"
       },
-      "description": "How long each sensor's readings have stayed identical. The console repeats a sensor's last value when its radio goes quiet, so a long time here usually means a lost or dead sensor. Rain is left out: it stays unchanged whenever it is dry."
+      "description": "Each sensor's latest low-battery flag, and how long its readings have stayed identical. The console repeats a sensor's last value when its radio goes quiet, so a long time unchanged usually means a lost or dead sensor. Rain is left out of that, since it stays unchanged whenever it is dry; sensors that stopped reporting their battery earlier in the range are left out entirely."
     },
     {
-      "id": 36,
+      "id": 33,
       "type": "timeseries",
       "title": "Pressure calibration",
       "datasource": {
@@ -2654,10 +2506,10 @@
         "uid": "${datasource}"
       },
       "gridPos": {
-        "x": 15,
+        "x": 14,
         "y": 101,
-        "w": 9,
-        "h": 12
+        "w": 10,
+        "h": 15
       },
       "targets": [
         {
@@ -2724,18 +2576,18 @@
       "description": "The console's relative pressure minus this server's reduction of its absolute reading at the standard atmosphere's temperature. Near zero means the console's altitude setting is right."
     },
     {
-      "id": 37,
+      "id": 34,
       "type": "stat",
-      "title": "Report interval",
+      "title": "Interval",
       "datasource": {
         "type": "influxdb",
         "uid": "${datasource}"
       },
       "gridPos": {
         "x": 0,
-        "y": 107,
+        "y": 108,
         "w": 4,
-        "h": 6
+        "h": 8
       },
       "targets": [
         {
