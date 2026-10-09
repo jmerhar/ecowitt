@@ -71,6 +71,7 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "for": "15m",
+          "keep_firing_for": "30m",
           "annotations": {
             "summary": "{{ $labels.room }} is at {{ humanize $values.B.Value }}% humidity, and the outside air's dew point is {{ printf \"%.1f\" $values.A.Value }} °C lower: airing would dry it.",
             "description": "A room at 65% humidity or more, with the outdoor dew point at least 2 °C below the room's, for 15 minutes."
@@ -130,6 +131,7 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "for": "0s",
+          "keep_firing_for": "0s",
           "annotations": {
             "summary": "{{ $labels.room }} has stayed at 70% humidity or more for 6 hours (lowest {{ humanize $values.A.Value }}%). Mould grows in air this damp.",
             "description": "A room whose humidity has not dropped below 70% in the last 6 hours."
@@ -148,13 +150,13 @@
             {
               "refId": "A",
               "relativeTimeRange": {
-                "from": 86400,
+                "from": 604800,
                 "to": 0
               },
               "datasourceUid": "weather",
               "model": {
                 "refId": "A",
-                "rawSql": "SELECT station, sensor, last_value(name ORDER BY time) AS room,\n  date_part('epoch', now() - max(time)) + last_value(unchanged_s ORDER BY time) AS value\nFROM derived\nWHERE time >= now() - interval '1 day' AND unchanged_s IS NOT NULL\n  AND (sensor IN ('indoor', 'outdoor') OR sensor LIKE 'ch%')\nGROUP BY station, sensor",
+                "rawSql": "WITH latest AS (SELECT station, max(time) AS seen FROM station\n  WHERE time >= now() - interval '7 days' GROUP BY station)\nSELECT d.station, d.sensor, last_value(d.name ORDER BY d.time) AS room,\n  date_part('epoch', max(l.seen) - max(d.time))\n    + last_value(d.unchanged_s ORDER BY d.time) AS value\nFROM derived d JOIN latest l ON l.station = d.station\nWHERE d.time >= now() - interval '7 days' AND d.unchanged_s IS NOT NULL\n  AND (d.sensor IN ('indoor', 'outdoor') OR d.sensor LIKE 'ch%')\nGROUP BY d.station, d.sensor",
                 "rawQuery": true,
                 "editorMode": "code",
                 "format": "table",
@@ -188,9 +190,10 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "for": "0s",
+          "keep_firing_for": "0s",
           "annotations": {
             "summary": "{{ $labels.room }} has reported the same readings for {{ humanizeDuration $values.A.Value }}: its battery or radio has probably failed.",
-            "description": "A room or outdoor sensor whose readings have not changed, or not arrived, for 3 hours. A console repeats a lost sensor's last values, so unchanged readings are how a lost one shows."
+            "description": "A room or outdoor sensor whose readings have not changed, or not arrived, for 3 hours of the station's reports. A console repeats a lost sensor's last values, so unchanged readings are how a lost one shows. Measured against the station's last report rather than the clock, so a station that stops uploading altogether does not flag every sensor; a sensor silent for more than 7 days drops out."
           },
           "labels": {
             "app": "ecowitt",
@@ -246,6 +249,7 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "for": "1h",
+          "keep_firing_for": "0s",
           "annotations": {
             "summary": "{{ $labels.room }}'s battery is low.",
             "description": "A sensor's low-battery flag, set for an hour."
@@ -304,6 +308,7 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "for": "15m",
+          "keep_firing_for": "0s",
           "annotations": {
             "summary": "{{ $labels.room }} is at {{ printf \"%.1f\" $values.A.Value }} °C.",
             "description": "A room below 8 °C for 15 minutes: pipes and plants are at risk."
@@ -362,6 +367,7 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "for": "15m",
+          "keep_firing_for": "0s",
           "annotations": {
             "summary": "{{ $labels.room }} is at {{ printf \"%.1f\" $values.A.Value }} °C.",
             "description": "A room above 32 °C for 15 minutes."
@@ -420,6 +426,7 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "for": "0s",
+          "keep_firing_for": "30m",
           "annotations": {
             "summary": "Gusts of {{ humanize $values.A.Value }} km/h at {{ $labels.station }}.",
             "description": "A gust above 60 km/h in the last 10 minutes."
@@ -478,6 +485,7 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "for": "0s",
+          "keep_firing_for": "30m",
           "annotations": {
             "summary": "Rain at {{ humanize $values.A.Value }} mm/h at {{ $labels.station }}.",
             "description": "A rain rate above 10 mm/h in the last 10 minutes."
@@ -536,6 +544,7 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "for": "0s",
+          "keep_firing_for": "1h",
           "annotations": {
             "summary": "Pressure at {{ $labels.station }} has fallen {{ printf \"%.1f\" $values.A.Value }} hPa in 3 hours: a storm or a front is likely.",
             "description": "Sea-level pressure more than 3 hPa lower than 3 hours ago."

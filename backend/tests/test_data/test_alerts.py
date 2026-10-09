@@ -97,3 +97,22 @@ def test_rule_uids_are_unique() -> None:
     uids = [r["uid"] for r in RULES]
 
     assert len(uids) == len(set(uids))
+
+
+@pytest.mark.parametrize(
+    "uid", ["ecowitt-airing", "ecowitt-gusts", "ecowitt-rain", "ecowitt-pressure-fall"]
+)
+def test_weather_rules_hold_before_resolving(uid: str) -> None:
+    """Gusts, showers and humidity cross their thresholds back and forth; without a hold each
+    crossing sends a firing and a resolved message."""
+    rule = next(r for r in RULES if r["uid"] == uid)
+
+    assert rule.get("keep_firing_for", "0s") not in {"", "0s"}
+
+
+def test_a_silent_sensor_is_measured_against_the_station_not_the_clock() -> None:
+    """A station that stops uploading must not flag every sensor, and a sensor that stops
+    reporting must stay flagged rather than ageing out of a short window."""
+    sql = next(r for r in RULES if r["uid"] == "ecowitt-sensor-silent")["data"][0]["model"]
+    assert "FROM station" in sql["rawSql"]
+    assert "interval '7 days'" in sql["rawSql"]
