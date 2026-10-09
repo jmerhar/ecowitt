@@ -264,6 +264,9 @@ async def test_run_without_a_handler_loads_the_configured_stations(
     assert "stations: Home" in caplog.text
     assert ("INFLUX_URL is not set" in caplog.text) is (influx_url == "")
     assert closed == [True]
+    # The spool exists under the data directory, and its replay loop did not outlive `run`.
+    assert (tmp_path / "spool" / "pending").is_dir()
+    assert not [t for t in asyncio.all_tasks() if t.get_name() == "spool-replay"]
 
 
 async def test_run_refuses_to_start_on_a_malformed_configuration(tmp_path: Path) -> None:
@@ -280,3 +283,46 @@ async def test_run_refuses_to_start_on_a_malformed_configuration(tmp_path: Path)
     with pytest.raises(ConfigError, match="stattions"):
         async with asyncio.timeout(5):
             await serve.run(Settings(data_dir=tmp_path, ingest_port=0, admin_port=0))
+
+
+async def test_a_backlog_from_before_a_restart_is_delivered_at_startup(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Without the replay loop, reports spooled before a restart would wait for ever."""
+    from ecowitt.spool import Spool
+
+    from ..test_store.conftest import StubInflux, serving
+
+    Spool(tmp_path / "spool", 1_000_000).enqueue("indoor,station=Home temp_c=21.0 1791500484")
+    (tmp_path / "config.yaml").write_text(
+        "stations: [{name: Home, passkey: AAAA}]\n", encoding="utf-8"
+    )
+    state = State()
+    monkeypatch.setattr(serve, "State", lambda: state)
+    listeners: list[serve._Listener] = []
+    real_build = serve.build
+
+    def capture(*args: object, **kwargs: object) -> tuple[serve._Listener, serve._Listener]:
+        built = real_build(*args, **kwargs)  # type: ignore[arg-type]
+        listeners.extend(built)
+        return built
+
+    monkeypatch.setattr(serve, "build", capture)
+
+    async with serving(StubInflux()) as stub:
+        settings = Settings(data_dir=tmp_path, ingest_port=0, admin_port=0, influx_url=stub.url)
+        task = asyncio.create_task(serve.run(settings))
+        try:
+            async with asyncio.timeout(10):
+                while not stub.requests:
+                    await asyncio.sleep(0.02)
+        finally:
+            async with asyncio.timeout(10):
+                while len(listeners) < 2:
+                    await asyncio.sleep(0.02)
+            serve.stop_all(listeners)
+            async with asyncio.timeout(10):
+                await task
+
+    assert stub.requests[0].body == "indoor,station=Home temp_c=21.0 1791500484"
+    assert not list((tmp_path / "spool" / "pending").iterdir())

@@ -30,9 +30,15 @@ class State:
     #: Requests refused by the rate limiter before their body was read.
     reports_rate_limited: int = 0
 
+    #: Attempts to write a report, live or replayed, by outcome. A report retried five times
+    #: during an outage counts five failures and then one success.
     writes_succeeded: int = 0
     writes_failed: int = 0
     last_write_ok_at: float | None = None
+    #: Reports InfluxDB refused outright, set aside rather than retried.
+    writes_rejected: int = 0
+    #: Reports put in the spool because they could not be written when they arrived.
+    reports_spooled: int = 0
 
     @property
     def uptime_seconds(self) -> float:
@@ -62,6 +68,14 @@ class State:
             self.last_write_ok_at = time.monotonic()
         else:
             self.writes_failed += 1
+
+    def record_rejected_write(self) -> None:
+        """Note a report InfluxDB refused outright."""
+        self.writes_rejected += 1
+
+    def record_spooled(self) -> None:
+        """Note a report queued for a later attempt."""
+        self.reports_spooled += 1
 
     @property
     def seconds_since_last_write(self) -> float | None:

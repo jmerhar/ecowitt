@@ -73,5 +73,33 @@ def test_status_reports_writes_and_rate_limiting(state: State, tmp_path) -> None
 def test_status_before_any_write(admin_client: TestClient) -> None:
     body = admin_client.get("/api/status").json()
 
-    assert body["writes"] == {"succeeded": 0, "failed": 0, "seconds_since_last_success": None}
+    assert body["writes"] == {
+        "succeeded": 0,
+        "failed": 0,
+        "rejected": 0,
+        "seconds_since_last_success": None,
+    }
     assert body["stations"] == []
+    assert body["spool"] is None
+
+
+def test_status_reports_what_is_waiting_in_the_spool(state: State, tmp_path) -> None:
+    """The backlog's size and age are visible without reading the log."""
+    from ecowitt import admin
+    from ecowitt.spool import Spool
+
+    spool = Spool(tmp_path / "spool", 1_000_000)
+    spool.enqueue("r1")
+    spool.enqueue("r2")
+    spool.quarantine_body("refused")
+    state.record_spooled()
+    state.record_spooled()
+    with TestClient(admin.build_app(Settings(data_dir=tmp_path), state, ["Home"], spool)) as client:
+        body = client.get("/api/status").json()
+
+    assert body["spool"]["waiting"] == 2
+    assert body["spool"]["bytes"] == 4
+    assert body["spool"]["oldest_seconds"] is not None
+    assert body["spool"]["spooled_total"] == 2
+    assert body["spool"]["dropped"] == 0
+    assert body["spool"]["rejected_kept"] == 1

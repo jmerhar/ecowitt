@@ -10,20 +10,17 @@ import pytest
 
 from ecowitt.handler import MAX_ANNOUNCED_UNKNOWN, StationHandler
 from ecowitt.preferences import Preferences
-from ecowitt.state import State
 from ecowitt.stationconfig import Station, StationConfig
 
 from ..conftest import FIXTURE_PASSKEY, payload
 
 
-class MemoryWriter:
-    def __init__(self, *, succeed: bool = True) -> None:
-        self.succeed = succeed
+class MemorySink:
+    def __init__(self) -> None:
         self.bodies: list[str] = []
 
-    async def write(self, body: str) -> bool:
+    async def submit(self, body: str) -> None:
         self.bodies.append(body)
-        return self.succeed
 
 
 CONFIG = StationConfig((Station("Home", Preferences(names={"ch1": "Bathroom"}), FIXTURE_PASSKEY),))
@@ -35,8 +32,8 @@ def report() -> dict[str, str]:
 
 
 async def test_a_configured_station_is_written_under_its_name() -> None:
-    writer, state = MemoryWriter(), State()
-    handler = StationHandler(CONFIG, writer, state, clock=CLOCK)
+    writer = MemorySink()
+    handler = StationHandler(CONFIG, writer, clock=CLOCK)
 
     assert await handler.handle(report(), "192.0.2.9") is True
 
@@ -44,14 +41,13 @@ async def test_a_configured_station_is_written_under_its_name() -> None:
     assert "station=Home" in body
     assert "name=Bathroom,sensor=ch1" in body
     assert FIXTURE_PASSKEY not in body
-    assert state.writes_succeeded == 1
 
 
 async def test_an_unknown_station_is_refused_and_nothing_written(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    writer = MemoryWriter()
-    handler = StationHandler(CONFIG, writer, State(), clock=CLOCK)
+    writer = MemorySink()
+    handler = StationHandler(CONFIG, writer, clock=CLOCK)
     fields = report() | {"PASSKEY": "FFFF0000FFFF0000FFFF0000FFFF0000"}
 
     with caplog.at_level(logging.WARNING):
@@ -63,13 +59,13 @@ async def test_an_unknown_station_is_refused_and_nothing_written(
 
 
 async def test_a_report_without_a_passkey_is_refused() -> None:
-    handler = StationHandler(CONFIG, MemoryWriter(), State(), clock=CLOCK)
+    handler = StationHandler(CONFIG, MemorySink(), clock=CLOCK)
 
     assert await handler.handle({"tempf": "50"}, "192.0.2.9") is False
 
 
 async def test_each_unknown_station_is_announced_once(caplog: pytest.LogCaptureFixture) -> None:
-    handler = StationHandler(CONFIG, MemoryWriter(), State(), clock=CLOCK)
+    handler = StationHandler(CONFIG, MemorySink(), clock=CLOCK)
 
     with caplog.at_level(logging.WARNING):
         for _ in range(5):
@@ -80,7 +76,7 @@ async def test_each_unknown_station_is_announced_once(caplog: pytest.LogCaptureF
 
 async def test_announcements_are_bounded(caplog: pytest.LogCaptureFixture) -> None:
     """A scan of invented PASSKEYs cannot fill the log."""
-    handler = StationHandler(CONFIG, MemoryWriter(), State(), clock=CLOCK)
+    handler = StationHandler(CONFIG, MemorySink(), clock=CLOCK)
 
     with caplog.at_level(logging.WARNING):
         for i in range(MAX_ANNOUNCED_UNKNOWN + 50):
@@ -89,22 +85,13 @@ async def test_announcements_are_bounded(caplog: pytest.LogCaptureFixture) -> No
     assert caplog.text.count("discarded") == MAX_ANNOUNCED_UNKNOWN
 
 
-async def test_a_failed_write_still_counts_the_report_as_authentic() -> None:
-    """The station did nothing wrong; the failure is recorded against the database."""
-    state = State()
-    handler = StationHandler(CONFIG, MemoryWriter(succeed=False), state, clock=CLOCK)
-
-    assert await handler.handle(report(), "192.0.2.9") is True
-    assert (state.writes_succeeded, state.writes_failed) == (0, 1)
-
-
 async def test_staleness_carries_across_reports() -> None:
     """The handler keeps one tracker, so a repeated report shows its age."""
-    writer = MemoryWriter()
+    writer = MemorySink()
     times = iter(
         [datetime(2026, 10, 8, 23, 1, 26, tzinfo=UTC), datetime(2026, 10, 8, 23, 2, 26, tzinfo=UTC)]
     )
-    handler = StationHandler(CONFIG, writer, State(), clock=lambda: next(times))
+    handler = StationHandler(CONFIG, writer, clock=lambda: next(times))
     first = report()
     second = first | {"dateutc": "2026-10-08 23:02:24"}
 

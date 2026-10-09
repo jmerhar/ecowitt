@@ -17,8 +17,10 @@ import uvicorn
 
 from . import admin, ingest, stationconfig
 from .config import Settings, get_settings
+from .delivery import Delivery
 from .handler import StationHandler
 from .ingest import ReportHandler
+from .spool import Spool
 from .state import State
 from .writer import InfluxWriter
 
@@ -74,7 +76,11 @@ def stop_all(listeners: Iterable[_Listener]) -> None:
 
 
 def build(
-    settings: Settings, handler: ReportHandler, state: State, stations: list[str] | None = None
+    settings: Settings,
+    handler: ReportHandler,
+    state: State,
+    stations: list[str] | None = None,
+    spool: Spool | None = None,
 ) -> tuple[_Listener, _Listener]:
     """Build the two listeners."""
     ingest_listener = _Listener(
@@ -93,7 +99,7 @@ def build(
     )
     admin_listener = _Listener(
         uvicorn.Config(
-            app=admin.build_app(settings, state, stations),
+            app=admin.build_app(settings, state, stations, spool),
             host=settings.admin_host,
             port=settings.admin_port,
             log_config=None,
@@ -122,22 +128,28 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
     """Serve until a signal arrives.
 
     Without a handler given, reports are authenticated against the configuration file and
-    written to InfluxDB. A configuration file that exists but cannot be read stops startup
-    with the reason, rather than serving with no stations and discarding every report.
+    delivered to InfluxDB, through the spool when it cannot take them. A configuration file
+    that exists but cannot be read stops startup with the reason, rather than serving with no
+    stations and discarding every report.
     """
     settings = settings or get_settings()
     state = State()
     stations: list[str] = []
     writer: InfluxWriter | None = None
+    spool: Spool | None = None
+    replay: asyncio.Task[None] | None = None
     if handler is None:
         config = stationconfig.load(settings.config_file)
         writer = InfluxWriter(settings)
-        handler = StationHandler(config, writer, state)
+        spool = Spool(settings.spool_dir, settings.spool_max_bytes)
+        delivery = Delivery(writer, spool, state)
+        handler = StationHandler(config, delivery)
         stations = config.names
         logger.info("stations: %s", ", ".join(stations) or "none configured")
         if not writer.configured:
-            logger.warning("INFLUX_URL is not set: reports will be processed but not stored")
-    ingest_listener, admin_listener = build(settings, handler, state, stations)
+            logger.warning("INFLUX_URL is not set: reports will be spooled until it is")
+        replay = asyncio.create_task(delivery.run(), name="spool-replay")
+    ingest_listener, admin_listener = build(settings, handler, state, stations, spool)
 
     warn_if_admin_unauthenticated(settings)
 
@@ -162,6 +174,10 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
             admin_listener.notify_serving(state, "admin_serving"),
         )
     finally:
+        if replay is not None:
+            replay.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await replay
         if writer is not None:
             await writer.aclose()
 
