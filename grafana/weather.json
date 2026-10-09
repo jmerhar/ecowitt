@@ -54,7 +54,7 @@
     {
       "id": 1,
       "type": "row",
-      "title": "Now",
+      "title": "Outside now",
       "collapsed": false,
       "gridPos": {
         "x": 0,
@@ -67,7 +67,7 @@
     {
       "id": 2,
       "type": "stat",
-      "title": "Outside",
+      "title": "Temperature",
       "datasource": {
         "type": "influxdb",
         "uid": "${datasource}"
@@ -142,7 +142,7 @@
     {
       "id": 3,
       "type": "stat",
-      "title": "Humidity outside",
+      "title": "Humidity",
       "datasource": {
         "type": "influxdb",
         "uid": "${datasource}"
@@ -205,7 +205,7 @@
     {
       "id": 4,
       "type": "stat",
-      "title": "Dew point outside",
+      "title": "Dew point",
       "datasource": {
         "type": "influxdb",
         "uid": "${datasource}"
@@ -277,7 +277,7 @@
       "gridPos": {
         "x": 12,
         "y": 1,
-        "w": 3,
+        "w": 4,
         "h": 4
       },
       "targets": [
@@ -338,9 +338,9 @@
         "uid": "${datasource}"
       },
       "gridPos": {
-        "x": 15,
+        "x": 16,
         "y": 1,
-        "w": 3,
+        "w": 4,
         "h": 4
       },
       "targets": [
@@ -401,9 +401,9 @@
         "uid": "${datasource}"
       },
       "gridPos": {
-        "x": 18,
+        "x": 20,
         "y": 1,
-        "w": 2,
+        "w": 4,
         "h": 4
       },
       "targets": [
@@ -636,9 +636,9 @@
         "uid": "${datasource}"
       },
       "gridPos": {
-        "x": 20,
-        "y": 1,
-        "w": 4,
+        "x": 12,
+        "y": 5,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -697,7 +697,7 @@
     {
       "id": 9,
       "type": "stat",
-      "title": "Pressure (sea level)",
+      "title": "Pressure",
       "datasource": {
         "type": "influxdb",
         "uid": "${datasource}"
@@ -705,7 +705,7 @@
       "gridPos": {
         "x": 0,
         "y": 5,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -760,15 +760,15 @@
     {
       "id": 10,
       "type": "stat",
-      "title": "Pressure, 3 h change",
+      "title": "Trend",
       "datasource": {
         "type": "influxdb",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "x": 4,
+        "x": 3,
         "y": 5,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -836,15 +836,15 @@
     {
       "id": 11,
       "type": "stat",
-      "title": "Solar radiation",
+      "title": "Sun",
       "datasource": {
         "type": "influxdb",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "x": 8,
+        "x": 6,
         "y": 5,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -905,7 +905,7 @@
         "uid": "${datasource}"
       },
       "gridPos": {
-        "x": 12,
+        "x": 9,
         "y": 5,
         "w": 3,
         "h": 4
@@ -1108,7 +1108,7 @@
     {
       "id": 15,
       "type": "stat",
-      "title": "Rain this month",
+      "title": "Rain, month",
       "datasource": {
         "type": "influxdb",
         "uid": "${datasource}"
@@ -1193,7 +1193,7 @@
         "x": 0,
         "y": 10,
         "w": 24,
-        "h": 8
+        "h": 11
       },
       "targets": [
         {
@@ -1205,7 +1205,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH rooms AS (SELECT time, sensor, temp_c, humidity_pct FROM indoor WHERE station = '${station}' AND $__timeFilter(time) UNION ALL SELECT time, sensor, temp_c, humidity_pct FROM channel WHERE station = '${station}' AND $__timeFilter(time)),\nnow_rooms AS (SELECT sensor, last_value(temp_c ORDER BY time) AS t,\n  last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY sensor),\ndew AS (SELECT sensor, last_value(dewpoint_c ORDER BY time) AS dp FROM derived\n  WHERE station = '${station}' AND $__timeFilter(time) AND dewpoint_c IS NOT NULL GROUP BY sensor),\nvent AS (SELECT sensor, last_value(name ORDER BY time) AS room,\n  last_value(dewpoint_delta_c ORDER BY time) AS delta,\n  last_value(predicted_humidity_pct ORDER BY time) AS predicted FROM ventilation\n  WHERE station = '${station}' AND $__timeFilter(time) GROUP BY sensor)\nSELECT v.room AS \"Room\", r.t AS \"Temperature\", r.rh AS \"Humidity\",\n  d.dp AS \"Dew point\", v.delta AS \"Dew point above outside\",\n  v.predicted AS \"Humidity after airing\", v.predicted - r.rh AS \"Change\"\nFROM vent v JOIN now_rooms r ON r.sensor = v.sensor JOIN dew d ON d.sensor = v.sensor\nORDER BY v.delta DESC",
+          "rawSql": "WITH rooms AS (SELECT time, sensor, temp_c, humidity_pct FROM indoor WHERE station = '${station}' AND $__timeFilter(time) UNION ALL SELECT time, sensor, temp_c, humidity_pct FROM channel WHERE station = '${station}' AND $__timeFilter(time)),\nnow_rooms AS (SELECT sensor, last_value(temp_c ORDER BY time) AS t,\n  last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY sensor),\ndew AS (SELECT sensor, last_value(dewpoint_c ORDER BY time) AS dp FROM derived\n  WHERE station = '${station}' AND $__timeFilter(time) AND dewpoint_c IS NOT NULL GROUP BY sensor),\nvent AS (SELECT sensor, last_value(name ORDER BY time) AS room,\n  last_value(dewpoint_delta_c ORDER BY time) AS delta,\n  last_value(predicted_humidity_pct ORDER BY time) AS predicted FROM ventilation\n  WHERE station = '${station}' AND $__timeFilter(time) GROUP BY sensor)\nSELECT v.room AS \"Room\", r.t AS \"Temperature\", r.rh AS \"Humidity\",\n  d.dp AS \"Dew point\", v.delta AS \"Above outside\",\n  v.predicted AS \"Humidity after airing\", v.predicted - r.rh AS \"Change\"\nFROM vent v JOIN now_rooms r ON r.sensor = v.sensor JOIN dew d ON d.sensor = v.sensor\nORDER BY v.delta DESC",
           "refId": "A"
         }
       ],
@@ -1279,7 +1279,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Dew point above outside"
+              "options": "Above outside"
             },
             "properties": [
               {
@@ -1364,7 +1364,7 @@
         "cellHeight": "sm",
         "sortBy": [
           {
-            "displayName": "Dew point above outside",
+            "displayName": "Above outside",
             "desc": true
           }
         ]
@@ -1381,7 +1381,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 18,
+        "y": 21,
         "w": 24,
         "h": 9
       },
@@ -1463,7 +1463,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 27,
+        "y": 30,
         "w": 24,
         "h": 1
       },
@@ -1479,8 +1479,8 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 28,
-        "w": 12,
+        "y": 31,
+        "w": 24,
         "h": 9
       },
       "targets": [
@@ -1572,9 +1572,9 @@
         "uid": "${datasource}"
       },
       "gridPos": {
-        "x": 12,
-        "y": 28,
-        "w": 12,
+        "x": 0,
+        "y": 40,
+        "w": 24,
         "h": 9
       },
       "targets": [
@@ -1637,8 +1637,8 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 37,
-        "w": 12,
+        "y": 49,
+        "w": 24,
         "h": 9
       },
       "targets": [
@@ -1747,9 +1747,9 @@
         "uid": "${datasource}"
       },
       "gridPos": {
-        "x": 12,
-        "y": 37,
-        "w": 12,
+        "x": 0,
+        "y": 58,
+        "w": 24,
         "h": 9
       },
       "targets": [
@@ -1810,7 +1810,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 46,
+        "y": 67,
         "w": 24,
         "h": 1
       },
@@ -1826,7 +1826,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 47,
+        "y": 68,
         "w": 12,
         "h": 8
       },
@@ -1926,7 +1926,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 47,
+        "y": 68,
         "w": 12,
         "h": 8
       },
@@ -1986,7 +1986,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 55,
+        "y": 76,
         "w": 12,
         "h": 8
       },
@@ -2061,7 +2061,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 55,
+        "y": 76,
         "w": 12,
         "h": 8
       },
@@ -2117,7 +2117,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 63,
+        "y": 84,
         "w": 12,
         "h": 8
       },
@@ -2175,7 +2175,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 63,
+        "y": 84,
         "w": 12,
         "h": 8
       },
@@ -2292,7 +2292,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 71,
+        "y": 92,
         "w": 24,
         "h": 8
       },
@@ -2402,7 +2402,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 79,
+        "y": 100,
         "w": 24,
         "h": 1
       },
@@ -2418,9 +2418,9 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 80,
+        "y": 101,
         "w": 4,
-        "h": 5
+        "h": 6
       },
       "targets": [
         {
@@ -2490,9 +2490,9 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 80,
-        "w": 6,
-        "h": 10
+        "y": 101,
+        "w": 5,
+        "h": 12
       },
       "targets": [
         {
@@ -2513,26 +2513,48 @@
           "custom": {
             "align": "auto",
             "cellOptions": {
-              "type": "color-text"
+              "type": "auto"
             }
-          },
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "false": {
-                  "text": "OK",
-                  "color": "green"
-                },
-                "true": {
-                  "text": "Low",
-                  "color": "red"
-                }
-              }
-            }
-          ]
+          }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Battery"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "false": {
+                        "text": "OK",
+                        "color": "green"
+                      },
+                      "true": {
+                        "text": "Low",
+                        "color": "red"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "showHeader": true,
@@ -2549,10 +2571,10 @@
         "uid": "${datasource}"
       },
       "gridPos": {
-        "x": 10,
-        "y": 80,
+        "x": 9,
+        "y": 101,
         "w": 6,
-        "h": 10
+        "h": 12
       },
       "targets": [
         {
@@ -2600,9 +2622,13 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Unchanged for"
+              "options": "Unchanged"
             },
             "properties": [
+              {
+                "id": "custom.width",
+                "value": 110
+              },
               {
                 "id": "custom.cellOptions",
                 "value": {
@@ -2628,10 +2654,10 @@
         "uid": "${datasource}"
       },
       "gridPos": {
-        "x": 16,
-        "y": 80,
-        "w": 8,
-        "h": 10
+        "x": 15,
+        "y": 101,
+        "w": 9,
+        "h": 12
       },
       "targets": [
         {
@@ -2707,9 +2733,9 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 85,
+        "y": 107,
         "w": 4,
-        "h": 5
+        "h": 6
       },
       "targets": [
         {
