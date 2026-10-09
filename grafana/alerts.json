@@ -1,0 +1,552 @@
+{
+  "apiVersion": 1,
+  "groups": [
+    {
+      "orgId": 1,
+      "name": "ecowitt",
+      "folder": "Weather",
+      "interval": "1m",
+      "rules": [
+        {
+          "uid": "ecowitt-airing",
+          "title": "Good time to air",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "A",
+                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(name ORDER BY time) AS room,\n  last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(dewpoint_delta_c ORDER BY time) AS delta\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station, rh.sensor, rh.room,\n  CASE WHEN rh.rh >= 70 THEN vent.delta ELSE -99 END AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "B",
+                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nvent AS (SELECT DISTINCT station, sensor FROM ventilation WHERE time >= now() - interval '10 minutes')\nSELECT r.station, r.sensor, last_value(r.name ORDER BY r.time) AS room,\n  last_value(r.humidity_pct ORDER BY r.time) AS value\nFROM rooms r JOIN vent ON vent.station = r.station AND vent.sensor = r.sensor\nGROUP BY r.station, r.sensor",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        2
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "for": "15m",
+          "annotations": {
+            "summary": "{{ $labels.room }} is at {{ humanize $values.B.Value }}% humidity, and the outside air's dew point is {{ printf \"%.1f\" $values.A.Value }} °C lower: airing would dry it.",
+            "description": "A room at 70% humidity or more, with the outdoor dew point at least 2 °C below the room's, for 15 minutes."
+          },
+          "labels": {
+            "app": "ecowitt",
+            "severity": "info",
+            "resolve_message": "off"
+          },
+          "isPaused": false
+        },
+        {
+          "uid": "ecowitt-damp",
+          "title": "Damp room",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 21600,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "A",
+                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '6 hours' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '6 hours')\nSELECT station, sensor, last_value(name ORDER BY time) AS room,\n  min(humidity_pct) AS value\nFROM rooms\nGROUP BY station, sensor\nHAVING min(time) <= now() - interval '5 hours 50 minutes'",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        69.5
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "for": "0s",
+          "annotations": {
+            "summary": "{{ $labels.room }} has stayed at 70% humidity or more for 6 hours (lowest {{ humanize $values.A.Value }}%). Mould grows in air this damp.",
+            "description": "A room whose humidity has not dropped below 70% in the last 6 hours."
+          },
+          "labels": {
+            "app": "ecowitt",
+            "severity": "warning"
+          },
+          "isPaused": false
+        },
+        {
+          "uid": "ecowitt-sensor-silent",
+          "title": "Sensor not updating",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 86400,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "A",
+                "rawSql": "SELECT station, sensor, last_value(name ORDER BY time) AS room,\n  date_part('epoch', now() - max(time)) + last_value(unchanged_s ORDER BY time) AS value\nFROM derived\nWHERE time >= now() - interval '1 day' AND unchanged_s IS NOT NULL\n  AND (sensor IN ('indoor', 'outdoor') OR sensor LIKE 'ch%')\nGROUP BY station, sensor",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        10800
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "for": "0s",
+          "annotations": {
+            "summary": "{{ $labels.room }} has reported the same readings for {{ humanizeDuration $values.A.Value }}: its battery or radio has probably failed.",
+            "description": "A room or outdoor sensor whose readings have not changed, or not arrived, for 3 hours. A console repeats a lost sensor's last values, so unchanged readings are how a lost one shows."
+          },
+          "labels": {
+            "app": "ecowitt",
+            "severity": "warning"
+          },
+          "isPaused": false
+        },
+        {
+          "uid": "ecowitt-battery",
+          "title": "Battery low",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "A",
+                "rawSql": "SELECT station, sensor, last_value(name ORDER BY time) AS room,\n  CASE WHEN last_value(low ORDER BY time) THEN 1 ELSE 0 END AS value\nFROM battery\nWHERE time >= now() - interval '10 minutes'\nGROUP BY station, sensor",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.5
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "for": "1h",
+          "annotations": {
+            "summary": "{{ $labels.room }}'s battery is low.",
+            "description": "A sensor's low-battery flag, set for an hour."
+          },
+          "labels": {
+            "app": "ecowitt",
+            "severity": "warning"
+          },
+          "isPaused": false
+        },
+        {
+          "uid": "ecowitt-cold",
+          "title": "Room too cold",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "A",
+                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes')\nSELECT station, sensor, last_value(name ORDER BY time) AS room,\n  last_value(temp_c ORDER BY time) AS value\nFROM rooms\nGROUP BY station, sensor",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "lt",
+                      "params": [
+                        8
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "for": "15m",
+          "annotations": {
+            "summary": "{{ $labels.room }} is at {{ printf \"%.1f\" $values.A.Value }} °C.",
+            "description": "A room below 8 °C for 15 minutes: pipes and plants are at risk."
+          },
+          "labels": {
+            "app": "ecowitt",
+            "severity": "warning"
+          },
+          "isPaused": false
+        },
+        {
+          "uid": "ecowitt-hot",
+          "title": "Room too hot",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "A",
+                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes')\nSELECT station, sensor, last_value(name ORDER BY time) AS room,\n  last_value(temp_c ORDER BY time) AS value\nFROM rooms\nGROUP BY station, sensor",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        32
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "for": "15m",
+          "annotations": {
+            "summary": "{{ $labels.room }} is at {{ printf \"%.1f\" $values.A.Value }} °C.",
+            "description": "A room above 32 °C for 15 minutes."
+          },
+          "labels": {
+            "app": "ecowitt",
+            "severity": "warning"
+          },
+          "isPaused": false
+        },
+        {
+          "uid": "ecowitt-gusts",
+          "title": "Strong wind",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "A",
+                "rawSql": "SELECT station, max(gust_kmh) AS value\nFROM wind\nWHERE time >= now() - interval '10 minutes'\nGROUP BY station",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        60
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "for": "0s",
+          "annotations": {
+            "summary": "Gusts of {{ humanize $values.A.Value }} km/h at {{ $labels.station }}.",
+            "description": "A gust above 60 km/h in the last 10 minutes."
+          },
+          "labels": {
+            "app": "ecowitt",
+            "severity": "info"
+          },
+          "isPaused": false
+        },
+        {
+          "uid": "ecowitt-rain",
+          "title": "Heavy rain",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "A",
+                "rawSql": "SELECT station, max(rate_mm_h) AS value\nFROM rain\nWHERE time >= now() - interval '10 minutes'\nGROUP BY station",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        10
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "for": "0s",
+          "annotations": {
+            "summary": "Rain at {{ humanize $values.A.Value }} mm/h at {{ $labels.station }}.",
+            "description": "A rain rate above 10 mm/h in the last 10 minutes."
+          },
+          "labels": {
+            "app": "ecowitt",
+            "severity": "info"
+          },
+          "isPaused": false
+        },
+        {
+          "uid": "ecowitt-pressure-fall",
+          "title": "Pressure falling fast",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 10800,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "A",
+                "rawSql": "SELECT station,\n  first_value(sea_hpa ORDER BY time) - last_value(sea_hpa ORDER BY time) AS value\nFROM pressure\nWHERE time >= now() - interval '3 hours'\nGROUP BY station\nHAVING min(time) <= now() - interval '2 hours 50 minutes'",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        3
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "for": "0s",
+          "annotations": {
+            "summary": "Pressure at {{ $labels.station }} has fallen {{ printf \"%.1f\" $values.A.Value }} hPa in 3 hours: a storm or a front is likely.",
+            "description": "Sea-level pressure more than 3 hPa lower than 3 hours ago."
+          },
+          "labels": {
+            "app": "ecowitt",
+            "severity": "info"
+          },
+          "isPaused": false
+        }
+      ]
+    }
+  ]
+}
