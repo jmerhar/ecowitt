@@ -23,7 +23,7 @@ def _panels(panels: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 DOC = json.loads(DASHBOARD.read_text(encoding="utf-8"))
-PANELS = [p for p in _panels(DOC["panels"]) if p["type"] != "row"]
+PANELS = [p for p in _panels(DOC["panels"]) if p.get("targets")]
 PANEL_QUERIES = [
     pytest.param(t["rawSql"], id=f"{p['title']}/{t['refId']}") for p in PANELS for t in p["targets"]
 ]
@@ -90,3 +90,14 @@ def test_no_two_panels_overlap() -> None:
             for y in range(pos["y"], pos["y"] + pos["h"]):
                 assert (x, y) not in cells, (panel["title"], cells.get((x, y)))
                 cells[(x, y)] = panel["title"]
+
+
+def test_the_alert_panel_lists_the_alert_rules() -> None:
+    """The panel filters on a label; a rule without it would fire unseen on the dashboard."""
+    lists = [p for p in _panels(DOC["panels"]) if p["type"] == "alertlist"]
+    alerts = json.loads((DASHBOARD.parent / "alerts.json").read_text(encoding="utf-8"))
+    labels = {r["labels"]["app"] for g in alerts["groups"] for r in g["rules"]}
+
+    assert len(lists) == 1
+    assert labels == {"ecowitt"}
+    assert lists[0]["options"]["alertInstanceLabelFilter"] == '{app="ecowitt"}'
