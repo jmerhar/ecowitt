@@ -227,3 +227,15 @@ class TestStaleness:
         ]
 
         assert values(run(readings), "derived", "indoor")["unchanged"] == 0
+
+
+@pytest.mark.parametrize("temp", [-244.0, -273.15, -96.0, 76.0, 1e6])
+def test_impossible_temperature_is_not_derived_from(temp: float) -> None:
+    """The formulas overflow or divide by zero far enough out; a faulty sensor is no excuse."""
+    readings = climate("ch1", temp, 50.0) + climate("outdoor", temp, 50.0, table="outdoor")
+    readings.append(Reading("pressure", "abs", Kind.PRESSURE, 1000.0, sensor="pressure"))
+
+    got = run(readings, Preferences(altitude_m=100))
+
+    assert "dewpoint" not in values(got, "derived", "ch1")
+    assert "dewpoint_delta" not in values(got, "ventilation", "ch1")
