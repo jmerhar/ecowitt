@@ -24,10 +24,19 @@ services:
       INFLUX_DATABASE: ${INFLUX_DATABASE:-weather}
       INFLUX_TOKEN: ${INFLUX_TOKEN:-}
       INFLUX_TOKEN_FILE: ${INFLUX_TOKEN_FILE:-}
+      # InfluxDB 2.x: INFLUX_API=v2, and INFLUX_ORG is required.
+      INFLUX_API: ${INFLUX_API:-v3}
+      INFLUX_ORG: ${INFLUX_ORG:-}
       # Optional: a push monitor's URL (Uptime Kuma, healthchecks.io), called after readings
       # are written, so the monitor alerts when they stop.
       HEARTBEAT_URL: ${HEARTBEAT_URL:-}
       HEARTBEAT_URL_FILE: ${HEARTBEAT_URL_FILE:-}
+      HEARTBEAT_INTERVAL_SECONDS: ${HEARTBEAT_INTERVAL_SECONDS:-60}
+      # The console's Path field; both slash spellings are served.
+      INGEST_PATH: ${INGEST_PATH:-/data/report/}
+      INGEST_RATE: ${INGEST_RATE:-2}
+      INGEST_BURST: ${INGEST_BURST:-20}
+      SPOOL_MAX_BYTES: ${SPOOL_MAX_BYTES:-104857600}
       # The container listens on the same port numbers it publishes. Firewalls that see Docker
       # traffic, ufw-docker among them, match the port after address translation -- the
       # container's -- so a mismatch would leave a rule for one port and a listener on another.
