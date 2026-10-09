@@ -2,8 +2,8 @@
 
 Infrastructure lives here, in the environment: where to listen, where InfluxDB is, how much
 to log. Everything describing a particular station -- channel names, unit preferences, the
-PASSKEY allowlist, the site location -- belongs to the station configuration file, because
-none of it is pleasant to express as environment variables.
+PASSKEY allowlist, the site location -- belongs to the station configuration file read by
+`stationconfig`, because none of it is pleasant to express as environment variables.
 
 Every credential also accepts a `*_FILE` variant naming a file to read it from, which is what
 makes a Docker secret usable without putting the value in a compose file.
@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     ingest_port: int = 2551
     admin_host: str = "0.0.0.0"  # noqa: S104
     admin_port: int = 2552
+
+    #: The ingest listener's per-address budget: requests per second, and the burst allowed
+    #: before that applies. A console reports at most once every 8 seconds.
+    ingest_rate: float = 2.0
+    ingest_burst: int = 20
 
     #: The console's "Path" field. Ecowitt firmware sends it with a trailing slash; both
     #: spellings are served, so either value works here.

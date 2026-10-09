@@ -27,6 +27,12 @@ class State:
     last_report_at: float | None = None
     reports_accepted: int = 0
     reports_rejected: int = 0
+    #: Requests refused by the rate limiter before their body was read.
+    reports_rate_limited: int = 0
+
+    writes_succeeded: int = 0
+    writes_failed: int = 0
+    last_write_ok_at: float | None = None
 
     @property
     def uptime_seconds(self) -> float:
@@ -44,6 +50,25 @@ class State:
         """Note a report that passed the allowlist and parsed."""
         self.reports_accepted += 1
         self.last_report_at = time.monotonic()
+
+    def record_rate_limited(self) -> None:
+        """Note a request refused for exceeding its address's budget."""
+        self.reports_rate_limited += 1
+
+    def record_write(self, succeeded: bool) -> None:
+        """Note the outcome of writing one report's rows."""
+        if succeeded:
+            self.writes_succeeded += 1
+            self.last_write_ok_at = time.monotonic()
+        else:
+            self.writes_failed += 1
+
+    @property
+    def seconds_since_last_write(self) -> float | None:
+        """Age of the most recent successful write, or None if none has succeeded."""
+        if self.last_write_ok_at is None:
+            return None
+        return time.monotonic() - self.last_write_ok_at
 
     def record_rejected(self) -> None:
         """Note a report that was discarded.

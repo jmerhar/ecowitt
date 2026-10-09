@@ -19,6 +19,7 @@ from starlette.responses import JSONResponse, PlainTextResponse, Response
 
 from .config import MAX_BODY_BYTES, MAX_BODY_FIELDS, Settings
 from .http import BodyTooLarge, read_capped_body
+from .ratelimit import RateLimiter
 from .state import State
 
 logger = logging.getLogger(__name__)
@@ -45,8 +46,14 @@ def redact(fields: Mapping[str, str]) -> dict[str, str]:
     return {k: ("<redacted>" if k in REDACTED_FIELDS else v) for k, v in fields.items()}
 
 
-def build_app(settings: Settings, state: State, handler: ReportHandler) -> FastAPI:
+def build_app(
+    settings: Settings,
+    state: State,
+    handler: ReportHandler,
+    limiter: RateLimiter | None = None,
+) -> FastAPI:
     """Build the public application, serving only the configured ingest path."""
+    limiter = limiter or RateLimiter(rate=settings.ingest_rate, burst=settings.ingest_burst)
     app = FastAPI(
         title="Ecowitt Server ingest",
         # No interactive docs and no schema: they would describe this server to anyone who
@@ -63,6 +70,11 @@ def build_app(settings: Settings, state: State, handler: ReportHandler) -> FastA
     async def report(request: Request) -> Response:
         """Receive one station report."""
         source = request.client.host if request.client else "unknown"
+
+        # Before the body is read, so an address over its budget costs almost nothing.
+        if not limiter.allow(source):
+            state.record_rate_limited()
+            return PlainTextResponse("", status_code=429)
 
         try:
             body = await read_capped_body(request, MAX_BODY_BYTES)

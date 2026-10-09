@@ -175,3 +175,36 @@ def test_an_oversized_chunked_body_is_refused_mid_stream(
     assert response.status_code == 413
     assert handler.reports == []
     assert state.reports_rejected == 1
+
+
+def test_an_address_over_its_budget_gets_429_before_its_body_is_read(
+    settings: Settings, state: State
+) -> None:
+    """A flood is answered cheaply, and the handler never sees it."""
+    from ecowitt.ratelimit import RateLimiter
+
+    handler = RecordingHandler()
+    limiter = RateLimiter(rate=0.0, burst=2)
+    app = ingest.build_app(settings, state, handler, limiter)
+    with TestClient(app, follow_redirects=False) as client:
+        codes = [
+            client.post("/data/report/", content="PASSKEY=x", headers=FORM).status_code
+            for _ in range(4)
+        ]
+
+    assert codes == [200, 200, 429, 429]
+    assert len(handler.reports) == 2
+    assert state.reports_rate_limited == 2
+
+
+def test_the_default_budget_comes_from_settings(state: State, tmp_path) -> None:
+    """INGEST_RATE and INGEST_BURST configure the limiter the app builds for itself."""
+    settings = Settings(data_dir=tmp_path, ingest_rate=0.0, ingest_burst=1)
+    with TestClient(
+        ingest.build_app(settings, state, RecordingHandler()), follow_redirects=False
+    ) as client:
+        codes = [
+            client.post("/data/report/", content="x=1", headers=FORM).status_code for _ in range(2)
+        ]
+
+    assert codes == [200, 429]
