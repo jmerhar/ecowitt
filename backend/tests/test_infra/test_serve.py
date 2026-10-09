@@ -163,6 +163,55 @@ async def _running(
             await task
 
 
+async def _flood_headers(port: int, total: int) -> bytes:
+    """Send a request line and then `total` bytes of headers, never ending them.
+
+    Returns what the listener answered, or b"" once it dropped the connection.
+    """
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    line = b"X-Pad: " + b"a" * 8000 + b"\r\n"
+    try:
+        writer.write(b"GET /healthz HTTP/1.1\r\nHost: x\r\n")
+        for _ in range(total // len(line)):
+            writer.write(line)
+            await writer.drain()
+        writer.write(b"\r\n")
+        await writer.drain()
+        async with asyncio.timeout(10):
+            return await reader.read(100)
+    except ConnectionError:
+        return b""
+    finally:
+        writer.close()
+        with contextlib.suppress(ConnectionError):
+            await writer.wait_closed()
+
+
+@pytest.mark.parametrize("which", [0, 1], ids=["ingest", "admin"])
+async def test_a_flood_of_headers_is_cut_off_before_the_app(
+    monkeypatch: pytest.MonkeyPatch, which: int
+) -> None:
+    """Headers are buffered before the body cap or rate limit run, so the parser must cap them.
+
+    h11 enforces its limit while headers are still incomplete, so a flood sent in pieces -- the
+    attack, since it is what keeps memory growing -- is dropped long before it ends.
+    """
+    state = State()
+
+    async with _running(monkeypatch, state) as listeners:
+        port = listeners[which].servers[0].sockets[0].getsockname()[1]
+        answer = await _flood_headers(port, 4 * 1024 * 1024)
+
+    assert not answer.startswith((b"HTTP/1.1 200", b"HTTP/1.1 404")), answer
+
+
+def test_both_listeners_bound_their_connections() -> None:
+    for listener in serve.build(Settings(), LoggingHandler(), State()):
+        assert listener.config.limit_concurrency == serve.MAX_CONNECTIONS
+        assert listener.config.h11_max_incomplete_event_size == serve.MAX_HEADER_BYTES
+        assert listener.config.http == "h11"
+
+
 async def test_run_serves_on_both_listeners(monkeypatch: pytest.MonkeyPatch) -> None:
     """The startup path: two servers bound, and the state that drives health marked."""
     state = State()
