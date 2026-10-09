@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from ecowitt import ingest
+from ecowitt import admin, ingest
 from ecowitt.config import Settings
 from ecowitt.state import State
 
@@ -71,4 +71,11 @@ def ingest_client(
     """
     app = ingest.build_app(settings, state, handler)
     with TestClient(app, follow_redirects=False) as client:
+        yield client
+
+
+@pytest.fixture
+def admin_client(settings: Settings, state: State) -> Iterator[TestClient]:
+    """A client for the admin listener."""
+    with TestClient(admin.build_app(settings, state), follow_redirects=False) as client:
         yield client
