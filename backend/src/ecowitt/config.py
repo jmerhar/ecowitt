@@ -58,6 +58,15 @@ class Settings(BaseSettings):
     #: dropped. A report is a few kilobytes, so the default keeps days of them.
     spool_max_bytes: int = 100 * 1024 * 1024
 
+    # Public services consulted for a station whose coordinates have been entered, and only
+    # then: the coordinates are sent to them. Overridable so tests and air-gapped hosts can
+    # point them elsewhere.
+    opentopodata_url: str = "https://api.opentopodata.org/v1/srtm30m"
+    open_elevation_url: str = "https://api.open-elevation.com/api/v1/lookup"
+    open_meteo_url: str = "https://api.open-meteo.com/v1/forecast"
+    #: How often a located station's model surface pressure is fetched for the absolute check.
+    reference_interval_seconds: int = 1800
+
     #: The console's "Path" field. Ecowitt firmware sends it with a trailing slash; both
     #: spellings are served, so either value works here.
     ingest_path: str = "/data/report/"
@@ -123,6 +132,11 @@ class Settings(BaseSettings):
     def config_file(self) -> Path:
         """The station configuration file."""
         return self.data_dir / "config.yaml"
+
+    @property
+    def secret_file(self) -> Path:
+        """The key the admin pages sign their forms with, created on first start."""
+        return self.data_dir / "secret.key"
 
     @property
     def spool_dir(self) -> Path:
