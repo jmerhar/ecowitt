@@ -212,9 +212,9 @@ one alert per room or station:
 
 | Rule | Fires when | Severity |
 |---|---|---|
-| Good time to air | a room is at 65% humidity or more and the outdoor dew point is at least 2 °C below the room's, for 15 minutes | info |
+| Good time to air | a room is at 65% humidity or more and the outdoor dew point is more than 2 °C below the room's, for 15 minutes | info |
 | Damp room | a room has not dropped below 70% humidity in 6 hours | warning |
-| Sensor not updating | a room or outdoor sensor's readings have not changed, or not arrived, for 3 hours | warning |
+| Sensor not updating | a room or outdoor sensor's readings have not changed, or not arrived, for 3 hours of the station's reports | warning |
 | Battery low | a sensor's low-battery flag has been set for an hour | warning |
 | Room too cold / too hot | a room is below 8 °C or above 32 °C for 15 minutes | warning |
 | Strong wind | a gust above 60 km/h in the last 10 minutes | info |
@@ -228,6 +228,12 @@ one alert per room or station:
   (`warning` or `info`, the second suiting quiet hours); *Good time to air* also carries
   `resolve_message=off`, for a contact point that sends no message when the window closes.
 - Each rule's `summary` annotation is a complete sentence, ready to send as the notification.
+- The weather rules (airing, wind, rain, pressure) keep firing for 30 minutes, or an hour for
+  pressure, after their condition clears, so a value hovering at a threshold does not send a
+  stream of firing and resolved messages.
+- *Sensor not updating* counts a sensor's age against the station's last report, so a station
+  that stops uploading does not flag every sensor; watch the station itself with the heartbeat.
+  A sensor silent for more than 7 days drops out of the rule.
 - A query that fails raises Grafana's own *DatasourceError* alert, with the rule's labels.
 - Like the dashboard, the queries name fields in the default units.
 
