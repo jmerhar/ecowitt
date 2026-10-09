@@ -46,15 +46,27 @@ def _value(value: Value) -> str | None:
         return "true" if value else "false"
     if isinstance(value, float):
         return repr(value) if math.isfinite(value) else None
-    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    escaped = _flatten(value).replace("\\", "\\\\").replace('"', '\\"')
     return f'"{escaped}"'
+
+
+def _flatten(text: str) -> str:
+    """Replace line breaks with spaces: line protocol has no escape for them, and one would end
+    the line mid-point, making InfluxDB refuse the whole write."""
+    return text.replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
 
 
 def _escape_measurement(name: str) -> str:
     """Escape a measurement name: commas and spaces would end it early."""
-    return name.replace("\\", "\\\\").replace(",", "\\,").replace(" ", "\\ ")
+    return _flatten(name).replace("\\", "\\\\").replace(",", "\\,").replace(" ", "\\ ")
 
 
 def _escape_key(name: str) -> str:
     """Escape a tag key, tag value or field key: commas, equals signs and spaces."""
-    return name.replace("\\", "\\\\").replace(",", "\\,").replace("=", "\\=").replace(" ", "\\ ")
+    return (
+        _flatten(name)
+        .replace("\\", "\\\\")
+        .replace(",", "\\,")
+        .replace("=", "\\=")
+        .replace(" ", "\\ ")
+    )
