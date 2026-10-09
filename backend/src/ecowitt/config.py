@@ -14,6 +14,7 @@ from __future__ import annotations
 import functools
 from pathlib import Path
 from typing import Literal, Self
+from urllib.parse import urlsplit
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -121,6 +122,25 @@ class Settings(BaseSettings):
             self.influx_token = self.influx_token_file.read_text(encoding="utf-8").strip()
         if self.heartbeat_url_file is not None:
             self.heartbeat_url = self.heartbeat_url_file.read_text(encoding="utf-8").strip()
+        return self
+
+    @model_validator(mode="after")
+    def _check_influx(self) -> Self:
+        """Refuse an InfluxDB configuration that could never be written to.
+
+        Better a container that will not start, with the reason, than one that accepts every
+        report and spools it until the spool's cap starts discarding them.
+        """
+        if self.influx_url:
+            try:
+                parts = urlsplit(self.influx_url)
+                parts.port  # noqa: B018 -- raises on a malformed port
+            except ValueError as exc:
+                raise ValueError(f"INFLUX_URL is not a valid URL: {exc}") from None
+            if parts.scheme not in {"http", "https"} or not parts.hostname:
+                raise ValueError("INFLUX_URL must be an http:// or https:// URL with a host")
+        if self.influx_api == "v2" and not self.influx_org:
+            raise ValueError("INFLUX_API=v2 needs INFLUX_ORG: InfluxDB 2.x scopes a bucket to one")
         return self
 
     @model_validator(mode="after")

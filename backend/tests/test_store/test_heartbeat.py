@@ -127,3 +127,32 @@ async def test_beats_within_an_interval_make_one_call() -> None:
 
     assert pauses.taken == [42, 42]
     assert len(stub.requests) == 2
+
+
+async def test_an_unexpected_error_does_not_end_the_heartbeat_loop(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Ending the loop would stop the calls, and the monitor would cry outage for nothing."""
+    pauses = Pauses()
+    async with serving(StubInflux(status=200)) as stub, httpx2.AsyncClient() as client:
+        heartbeat = Heartbeat(client, stub.url + "/hb", interval_seconds=1, sleep=pauses)
+        real_call = heartbeat.call
+        calls = 0
+
+        async def flaky() -> bool:
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                raise RuntimeError("unexpected")
+            return await real_call()
+
+        heartbeat.call = flaky  # type: ignore[method-assign]
+        async with beating(heartbeat):
+            heartbeat.beat()
+            await until(lambda: pauses.taken)
+            heartbeat.beat()
+            pauses.release.set()
+            await until(lambda: stub.requests)
+
+    assert len(stub.requests) == 1
+    assert "heartbeat to 127.0.0.1 failed unexpectedly" in caplog.text

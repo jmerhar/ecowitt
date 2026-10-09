@@ -101,3 +101,24 @@ def test_admin_host_names_are_split_and_lowercased() -> None:
 
 def test_the_admin_listener_answers_only_to_loopback_names_by_default() -> None:
     assert Settings().admin_host_names == frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+@pytest.mark.parametrize(
+    ("url", "reason"),
+    [
+        ("http://[::1:8181", "not a valid URL"),
+        ("http://influx:port", "not a valid URL"),
+        ("influxdb:8181", "http:// or https://"),
+        ("ftp://influx", "http:// or https://"),
+    ],
+)
+def test_an_unusable_influx_url_stops_startup(url: str, reason: str) -> None:
+    """Accepted, it would spool every report until the spool's cap started discarding them."""
+    with pytest.raises(ValueError, match=reason):
+        Settings(influx_url=url)
+
+
+def test_influxdb_2_needs_an_organisation() -> None:
+    with pytest.raises(ValueError, match="INFLUX_ORG"):
+        Settings(influx_api="v2")
+    assert Settings(influx_api="v2", influx_org="home").influx_org == "home"
