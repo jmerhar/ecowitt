@@ -33,6 +33,8 @@ services:
       # container's -- so a mismatch would leave a rule for one port and a listener on another.
       INGEST_PORT: ${ECOWITT_INGEST_PORT:-2551}
       ADMIN_PORT: ${ECOWITT_ADMIN_PORT:-2552}
+      # Host names the admin listener answers to; add the one a reverse proxy serves it under.
+      ADMIN_HOSTS: ${ADMIN_HOSTS:-localhost,127.0.0.1,::1}
     ports:
       # The ingest listener, which the weather station posts to. Published on every interface
       # because the station is a device on your network (or beyond it) rather than on this

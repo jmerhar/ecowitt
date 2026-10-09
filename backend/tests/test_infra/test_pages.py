@@ -27,7 +27,7 @@ from ecowitt.stationconfig import ConfigDocument, StationEntry, load_document
 
 from ..conftest import FIXTURE_PASSKEY, payload
 
-ORIGIN = {"Origin": "http://testserver"}
+ORIGIN = {"Origin": "http://localhost"}
 
 
 class Sink:
@@ -91,7 +91,9 @@ def rig(tmp_path: Path) -> Iterator[Rig]:
         pending=pending,
         calibration=calibration,
     )
-    with TestClient(admin.build_app(context), follow_redirects=False) as client:
+    with TestClient(
+        base_url="http://localhost", app=admin.build_app(context), follow_redirects=False
+    ) as client:
         yield Rig(client, store, handler, pending, calibration, context)
 
 
@@ -717,7 +719,9 @@ class TestStatus:
 
 def test_without_a_store_nothing_can_be_saved(tmp_path: Path) -> None:
     context = admin.AdminContext(Settings(data_dir=tmp_path), State(), secret=b"s" * 32)
-    with TestClient(admin.build_app(context), follow_redirects=False) as client:
+    with TestClient(
+        base_url="http://localhost", app=admin.build_app(context), follow_redirects=False
+    ) as client:
         page = client.get("/setup").text
         response = client.post(
             "/setup/station",
