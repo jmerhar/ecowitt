@@ -5,6 +5,13 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 [Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
 says what under *Upgrading*.
 
+## 0.5.0 — 2026-10-09
+
+### Added
+
+- A Grafana dashboard for the stored readings: current conditions, airing per room, indoor and
+  outdoor history, and station health.
+
 ## 0.4.0 — 2026-10-09
 
 ### Added
