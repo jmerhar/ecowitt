@@ -39,10 +39,15 @@ class Settings(BaseSettings):
     # a loopback bind is unreachable even through a published port. Which of them the
     # internet can reach is therefore decided by the host-side publish -- the ingest port on
     # a real address, the admin port on 127.0.0.1 -- not here. See the README.
+    #
+    # The defaults are the published ports, so host and container numbers match. Firewalls
+    # that govern Docker traffic, ufw-docker among them, match the port after Docker's address
+    # translation, which is the container's: a rule for 2551 does nothing for a container
+    # listening on 8000 behind a 2551 publish.
     ingest_host: str = "0.0.0.0"  # noqa: S104
-    ingest_port: int = 8000
+    ingest_port: int = 2551
     admin_host: str = "0.0.0.0"  # noqa: S104
-    admin_port: int = 8001
+    admin_port: int = 2552
 
     #: The console's "Path" field. Ecowitt firmware sends it with a trailing slash; both
     #: spellings are served, so either value works here.

@@ -14,7 +14,7 @@ install: ## Create the virtualenv and install the package with its test extras
 
 ##@ Development
 
-dev: ## Serve from the working copy with debug logging (ingest :8000, admin :8001)
+dev: ## Serve from the working copy with debug logging (ingest :2551, admin :2552)
 	cd backend && DATA_DIR=../data LOG_LEVEL=DEBUG .venv/bin/python -m ecowitt
 
 up: ## Build and start the stack

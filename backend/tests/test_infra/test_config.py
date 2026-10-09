@@ -69,3 +69,10 @@ def test_an_empty_token_file_does_not_blank_an_inline_token() -> None:
     settings = Settings(influx_token="apiv3_inline", influx_token_file="")
 
     assert settings.influx_token == "apiv3_inline"
+
+
+def test_published_and_listening_ports_match_by_default() -> None:
+    """Firewalls that see Docker traffic match the container's port, so the two must agree."""
+    settings = Settings()
+
+    assert (settings.ingest_port, settings.admin_port) == (2551, 2552)

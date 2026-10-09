@@ -22,10 +22,10 @@ RUN pip install .
 RUN mkdir -p /data && chown -R 1000:1000 /data
 USER 1000:1000
 
-# 8000 is the ingest listener, which a station reaches; 8001 is the admin listener, which
+# 2551 is the ingest listener, which a station reaches; 2552 is the admin listener, which
 # belongs behind a reverse proxy. Publishing them differently is what keeps the second one off
 # the internet -- see the README.
-EXPOSE 8000 8001
+EXPOSE 2551 2552
 
 # An HTTP probe rather than a port check: it reports both listeners, and one of the two
 # failing to bind while the other serves would otherwise look healthy while every report the
