@@ -24,6 +24,10 @@ services:
       INFLUX_DATABASE: ${INFLUX_DATABASE:-weather}
       INFLUX_TOKEN: ${INFLUX_TOKEN:-}
       INFLUX_TOKEN_FILE: ${INFLUX_TOKEN_FILE:-}
+      # Optional: a push monitor's URL (Uptime Kuma, healthchecks.io), called after readings
+      # are written, so the monitor alerts when they stop.
+      HEARTBEAT_URL: ${HEARTBEAT_URL:-}
+      HEARTBEAT_URL_FILE: ${HEARTBEAT_URL_FILE:-}
       # The container listens on the same port numbers it publishes. Firewalls that see Docker
       # traffic, ufw-docker among them, match the port after address translation -- the
       # container's -- so a mismatch would leave a rule for one port and a listener on another.

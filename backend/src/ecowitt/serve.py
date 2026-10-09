@@ -23,6 +23,7 @@ from .config import Settings, get_settings
 from .configstore import ConfigStore
 from .delivery import Delivery
 from .handler import StationHandler
+from .heartbeat import Heartbeat
 from .ingest import ReportHandler
 from .pending import PendingStations
 from .reference import ReferenceUpdater
@@ -151,7 +152,17 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
         lookup_client = httpx2.AsyncClient()
         closers += [writer.aclose, lookup_client.aclose]
         spool = Spool(settings.spool_dir, settings.spool_max_bytes)
-        delivery = Delivery(writer, spool, state)
+        heartbeat = None
+        if settings.heartbeat_url:
+            heartbeat = Heartbeat(
+                lookup_client,
+                settings.heartbeat_url,
+                interval_seconds=settings.heartbeat_interval_seconds,
+            )
+            logger.info("heartbeat to %s after each write", heartbeat.host)
+        delivery = Delivery(
+            writer, spool, state, on_written=heartbeat.beat if heartbeat else lambda: None
+        )
         pending, calibration = PendingStations(), CalibrationMonitor()
         station_handler = StationHandler(
             store.stations, delivery, pending=pending, calibration=calibration
@@ -185,6 +196,8 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
             asyncio.create_task(delivery.run(), name="spool-replay"),
             asyncio.create_task(reference.run(), name="reference-pressure"),
         ]
+        if heartbeat is not None:
+            background.append(asyncio.create_task(heartbeat.run(), name="heartbeat"))
     ingest_listener, admin_listener = build(settings, handler, state, context)
 
     warn_if_admin_unauthenticated(

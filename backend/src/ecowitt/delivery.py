@@ -31,7 +31,10 @@ class Sender(Protocol):
 
 
 class Delivery:
-    """Writes reports, spooling the ones that cannot be written yet."""
+    """Writes reports, spooling the ones that cannot be written yet.
+
+    `on_written` is called after every write InfluxDB accepts, live or replayed.
+    """
 
     def __init__(
         self,
@@ -40,8 +43,10 @@ class Delivery:
         state: State,
         *,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+        on_written: Callable[[], None] = lambda: None,
     ) -> None:
         self._sender = sender
+        self._on_written = on_written
         self._spool = spool
         self._state = state
         self._sleep = sleep
@@ -56,9 +61,11 @@ class Delivery:
             return
         outcome = await self._sender.send(body)
         self._state.record_write(outcome is Outcome.OK)
-        if outcome is Outcome.RETRY:
+        if outcome is Outcome.OK:
+            self._on_written()
+        elif outcome is Outcome.RETRY:
             self._queue(body)
-        elif outcome is Outcome.REJECT:
+        else:
             self._state.record_rejected_write()
             self._spool.quarantine_body(body)
 
@@ -83,6 +90,7 @@ class Delivery:
             self._state.record_write(outcome is Outcome.OK)
             if outcome is Outcome.OK:
                 self._spool.ack(path)
+                self._on_written()
                 pause = FIRST_PAUSE_SECONDS
                 if not len(self._spool):
                     logger.info("spool drained")

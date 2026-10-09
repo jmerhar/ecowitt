@@ -80,9 +80,16 @@ class Settings(BaseSettings):
     #: Required by InfluxDB 2.x only, which scopes a bucket to an organisation.
     influx_org: str = ""
 
+    #: Called after readings are written, for a push monitor to alert when the calls stop. Push
+    #: URLs carry their monitor's token, so this is a credential and has a file form too.
+    heartbeat_url: str = ""
+    heartbeat_url_file: Path | None = None
+    #: The least time between two heartbeat calls.
+    heartbeat_interval_seconds: float = 60.0
+
     log_level: str = "INFO"
 
-    @field_validator("influx_token_file", mode="before")
+    @field_validator("influx_token_file", "heartbeat_url_file", mode="before")
     @classmethod
     def _blank_is_unset(cls, value: object) -> object:
         """Treat an empty value as absent rather than as a path.
@@ -106,6 +113,8 @@ class Settings(BaseSettings):
         """
         if self.influx_token_file is not None:
             self.influx_token = self.influx_token_file.read_text(encoding="utf-8").strip()
+        if self.heartbeat_url_file is not None:
+            self.heartbeat_url = self.heartbeat_url_file.read_text(encoding="utf-8").strip()
         return self
 
     @model_validator(mode="after")

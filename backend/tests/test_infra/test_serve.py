@@ -348,3 +348,49 @@ async def test_a_backlog_from_before_a_restart_is_delivered_at_startup(
 
     assert stub.requests[0].body == "indoor,station=Home temp_c=21.0 1791500484"
     assert not list((tmp_path / "spool" / "pending").iterdir())
+
+
+async def test_a_heartbeat_follows_a_delivered_write(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """With HEARTBEAT_URL set, a write InfluxDB accepts reaches the monitor, and stops with run."""
+    from ecowitt.spool import Spool
+
+    from ..test_store.conftest import StubInflux, serving
+
+    Spool(tmp_path / "spool", 1_000_000).enqueue("indoor,station=Home temp_c=21.0 1791500484")
+    state = State()
+    monkeypatch.setattr(serve, "State", lambda: state)
+    listeners: list[serve._Listener] = []
+    real_build = serve.build
+
+    def capture(*args: object, **kwargs: object) -> tuple[serve._Listener, serve._Listener]:
+        built = real_build(*args, **kwargs)  # type: ignore[arg-type]
+        listeners.extend(built)
+        return built
+
+    monkeypatch.setattr(serve, "build", capture)
+
+    async with serving(StubInflux()) as influx, serving(StubInflux(status=200)) as monitor:
+        settings = Settings(
+            data_dir=tmp_path,
+            ingest_port=0,
+            admin_port=0,
+            influx_url=influx.url,
+            heartbeat_url=monitor.url + "/api/push/token",
+        )
+        task = asyncio.create_task(serve.run(settings))
+        try:
+            async with asyncio.timeout(10):
+                while not monitor.requests:
+                    await asyncio.sleep(0.02)
+        finally:
+            async with asyncio.timeout(10):
+                while len(listeners) < 2:
+                    await asyncio.sleep(0.02)
+            serve.stop_all(listeners)
+            async with asyncio.timeout(10):
+                await task
+
+    assert influx.requests and monitor.requests[0].path == "/api/push/token"
+    assert "heartbeat" not in {t.get_name() for t in asyncio.all_tasks()}
