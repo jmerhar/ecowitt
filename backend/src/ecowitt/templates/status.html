@@ -66,6 +66,27 @@
   </div>
   {% endif %}
 
+  {% if station.weather or station.others %}
+  <div class="row">
+  {% for group in station.weather + station.others %}
+    <div>
+      <h3>{{ group.title }}</h3>
+      <table>
+      {% for item in group["items"] %}
+        <tr><td class="muted">{{ item.label }}</td><td class="num">{{ item.text }}</td></tr>
+      {% endfor %}
+      </table>
+    </div>
+  {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if station.batteries %}
+  <p>Batteries:
+    {% for b in station.batteries %}{{ b.name }} {% if b.low %}<span class="bad">{{ b.state }}</span>{% else %}{{ b.state }}{% endif %}{{ ", " if not loop.last }}{% endfor %}
+  </p>
+  {% endif %}
+
   {% if station.pressure %}
   {% set p = station.pressure %}{% set digits = 2 if p.unit == "inhg" else 1 %}
   {% set unit = {"hpa": "hPa", "inhg": "inHg", "mmhg": "mmHg"}.get(p.unit, p.unit) %}

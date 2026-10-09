@@ -53,6 +53,80 @@ MIN_PASSWORD_LENGTH = 8
 SENSOR_ID = re.compile(r"[a-z][a-z0-9_]{0,31}")
 #: Fields whose rows are worth showing on the status page, in display order.
 SUMMARY_TABLES = ("indoor", "outdoor", "channel", "air", "probe")
+#: The weather section's groups, and each field's label, in display order. Fields not listed
+#: still show, under their own names, after these.
+WEATHER_FIELDS: dict[str, dict[str, str]] = {
+    "wind": {
+        "speed": "Speed",
+        "gust": "Gust",
+        "max_daily_gust": "Strongest gust today",
+        "speed_avg10m": "Speed, 10-minute average",
+        "dir": "Direction",
+        "dir_avg10m": "Direction, 10-minute average",
+    },
+    "rain": {
+        "rate": "Rate",
+        "raining": "Raining",
+        "event": "This event",
+        "hourly": "Past hour",
+        "last24h": "Past 24 hours",
+        "daily": "Today",
+        "weekly": "This week",
+        "monthly": "This month",
+        "yearly": "This year",
+        "total": "Total",
+    },
+    "solar": {"radiation": "Radiation", "illuminance": "Illuminance", "uv_index": "UV index"},
+}
+#: Tables the status page shows in its own sections, so they are not repeated as other sensors.
+SHOWN_ELSEWHERE = frozenset(
+    {*SUMMARY_TABLES, *WEATHER_FIELDS, "derived", "ventilation", "battery", "station", "pressure"}
+)
+#: Unit suffixes as they appear in field names, with how each is written for people and how many
+#: decimals it deserves. Matched as a whole suffix after an underscore, so `rate_mm_h` can only be
+#: `mm_h`, never `mm`, and the order of this list does not matter.
+UNITS: list[tuple[str, str, int]] = [
+    ("mm_h", "mm/h", 1),
+    ("in_h", "in/h", 2),
+    ("kmh", "km/h", 1),
+    ("mph", "mph", 1),
+    ("ms", "m/s", 1),
+    ("kn", "kn", 1),
+    ("deg", "°", 0),
+    ("mm", "mm", 1),
+    ("in", "in", 2),
+    ("wm2", "W/m²", 0),
+    ("lux", "lx", 0),
+    ("pct", "%", 0),
+    ("ugm3", "µg/m³", 0),
+    ("ppm", "ppm", 0),
+    ("km", "km", 0),
+    ("mi", "mi", 0),
+    ("v", "V", 2),
+    ("c", "°C", 1),
+    ("f", "°F", 1),
+    ("uscm", "µS/cm", 0),
+    ("s", "s", 0),
+    ("unix", "", 0),
+]
+COMPASS = (
+    "N",
+    "NNE",
+    "NE",
+    "ENE",
+    "E",
+    "ESE",
+    "SE",
+    "SSE",
+    "S",
+    "SSW",
+    "SW",
+    "WSW",
+    "W",
+    "WNW",
+    "NW",
+    "NNW",
+)
 
 
 @dataclass
@@ -293,6 +367,9 @@ def _station_view(context: AdminContext, name: str) -> dict[str, object]:
         if latest
         else None,
         "sensors": _summarise(latest.points) if latest else [],
+        "weather": _weather(latest.points) if latest else [],
+        "others": _others(latest.points) if latest else [],
+        "batteries": _loose_batteries(latest.points) if latest else [],
         "pressure": _pressure(latest.points) if latest else {},
         "warnings": [w.__dict__ for w in warnings],
         "rows": [
@@ -335,6 +412,90 @@ def _summarise(points: list[Any]) -> list[dict[str, object]]:
 #: The pressure fields the status page shows, matched whole: `rel_error_hpa` must not be read as
 #: `rel`, nor `sea_temp_source` as `sea`.
 PRESSURE_FIELD = re.compile(r"(abs|rel|sea|rel_error)_(hpa|inhg|mmhg)")
+
+
+def _weather(points: list[Any]) -> list[dict[str, object]]:
+    """Wind, rain and solar readings as labelled values, one group per row.
+
+    Rain gets a group per gauge, since a station may have both a tipping bucket and a piezo.
+    """
+    groups = []
+    for table, labels in WEATHER_FIELDS.items():
+        for point in points:
+            if point.table != table:
+                continue
+            gauge = dict(point.tags).get("gauge")
+            title = table.capitalize() + (" (piezo)" if gauge == "piezo" else "")
+            items = sorted(
+                (_item(key, value) for key, value in point.fields.items()),
+                key=lambda item: _order(labels, str(item["field"])),
+            )
+            for item in items:
+                item["label"] = labels.get(str(item["field"]), str(item["field"]).replace("_", " "))
+            groups.append({"title": title, "items": items})
+    return groups
+
+
+def _others(points: list[Any]) -> list[dict[str, object]]:
+    """Rows from sensor families without a section of their own: soil, particulates, leaks."""
+    rows = []
+    for point in points:
+        if point.table in SHOWN_ELSEWHERE:
+            continue
+        tags = dict(point.tags)
+        items = [_item(key, value) for key, value in point.fields.items()]
+        for item in items:
+            item["label"] = str(item["field"]).replace("_", " ")
+        family = point.table.replace("_", " ").capitalize()
+        who = tags.get("name", tags.get("channel", ""))
+        rows.append({"title": f"{family} · {who}" if who else family, "items": items})
+    return rows
+
+
+def _loose_batteries(points: list[Any]) -> list[dict[str, object]]:
+    """Batteries of sensors with no row in the climate table, such as a rain gauge on its own."""
+    shown = {s["sensor"] for s in _summarise(points)}
+    batteries = []
+    for point in points:
+        tags = dict(point.tags)
+        if point.table != "battery" or tags.get("sensor") in shown:
+            continue
+        fields = point.fields
+        if "low" in fields:
+            state, low = ("low" if fields["low"] else "ok"), bool(fields["low"])
+        elif "voltage_v" in fields:
+            state, low = f"{fields['voltage_v']:.2f} V", False
+        elif "capacitor_v" in fields:
+            state, low = f"{fields['capacitor_v']:.2f} V", False
+        else:
+            level = fields.get("level", 0)
+            state, low = f"{level:.0f}/5", level <= 1
+        batteries.append(
+            {"name": tags.get("name", tags.get("sensor", "")), "state": state, "low": low}
+        )
+    return batteries
+
+
+def _item(key: str, value: Any) -> dict[str, object]:
+    """One field as display text: rounded for its unit, with the unit spelled for people."""
+    if isinstance(value, bool):
+        return {"field": key, "text": "yes" if value else "no"}
+    if isinstance(value, str):
+        return {"field": key, "text": value}
+    for suffix, label, digits in UNITS:
+        if key.endswith("_" + suffix):
+            base = key[: -len(suffix) - 1]
+            text = f"{value:.{digits}f}{'' if label in ('°', '%') else ' '}{label}".rstrip()
+            if suffix == "deg":
+                text += f" {COMPASS[round(value / 22.5) % 16]}"
+            return {"field": base, "text": text}
+    return {"field": key, "text": f"{value:g}"}
+
+
+def _order(labels: dict[str, str], field: str) -> tuple[int, str]:
+    """Labelled fields in their listed order, then the rest alphabetically."""
+    keys = list(labels)
+    return (keys.index(field), "") if field in keys else (len(keys), field)
 
 
 def _pressure(points: list[Any]) -> dict[str, object]:
