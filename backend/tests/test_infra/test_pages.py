@@ -453,7 +453,29 @@ class TestStatus:
         assert [s["sensor"] for s in readings["sensors"]][:2] == ["indoor", "ch1"]
         assert readings["sensors"][0]["temp"] == {"value": 23.2222, "unit": "c"}
         assert readings["warnings"][0]["kind"] == "location"
-        assert readings["pressure"]["unit"] == "hpa"
+        # Every value, not just the unit: field names share prefixes (`rel_error_hpa`,
+        # `sea_temp_source`), and a prefix match once put "standard" where sea-level pressure goes.
+        assert readings["pressure"] == {"abs": 1009.0084, "rel": 1009.0084, "unit": "hpa"}
+
+    async def test_the_pressure_line_shows_every_value_in_the_operators_unit(
+        self, rig: Rig
+    ) -> None:
+        from ecowitt.units import Units
+
+        rig.store.replace(
+            ConfigDocument(
+                units=Units(pressure="inhg"),
+                stations=[StationEntry(name="Home", passkey=FIXTURE_PASSKEY, altitude_m=180.0)],
+            )
+        )
+        await rig.report()
+
+        pressure = rig.client.get("/api/readings").json()["stations"][0]["pressure"]
+
+        assert pressure["unit"] == "inhg"
+        assert pressure["abs"] == 29.796 and pressure["rel"] == 29.796
+        assert isinstance(pressure["sea"], float) and pressure["sea"] > 29.796
+        assert isinstance(pressure["rel_error"], float) and pressure["rel_error"] < 0
 
     async def test_the_airing_column_answers_whether_to_open_the_windows(self, rig: Rig) -> None:
         """With an outdoor sensor, each room shows which way airing would go."""

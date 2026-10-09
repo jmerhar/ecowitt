@@ -328,17 +328,23 @@ def _summarise(points: list[Any]) -> list[dict[str, object]]:
     )
 
 
+#: The pressure fields the status page shows, matched whole: `rel_error_hpa` must not be read as
+#: `rel`, nor `sea_temp_source` as `sea`.
+PRESSURE_FIELD = re.compile(r"(abs|rel|sea|rel_error)_(hpa|inhg|mmhg)")
+
+
 def _pressure(points: list[Any]) -> dict[str, object]:
-    """The pressure row's fields, keyed without their unit suffix, with the unit alongside."""
+    """The pressure row's values, keyed without their unit suffix, with the unit alongside."""
     for point in points:
-        if point.table == "pressure":
-            out: dict[str, object] = {}
-            for key, value in point.fields.items():
-                base, _, unit = key.partition("_")
-                out[base] = value
-                if unit and base == "abs":
-                    out["unit"] = unit
-            return out
+        if point.table != "pressure":
+            continue
+        out: dict[str, object] = {}
+        for key, value in point.fields.items():
+            matched = PRESSURE_FIELD.fullmatch(key)
+            if matched:
+                out[matched.group(1)] = value
+                out["unit"] = matched.group(2)
+        return out
     return {}
 
 
