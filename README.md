@@ -1,13 +1,16 @@
-# ecowitt
+# Ecowitt Server
 
 [![Test and Publish](https://github.com/jmerhar/ecowitt/actions/workflows/build-and-push.yml/badge.svg)](https://github.com/jmerhar/ecowitt/actions/workflows/build-and-push.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 An Ecowitt weather station can upload to a server of your choosing, every few seconds, for
 free — no cloud account, no rate limit, no retention policy you do not control. What it cannot
-do is store any of it. Point the console at **ecowitt** and every value it reports lands in
+do is store any of it. Point the console at **Ecowitt Server** and every value it reports lands in
 InfluxDB, in the units you asked for, alongside the quantities the station does not send but
 the data is useless without.
+
+<sub>An independent project, not affiliated with or endorsed by Ecowitt. "Ecowitt" names the
+hardware it talks to.</sub>
 
 ## What it does
 

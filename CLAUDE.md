@@ -1,4 +1,4 @@
-# ecowitt
+# Ecowitt Server
 
 ## What this is
 

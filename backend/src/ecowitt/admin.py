@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 def build_app(settings: Settings, state: State) -> FastAPI:
     """Build the admin application."""
     app = FastAPI(
-        title="Ecowitt",
-        description="Status and configuration for the Ecowitt ingest server.",
+        title="Ecowitt Server",
+        description="Status and configuration for Ecowitt Server.",
     )
 
     @app.get("/healthz")
