@@ -51,7 +51,7 @@ def test_derived_paths_sit_under_the_data_directory(tmp_path: Path) -> None:
     assert settings.spool_dir == tmp_path / "spool"
 
 
-@pytest.mark.parametrize("field", ["influx_token_file"])
+@pytest.mark.parametrize("field", ["influx_token_file", "heartbeat_url_file"])
 def test_an_empty_optional_path_is_treated_as_unset(field: str) -> None:
     """Compose passes an unset `${VAR:-}` through as an empty string.
 
@@ -62,6 +62,21 @@ def test_an_empty_optional_path_is_treated_as_unset(field: str) -> None:
     settings = Settings(**{field: ""})
 
     assert getattr(settings, field) is None
+
+
+def test_a_heartbeat_url_file_supplies_the_url(tmp_path: Path) -> None:
+    """The push URL carries the monitor's token, so a Docker secret can hold it."""
+    url_file = tmp_path / "heartbeat"
+    url_file.write_text("http://monitor:3001/api/push/token\n", encoding="utf-8")
+
+    settings = Settings(heartbeat_url_file=url_file)
+
+    assert settings.heartbeat_url == "http://monitor:3001/api/push/token"
+
+
+def test_an_unreadable_heartbeat_url_file_is_an_error(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        Settings(heartbeat_url_file=tmp_path / "absent")
 
 
 def test_an_empty_token_file_does_not_blank_an_inline_token() -> None:
