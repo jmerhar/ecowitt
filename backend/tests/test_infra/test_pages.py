@@ -583,6 +583,106 @@ class TestStatus:
         )
         assert rig.store.document.stations[0].dismissed == {"location": 0.0}
 
+    async def ws69(self, rig: Rig, **units: str) -> dict[str, object]:
+        """The recorded WS69 upload, processed and read back from the API."""
+        from ecowitt.units import Units
+
+        rig.store.replace(
+            ConfigDocument(
+                units=Units(**units), stations=[StationEntry(name="Home", passkey=FIXTURE_PASSKEY)]
+            )
+        )
+        fields = dict(urllib.parse.parse_qsl(payload("hp2551_ws69"), keep_blank_values=True))
+        await rig.handler.handle(fields | {"dateutc": "now"}, "192.0.2.9")
+        return rig.client.get("/api/readings").json()["stations"][0]
+
+    async def test_wind_rain_and_solar_are_shown_with_labels_and_units(self, rig: Rig) -> None:
+        station = await self.ws69(rig)
+
+        groups = {
+            g["title"]: {i["label"]: i["text"] for i in g["items"]} for g in station["weather"]
+        }
+        assert groups["Wind"] == {
+            "Speed": "8.6 km/h",
+            "Gust": "20.2 km/h",
+            "Strongest gust today": "27.7 km/h",
+            "Direction": "125° SE",
+            "Direction, 10-minute average": "137° SE",
+        }
+        assert groups["Rain"]["Today"] == "0.8 mm" and groups["Rain"]["Rate"] == "0.0 mm/h"
+        assert list(groups["Rain"])[:3] == ["Rate", "This event", "Past hour"]
+        assert groups["Solar"] == {"Radiation": "615 W/m²", "UV index": "5"}
+        page = rig.client.get("/").text
+        assert "Strongest gust today" in page and "125° SE" in page
+
+    async def test_the_weather_follows_the_operators_units(self, rig: Rig) -> None:
+        station = await self.ws69(rig, wind="mph", rain="in")
+
+        groups = {
+            g["title"]: {i["label"]: i["text"] for i in g["items"]} for g in station["weather"]
+        }
+        assert groups["Wind"]["Speed"] == "5.4 mph"
+        assert groups["Rain"]["Today"] == "0.03 in" and groups["Rain"]["Rate"] == "0.00 in/h"
+
+    async def test_the_outdoor_arrays_battery_shows_on_the_outdoor_row(self, rig: Rig) -> None:
+        station = await self.ws69(rig)
+
+        outdoor = next(s for s in station["sensors"] if s["sensor"] == "outdoor")
+        assert outdoor["battery_low"] is False
+        assert station["batteries"] == []
+
+    async def test_sensors_without_a_section_still_show(self, rig: Rig) -> None:
+        """Soil, a piezo gauge, a lone rain gauge's battery: nothing reported is invisible."""
+        rig.store.replace(
+            ConfigDocument(
+                stations=[StationEntry(name="Home", passkey="K", sensors={"soil1": "Herbs"})]
+            )
+        )
+        await rig.handler.handle(
+            {
+                "PASSKEY": "K",
+                "dateutc": "now",
+                "tempinf": "70",
+                "humidityin": "50",
+                "soilmoisture1": "31",
+                "soilad1": "212",
+                "drain_piezo": "0.12",
+                "srain_piezo": "1",
+                "wh40batt": "1.38",
+                "leakbatt1": "1",
+                "pm25batt1": "4",
+                "ws90cap_volt": "4.9",
+                "batt3": "1",
+                "newsensor_mode": "eco",
+                "newsensor_level": "3",
+            },
+            "192.0.2.9",
+        )
+
+        station = rig.client.get("/api/readings").json()["stations"][0]
+        others = {
+            g["title"]: {i["label"]: i["text"] for i in g["items"]} for g in station["others"]
+        }
+        weather = {
+            g["title"]: {i["label"]: i["text"] for i in g["items"]} for g in station["weather"]
+        }
+        batteries = {b["name"]: (b["state"], b["low"]) for b in station["batteries"]}
+
+        assert others["Soil · Herbs"] == {"moisture": "31%", "moisture raw": "212"}
+        # A key this server does not know is shown too, text and numbers alike.
+        assert others["Unmapped"] == {"newsensor mode text": "eco", "newsensor level": "3"}
+        assert weather["Rain (piezo)"] == {"Raining": "yes", "Today": "3.0 mm"}
+        assert batteries == {
+            "wh40": ("1.38 V", False),
+            "leak1": ("1/5", True),
+            "pm1": ("4/5", False),
+            "ws90": ("4.90 V", False),
+            "ch3": ("low", True),
+        }
+        page = rig.client.get("/").text
+        assert "Soil · Herbs" in page
+        assert '<span class="bad">low</span>' in page and '<span class="bad">1/5</span>' in page
+
     async def test_dismissing_hides_a_warning(self, rig: Rig) -> None:
         await rig.report()
         adopt(rig)
