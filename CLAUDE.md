@@ -17,9 +17,22 @@ backend/src/ecowitt/
   http.py         read_capped_body, shared by both
   state.py        in-process counters both listeners see
   healthcheck.py  module entrypoint for the container's HEALTHCHECK
+
+  pipeline.py     report fields -> rows: parse, derive, render   <- the data path
+  fields.py       the declarative table: which key is stored where, in what unit
+  parse.py        fields -> readings in canonical units (°C, hPa, mm, m/s, km); never raises
+  derive.py       moisture, ventilation, sea-level pressure, staleness
+  psychro.py      the formulas behind derive, pure and reference-tested
+  units.py        conversions, and the Units preference
+  points.py       readings -> rows in the operator's units, with tags
+  lineprotocol.py rows -> InfluxDB line protocol
+  preferences.py  units, sensor names, altitude
+  staleness.py    how long each sensor's values have gone unchanged
 backend/tests/
   conftest.py     settings/state fixtures and the recorded console payloads
+  fixtures/       recorded payloads, the golden line protocol, the known-keys list
   test_infra/     wiring: the two listeners, config resolution, the health probe
+  test_data/      the data path, module by module, and the golden end-to-end test
 bin/              every script the Makefile and CI run
 ```
 
@@ -55,8 +68,31 @@ bin/              every script the Makefile and CI run
   unreachable even through a published port. `warn_if_admin_unauthenticated` keys on the thing
   the operator controls — whether a login is configured — because a warning that fires on
   every start is a warning that gets ignored.
-- **The unit belongs in the field name** (`temp_c`, `pressure_abs_hpa`). A bare `temp` whose
-  unit depends on configuration history would silently mix °F and °C in one series.
+- **The unit belongs in the field name** (`temp_c`, `abs_hpa`). A bare `temp` whose unit
+  depends on configuration history would silently mix °F and °C in one series.
+- **Every number is written as a float**, `60.0` and never `60i`. InfluxDB fixes a field's type
+  on its first write and rejects later writes of another type, so one integer-looking humidity
+  would make every fractional one fail. For the same reason an unmapped key's textual values go
+  to `<key>_text`, separate from its numeric ones.
+- **A key that matches no row is not an error.** It is stored under `unmapped`, so a typo in a
+  pattern fails nothing at runtime. `test_fields` is the guard: every key in
+  `fixtures/known_keys.txt` must match exactly one row, and every row must be reached by one.
+  Add new hardware's keys to that file in the same change as its rows.
+- **Fahrenheit spelling differs by family.** Most suffix it (`tempf` / `tempc`); `wbgt`, `bgt`,
+  `tf_co2`, `tf_chN` and `soil_ec_tempN` send it under the bare stem and suffix only Celsius.
+  `temperature(..., bare_is_fahrenheit=True)` covers those.
+- **`sensor` is the join key; `name` is a label.** Every row of a `NAMED_TABLES` table carries
+  both. Renaming a room changes its `name` tag and so starts new series under the new name;
+  dashboards should group by `sensor`.
+- **Derived quantities are always computed, never taken from the report.** A console that also
+  sends a dew point uses its own formula, and mixing the two would put a step in the series
+  wherever the source changed.
+- **`rel_error` is measured against a reduction at the standard atmosphere's temperature**, not
+  the outdoor one that `sea` uses. A console's offset is a constant, so it can only match a
+  constant-temperature reduction; the temperature-dependent one would swing by a few hPa a
+  year and the calibration warning would come and go with the weather. Sea-level reduction
+  falls back to the standard atmosphere without an outdoor sensor, never to indoor
+  temperature, which in a heated house says nothing about the air outside.
 - **Retention is set once, at database creation, and InfluxDB 3 cannot change it afterwards.**
   The `weather` database is created without any, deliberately.
 
@@ -67,6 +103,7 @@ make install      # virtualenv + test extras
 make dev          # serve from the working copy (ingest :8000, admin :8001)
 make test ARGS="tests/test_infra/test_ingest.py -k slash"
 make check        # lint + suite + coverage gate
+UPDATE_GOLDEN=1 bin/test-backend.sh tests/test_data/test_pipeline.py   # after an intended output change
 ```
 
 ## Testing conventions
@@ -74,7 +111,12 @@ make check        # lint + suite + coverage gate
 - One coverage suite, with its gate in `coverage.toml`.
 - Recorded console payloads live in `tests/fixtures/`, as the station sends them — one line,
   form-encoded, unmodified apart from the `PASSKEY`, which is a placeholder. A real one
-  authenticates a station's reports and belongs in no repository.
+  authenticates a station's reports and belongs in no repository. Names and altitudes in tests
+  are invented for the same reason.
+- `fixtures/hp2551_indoor.lp` is the golden output for that payload. A diff in it is a change of
+  output to review line by line, not a file to regenerate and commit unread; the values behind it
+  are pinned independently by `test_units` and `test_psychro`, which check against published
+  reference tables rather than against this code.
 - **New tests are checked by mutating the code they cover**, not by reading them. A suite that
   survives a deliberate break is not testing that code. A client that follows redirects is the
   standing example: an ingest route reachable only through a 307 passes every assertion on its

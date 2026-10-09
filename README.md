@@ -96,6 +96,32 @@ sensor if you want wind texture.
 You do not have to guess. Every reading records how long its value has been unchanged, so
 after a day the status page shows what each of your sensors actually does.
 
+## What gets stored
+
+One InfluxDB database (`weather` by default), with a table per kind of sensor. Every row
+carries a `station` tag; rows describing a sensor you might name — a room, a soil bed — also
+carry `sensor` (a stable identifier such as `indoor` or `ch3`, which joins a room's rows across
+tables) and `name` (its display name).
+
+| Table | Holds |
+|---|---|
+| `indoor`, `outdoor`, `channel` | temperature and humidity, as reported |
+| `pressure` | absolute and relative pressure as reported; sea-level pressure and the console's calibration error, derived |
+| `wind`, `rain`, `solar` | as reported; `rain` is tagged `gauge=bucket` or `gauge=piezo` |
+| `derived` | per sensor: dew point, absolute humidity, mixing ratio, vapour pressure deficit, and how long its values have been unchanged |
+| `ventilation` | per indoor sensor: dew-point difference from outdoors, and the humidity the room would settle at after airing |
+| `battery` | per sensor, in whichever form that sensor reports: a low flag, a voltage or a level |
+| `station` | the console's model, firmware, uptime, upload interval and clock skew |
+| `soil`, `soil_ec`, `pm`, `air`, `lightning`, `leak`, `probe`, `leaf`, `depth` | only when those sensors report |
+| `unmapped` | any field this server does not recognise, under its original name |
+
+Field names carry their unit — `temp_c`, `abs_hpa`, `speed_kmh` — so a change of preference
+starts new fields rather than mixing units in one series. Renaming a sensor likewise starts new
+series under the new name, so group by `sensor` in dashboards and use `name` for labels.
+
+Retention is whatever the database was created with, and InfluxDB 3 cannot change it later.
+Create it before first use if you want anything other than keeping everything.
+
 ## Configuration
 
 Infrastructure comes from the environment, so a deployment is reproducible from its compose
