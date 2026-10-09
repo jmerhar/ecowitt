@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the suite with coverage and print the summary.
+# Run both suites with coverage and print the summary.
 #
 # The summary and the gate are shared tooling from jmerhar/coverage, configured by
 # coverage.toml, so the numbers here are the ones CI enforces.
@@ -17,6 +17,8 @@ bin/test-backend.sh \
   --cov-report=json \
   --cov-report=html \
   -q
+
+bin/test-js.sh
 
 echo
 python3 .coverage-report.py "$@"

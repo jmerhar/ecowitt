@@ -1,8 +1,10 @@
 # Coverage configuration for the shared tooling in jmerhar/coverage, which renders the CI
 # summary table, enforces the gate, and publishes the HTML report.
 #
-# One suite: the backend. The JSON summary is read rather than the XML coverage.py can also
-# emit, because the JSON totals are exact.
+# Two suites: the backend, and the scripts the admin pages load. The backend's JSON summary is read
+# rather than the XML coverage.py can also emit, because the JSON totals are exact. The page
+# scripts are measured by Node's built-in coverage, whose lcov bin/lcov-to-istanbul.py turns into
+# the istanbul summary and report read here; Codecov takes the lcov beside them.
 
 # The gate sits just under the measured line coverage: tight enough to catch a real
 # regression, loose enough to tolerate the odd defensive line. Raise it as coverage climbs;
@@ -14,4 +16,11 @@ label = "Backend (Python)"
 format = "coveragepy"
 report = "backend/coverage.json"
 html = "backend/htmlcov"
+gate = 98.0
+
+[suites.pages]
+label = "Page scripts (JavaScript)"
+format = "istanbul"
+report = "backend/coverage-js/coverage-summary.json"
+html = "backend/coverage-js/html"
 gate = 98.0

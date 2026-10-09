@@ -15,6 +15,7 @@ data/
 coverage.json
 coverage.xml
 htmlcov/
+backend/coverage-js/
 junit/
 .pytest_cache/
 .ruff_cache/
