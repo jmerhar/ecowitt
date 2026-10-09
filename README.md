@@ -187,12 +187,14 @@ Create it before first use if you want anything other than keeping everything.
 
 [`grafana/weather.json`](grafana/weather.json) is a dashboard for InfluxDB 3:
 
+- the alerts firing or pending from the [alert rules](#grafana-alerts);
 - current outdoor conditions;
 - whether airing would dry or dampen each room: its dew point against the outdoor one, and
   the humidity it would settle at;
 - indoor humidity, temperature, dew point and absolute humidity, room by room;
 - outdoor temperature, humidity, wind, pressure, rain and sun;
-- battery flags, sensors that have stopped changing, and the console's pressure calibration.
+- battery flags, rooms and outdoor sensors that have stopped changing, and the console's
+  pressure calibration.
 
 To install it, add an InfluxDB data source with query language **SQL**, the database this server
 writes to, and a token that can read it (`influxdb3 create token --permission
@@ -210,7 +212,7 @@ one alert per room or station:
 
 | Rule | Fires when | Severity |
 |---|---|---|
-| Good time to air | a room is at 70% humidity or more and the outdoor dew point is at least 2 °C below the room's, for 15 minutes | info |
+| Good time to air | a room is at 65% humidity or more and the outdoor dew point is at least 2 °C below the room's, for 15 minutes | info |
 | Damp room | a room has not dropped below 70% humidity in 6 hours | warning |
 | Sensor not updating | a room or outdoor sensor's readings have not changed, or not arrived, for 3 hours | warning |
 | Battery low | a sensor's low-battery flag has been set for an hour | warning |
