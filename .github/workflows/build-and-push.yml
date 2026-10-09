@@ -1,0 +1,160 @@
+name: Test and Publish
+
+on:
+  # push is limited to main because pull_request already covers branch work; triggering on
+  # both would run the whole suite twice for every pull request.
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE: ${{ github.repository }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install
+        run: pip install -e "backend[test]"
+
+      - name: Run tests with coverage
+        env:
+          # See bin/test-backend.sh: the legacy coverage core under-reports lines after
+          # `await`, and this package is async throughout.
+          COVERAGE_CORE: sysmon
+          PYTHON: python
+        run: >-
+          bin/test-backend.sh -v --cov=ecowitt --junitxml=junit/backend.xml
+          --cov-report=term-missing --cov-report=xml --cov-report=json --cov-report=html
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-backend
+          path: |
+            backend/coverage.xml
+            backend/coverage.json
+            backend/htmlcov
+            backend/junit
+          if-no-files-found: error
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Shell scripts
+        run: shellcheck bin/*.sh
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Ruff
+        run: cd backend && ruff check . && ruff format --check .
+
+      # Catches a typo in a compose file before a deployment does. The runner has Docker, so
+      # `config` resolves and validates all three combinations the README documents.
+      - name: Compose files parse
+        run: |
+          docker compose -f docker-compose.yml config -q
+          docker compose -f docker-compose.yml -f docker-compose.build.yml config -q
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml config -q
+
+  coverage:
+    needs: [test]
+    runs-on: ubuntu-latest
+    # contents: read for checkout; statuses: write to link the coverage report from the commit.
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      # Restore the report to the path coverage.toml declares (backend/coverage.json).
+      - name: Download coverage
+        uses: actions/download-artifact@v6
+        with:
+          name: coverage-backend
+          path: backend
+
+      # At-a-glance coverage on the run's summary page. The suite, its label and its gate are
+      # declared in coverage.toml; the tooling is shared by every project publishing to the
+      # coverage site.
+      - uses: jmerhar/coverage/.github/actions/summary@v1
+
+      # Codecov is informational (see codecov.yml) -- the gate below is the actual check -- so
+      # this never fails the build, and runs before the gate so the data lands even when the
+      # gate fails.
+      - uses: jmerhar/coverage/.github/actions/codecov@v1
+        if: ${{ !cancelled() }}
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          junit: backend/junit/*.xml
+
+      # Fails the build if line coverage drops below the bound in coverage.toml. publish needs
+      # this job, so a regression blocks the image.
+      - uses: jmerhar/coverage/.github/actions/gate@v1
+
+      # Only on green pushes to main; the action skips when the token is absent, so this stays
+      # green if the secret is ever missing.
+      - uses: jmerhar/coverage/.github/actions/publish@v1
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          token: ${{ secrets.COVERAGE_PAGES_TOKEN }}
+          description: HTML coverage report
+
+  publish:
+    # Only after everything is green: the image a deployment pulls is never built from code
+    # whose tests did not pass.
+    needs: [coverage, lint]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE }}
+          # A moving tag for deployments that follow the branch, and an immutable one so a
+          # specific build can always be pinned or rolled back to.
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=long
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
