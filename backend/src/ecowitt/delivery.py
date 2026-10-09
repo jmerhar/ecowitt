@@ -70,36 +70,51 @@ class Delivery:
             self._spool.quarantine_body(body)
 
     async def run(self) -> None:
-        """Replay spooled reports for ever, oldest first. Cancel the task to stop it."""
+        """Replay spooled reports for ever, oldest first. Cancel the task to stop it.
+
+        An unexpected error is logged and waited out like a failed write, never allowed to end
+        the loop: with it gone, every later report would queue with nothing to drain it.
+        """
         pause = FIRST_PAUSE_SECONDS
         while True:
-            path = self._spool.oldest()
-            if path is None:
-                pause = FIRST_PAUSE_SECONDS
-                self._wake.clear()
-                await self._wake.wait()
-                continue
             try:
-                body = self._spool.read(path)
-            except OSError, UnicodeDecodeError:
-                logger.exception("cannot read spooled report %s; setting it aside", path.name)
-                self._spool.quarantine(path)
-                continue
-
-            outcome = await self._sender.send(body)
-            self._state.record_write(outcome is Outcome.OK)
-            if outcome is Outcome.OK:
-                self._spool.ack(path)
-                self._on_written()
-                pause = FIRST_PAUSE_SECONDS
-                if not len(self._spool):
-                    logger.info("spool drained")
-            elif outcome is Outcome.REJECT:
-                self._state.record_rejected_write()
-                self._spool.quarantine(path)
-            else:
+                pause = await self._step(pause)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("replaying the spool failed; trying again in %.0f s", pause)
                 await self._sleep(pause)
                 pause = min(pause * 2, MAX_PAUSE_SECONDS)
+
+    async def _step(self, pause: float) -> float:
+        """Replay the oldest report, or wait for one; return the pause the next failure takes."""
+        path = self._spool.oldest()
+        if path is None:
+            self._wake.clear()
+            await self._wake.wait()
+            return FIRST_PAUSE_SECONDS
+        try:
+            body = self._spool.read(path)
+        except OSError, UnicodeDecodeError:
+            logger.exception("cannot read spooled report %s; setting it aside", path.name)
+            self._spool.quarantine(path)
+            return pause
+
+        outcome = await self._sender.send(body)
+        self._state.record_write(outcome is Outcome.OK)
+        if outcome is Outcome.OK:
+            self._spool.ack(path)
+            self._on_written()
+            pause = FIRST_PAUSE_SECONDS
+            if not len(self._spool):
+                logger.info("spool drained")
+        elif outcome is Outcome.REJECT:
+            self._state.record_rejected_write()
+            self._spool.quarantine(path)
+        else:
+            await self._sleep(pause)
+            pause = min(pause * 2, MAX_PAUSE_SECONDS)
+        return pause
 
     def _queue(self, body: str) -> None:
         """Add a report to the spool and wake the replay loop."""

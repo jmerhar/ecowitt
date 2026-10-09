@@ -275,3 +275,34 @@ async def test_a_refused_write_is_not_announced(spool: Spool, live: bool) -> Non
         await until(lambda: not len(spool))
 
     assert written == []
+
+
+class ExplodingSender(ScriptedSender):
+    """Raises something no outcome covers on its first send, then behaves."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.exploded = False
+
+    async def send(self, body: str) -> Outcome:
+        if not self.exploded:
+            self.exploded = True
+            self.sent.append(body)
+            raise RuntimeError("a client error the writer does not classify")
+        return await super().send(body)
+
+
+async def test_an_unexpected_error_does_not_end_the_replay_loop(
+    spool: Spool, caplog: pytest.LogCaptureFixture
+) -> None:
+    """With the loop gone, every later report would queue with nothing left to drain it."""
+    spool.enqueue("r1")
+    sender, pauses = ExplodingSender(), Pauses()
+    delivery = Delivery(sender, spool, State(), sleep=pauses)
+
+    async with replaying(delivery):
+        await until(lambda: len(spool) == 0)
+
+    assert sender.sent == ["r1", "r1"]
+    assert pauses.taken == [FIRST_PAUSE_SECONDS]
+    assert "replaying the spool failed" in caplog.text

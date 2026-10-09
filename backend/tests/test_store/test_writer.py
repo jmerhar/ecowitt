@@ -54,7 +54,7 @@ async def test_v2_writes_to_a_bucket_with_a_token_scheme(influx: StubInflux, wri
 @pytest.mark.parametrize("api", ["v3", "v2"])
 async def test_no_token_sends_no_authorization(influx: StubInflux, api: str) -> None:
     """An InfluxDB with authentication disabled needs none, and an empty header would be wrong."""
-    writer = InfluxWriter(Settings(influx_url=influx.url, influx_api=api))  # type: ignore[arg-type]
+    writer = InfluxWriter(Settings(influx_url=influx.url, influx_api=api, influx_org="home"))  # type: ignore[arg-type]
     try:
         await writer.send(LINE)
     finally:

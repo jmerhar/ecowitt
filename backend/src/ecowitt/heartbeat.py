@@ -55,11 +55,20 @@ class Heartbeat:
         self._due.set()
 
     async def run(self) -> None:
-        """Call the URL for each beat, an interval apart at most. Cancel the task to stop it."""
+        """Call the URL for each beat, an interval apart at most. Cancel the task to stop it.
+
+        An unexpected error is logged and the loop carries on: ending it would stop the calls,
+        and the monitor would report readings missing that are arriving.
+        """
         while True:
             await self._due.wait()
             self._due.clear()
-            await self.call()
+            try:
+                await self.call()
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("heartbeat to %s failed unexpectedly", self.host)
             await self._sleep(self._interval)
 
     async def call(self) -> bool:
