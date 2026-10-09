@@ -42,6 +42,7 @@ backend/src/ecowitt/
   writer.py       one write to InfluxDB 3 or 2.x, classified OK / RETRY / REJECT
   delivery.py     write now or spool; the replay loop that drains the spool
   spool.py        the bounded on-disk queue, one atomically written file per report
+  heartbeat.py    calls a push monitor's URL after writes, at most once per interval
   ratelimit.py    the ingest listener's per-address token bucket
 backend/tests/
   conftest.py     settings/state fixtures and the recorded console payloads
