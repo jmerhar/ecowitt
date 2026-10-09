@@ -26,8 +26,12 @@ hardware it talks to.</sub>
 - **Answers "should I open the windows?"** For each room it compares the indoor dew point with
   the outdoor one and works out the humidity that room would settle at after ventilating.
 - **Keeps readings through an outage.** A station has no backlog: whatever it sends while your
-  database is down is gone for ever. Writes are spooled to disk and replayed, so restarting
-  InfluxDB costs nothing.
+  database is down is gone for ever. Reports that cannot be written are spooled to disk and
+  replayed oldest first once InfluxDB answers again — across restarts of either — so restarting
+  InfluxDB costs nothing. The spool is bounded (`SPOOL_MAX_BYTES`, 100 MB by default, which is
+  days of reports) and drops the oldest first when full. A report InfluxDB refuses outright,
+  such as one with a field-type conflict, is set aside in `data/spool/rejected/` rather than
+  retried for ever.
 - **Tells stable apart from dead.** Consoles repeat a sensor's last value when its radio goes
   quiet, which looks exactly like a sensor that is not changing. Every reading carries how
   long it has been identical.
@@ -162,7 +166,8 @@ file:
 | `INGEST_HOST` / `INGEST_PORT` | `0.0.0.0` / `2551` | inside the container; keep the port equal to the published one |
 | `ADMIN_HOST` / `ADMIN_PORT` | `0.0.0.0` / `2552` | same |
 | `INGEST_RATE` / `INGEST_BURST` | `2` / `20` | requests per second per address, and the burst before that applies |
-| `DATA_DIR` | `/data` | holds `config.yaml` |
+| `DATA_DIR` | `/data` | holds `config.yaml` and the spool |
+| `SPOOL_MAX_BYTES` | `104857600` | most the spool keeps while InfluxDB is unreachable |
 | `LOG_LEVEL` | `INFO` | |
 
 Everything describing *your* stations — units, sensor names, the `PASSKEY` allowlist, the
