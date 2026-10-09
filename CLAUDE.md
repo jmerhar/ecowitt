@@ -52,8 +52,9 @@ backend/tests/
   test_store/     configuration, rate limiting, the handler, and the writer against a real
                   HTTP server standing in for InfluxDB
   js/             node:test suites for static/, against stand-in DOM and browser APIs
-grafana/          weather.json, the dashboard; test_dashboard checks its queries against the golden
-                  output, so a renamed table or field fails there rather than blanking a panel
+grafana/          weather.json, the dashboard, and alerts.json, the alert rules; test_dashboard and
+                  test_alerts check their queries against the golden output, so a renamed table or
+                  field fails there rather than blanking a panel or silencing an alert
 TODO/             one note per planned feature; delete a note when its feature ships
 bin/              every script the Makefile and CI run; its Python is linted with the backend's
                   ruff configuration (bin/ci-ruff.sh)
