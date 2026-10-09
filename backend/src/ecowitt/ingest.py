@@ -27,9 +27,10 @@ logger = logging.getLogger(__name__)
 #: but it is the reply a station is built to expect, and it reveals nothing about this server.
 OK_BODY = {"errcode": "0", "errmsg": "ok"}
 
-#: Never logged. PASSKEY identifies the station and authenticates its reports, and a log file
-#: is the easiest place for a credential to be read from.
-REDACTED_FIELDS = frozenset({"PASSKEY"})
+#: Never logged. PASSKEY identifies an Ecowitt-protocol station and authenticates its reports;
+#: PASSWORD is the Wunderground protocol's equivalent. A log file is the easiest place for a
+#: credential to be read from.
+REDACTED_FIELDS = frozenset({"PASSKEY", "PASSWORD"})
 
 
 class ReportHandler(Protocol):
