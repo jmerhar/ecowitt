@@ -17,7 +17,7 @@ from .state import State
 logger = logging.getLogger(__name__)
 
 
-def build_app(settings: Settings, state: State) -> FastAPI:
+def build_app(settings: Settings, state: State, stations: list[str] | None = None) -> FastAPI:
     """Build the admin application."""
     app = FastAPI(
         title="Ecowitt Server",
@@ -49,8 +49,16 @@ def build_app(settings: Settings, state: State) -> FastAPI:
             "uptime_seconds": round(state.uptime_seconds, 1),
             "reports_accepted": state.reports_accepted,
             "reports_rejected": state.reports_rejected,
+            "reports_rate_limited": state.reports_rate_limited,
             "seconds_since_last_report": _rounded(state.seconds_since_last_report),
             "ingest_path": settings.ingest_path,
+            # Names only: a PASSKEY is a credential and the status API never returns one.
+            "stations": list(stations or []),
+            "writes": {
+                "succeeded": state.writes_succeeded,
+                "failed": state.writes_failed,
+                "seconds_since_last_success": _rounded(state.seconds_since_last_write),
+            },
             "influx": {
                 "url": settings.influx_url,
                 "database": settings.influx_database,

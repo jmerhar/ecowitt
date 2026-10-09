@@ -43,8 +43,32 @@ docker compose up -d
 One file is all it takes; there is nothing to clone or build. `data` is created first because
 Docker would otherwise create it as root, and the container does not run as root.
 
-Then open <http://127.0.0.1:2552> and work through the setup, which asks where InfluxDB is,
-which units you keep, what your channels are called and where the station is.
+Set `INFLUX_URL` and a token in the environment (see [Configuration](#configuration)), and
+describe your station in `data/config.yaml`:
+
+```yaml
+units:            # optional; these are the defaults
+  temperature: c  # c, f
+  pressure: hpa   # hpa, inhg, mmhg
+  rain: mm        # mm, in
+  wind: kmh       # kmh, ms, mph, kn
+  distance: km    # km, mi
+stations:
+  - name: Home
+    passkey: 0123456789ABCDEF0123456789ABCDEF
+    altitude_m: 180          # enables sea-level pressure
+    sensors:                 # display names; anything unnamed keeps its identifier
+      indoor: Lounge
+      ch1: Bathroom
+```
+
+Reports from a PASSKEY that is not listed are discarded. The console sends its PASSKEY with every
+upload; a discarded one is logged by fingerprint so you can tell which console it was, but the
+PASSKEY itself never is, so read it from an upload — for example with
+`tcpdump -A -c 5 'tcp port 2551' | grep -o 'PASSKEY=[0-9A-F]*'`. Restart the container after
+editing the file. A browser-based setup page is planned.
+
+The status page is at <http://127.0.0.1:2552/api/status>.
 
 Finally, on the console — *Menu → Weather Services → Customized*:
 
@@ -137,12 +161,15 @@ file:
 | `INGEST_PATH` | `/data/report/` | both slash spellings are served |
 | `INGEST_HOST` / `INGEST_PORT` | `0.0.0.0` / `2551` | inside the container; keep the port equal to the published one |
 | `ADMIN_HOST` / `ADMIN_PORT` | `0.0.0.0` / `2552` | same |
-| `DATA_DIR` | `/data` | configuration and spool |
+| `INGEST_RATE` / `INGEST_BURST` | `2` / `20` | requests per second per address, and the burst before that applies |
+| `DATA_DIR` | `/data` | holds `config.yaml` |
 | `LOG_LEVEL` | `INFO` | |
 
-Everything describing *your* station — units, channel names, the `PASSKEY` allowlist, the site
-location — is set in the browser and kept in `data/config.yaml`, which is editable by hand.
-A value set in the environment wins, and the interface marks it as such.
+Everything describing *your* stations — units, sensor names, the `PASSKEY` allowlist, the
+altitude — is in `data/config.yaml`, shown above. Sensor names and altitude are per station,
+because `ch1` at one house is not `ch1` at another; units are shared, so one database never
+holds two stations in different units. A malformed file stops the server from starting, with
+the reason, rather than letting it run and discard every report.
 
 Both listeners bind every interface *inside the container*, where a loopback bind would be
 unreachable even through a published port. Which of them the outside world can reach is

@@ -15,10 +15,12 @@ from collections.abc import Iterable, Iterator
 
 import uvicorn
 
-from . import admin, ingest
+from . import admin, ingest, stationconfig
 from .config import Settings, get_settings
-from .ingest import LoggingHandler, ReportHandler
+from .handler import StationHandler
+from .ingest import ReportHandler
 from .state import State
+from .writer import InfluxWriter
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +63,9 @@ def stop_all(listeners: Iterable[_Listener]) -> None:
         listener.should_exit = True
 
 
-def build(settings: Settings, handler: ReportHandler, state: State) -> tuple[_Listener, _Listener]:
+def build(
+    settings: Settings, handler: ReportHandler, state: State, stations: list[str] | None = None
+) -> tuple[_Listener, _Listener]:
     """Build the two listeners."""
     ingest_listener = _Listener(
         uvicorn.Config(
@@ -79,7 +83,7 @@ def build(settings: Settings, handler: ReportHandler, state: State) -> tuple[_Li
     )
     admin_listener = _Listener(
         uvicorn.Config(
-            app=admin.build_app(settings, state),
+            app=admin.build_app(settings, state, stations),
             host=settings.admin_host,
             port=settings.admin_port,
             log_config=None,
@@ -105,10 +109,25 @@ def warn_if_admin_unauthenticated(settings: Settings) -> None:
 
 
 async def run(settings: Settings | None = None, handler: ReportHandler | None = None) -> None:
-    """Serve until a signal arrives."""
+    """Serve until a signal arrives.
+
+    Without a handler given, reports are authenticated against the configuration file and
+    written to InfluxDB. A configuration file that exists but cannot be read stops startup
+    with the reason, rather than serving with no stations and discarding every report.
+    """
     settings = settings or get_settings()
     state = State()
-    ingest_listener, admin_listener = build(settings, handler or LoggingHandler(), state)
+    stations: list[str] = []
+    writer: InfluxWriter | None = None
+    if handler is None:
+        config = stationconfig.load(settings.config_file)
+        writer = InfluxWriter(settings)
+        handler = StationHandler(config, writer, state)
+        stations = config.names
+        logger.info("stations: %s", ", ".join(stations) or "none configured")
+        if not writer.configured:
+            logger.warning("INFLUX_URL is not set: reports will be processed but not stored")
+    ingest_listener, admin_listener = build(settings, handler, state, stations)
 
     warn_if_admin_unauthenticated(settings)
 
@@ -125,12 +144,16 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
         settings.admin_host,
         settings.admin_port,
     )
-    await asyncio.gather(
-        ingest_listener.serve(),
-        admin_listener.serve(),
-        ingest_listener.notify_serving(state, "ingest_serving"),
-        admin_listener.notify_serving(state, "admin_serving"),
-    )
+    try:
+        await asyncio.gather(
+            ingest_listener.serve(),
+            admin_listener.serve(),
+            ingest_listener.notify_serving(state, "ingest_serving"),
+            admin_listener.notify_serving(state, "admin_serving"),
+        )
+    finally:
+        if writer is not None:
+            await writer.aclose()
 
 
 def main() -> None:

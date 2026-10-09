@@ -4,9 +4,8 @@
 # published image rather than naming a build context. Building from source is
 # docker-compose.build.yml, which `make up` adds.
 #
-# Everything mutable lives in ./data: the configuration the setup wizard writes and the spool
-# that holds writes while InfluxDB is unreachable. Back that directory up and there is nothing
-# else to keep.
+# Everything mutable lives in ./data, including the station configuration. Back that directory
+# up and there is nothing else to keep.
 services:
   ecowitt:
     image: ghcr.io/jmerhar/ecowitt:latest
@@ -19,9 +18,8 @@ services:
     environment:
       TZ: ${TZ:-UTC}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      # Where to store readings. The rest of the configuration -- units, channel names, the
-      # PASSKEY allowlist, the site location -- is set in the browser on first run and kept in
-      # ./data/config.yaml.
+      # Where to store readings. Everything describing the stations -- the PASSKEY allowlist,
+      # names, altitude, units -- is in ./data/config.yaml; see the README.
       INFLUX_URL: ${INFLUX_URL:-}
       INFLUX_DATABASE: ${INFLUX_DATABASE:-weather}
       INFLUX_TOKEN: ${INFLUX_TOKEN:-}
