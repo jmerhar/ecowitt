@@ -110,7 +110,17 @@ def test_malformed_body_degrades_rather_than_failing(
 
 @pytest.mark.parametrize(
     "path",
-    ["/", "/healthz", "/api/status", "/docs", "/redoc", "/openapi.json", "/status", "/setup"],
+    [
+        "/",
+        "/healthz",
+        "/api/status",
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+        "/status",
+        "/setup",
+        "/static/geolocate.js",
+    ],
 )
 def test_admin_routes_are_absent_from_the_public_listener(
     path: str, ingest_client: TestClient

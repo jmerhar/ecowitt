@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Setup · Ecowitt Server{% endblock %}
+{% block head %}<script src="/static/geolocate.js" defer></script>{% endblock %}
 {% block content %}
 {% macro value(entry, name, default="") -%}
   {%- if draft and draft.get("original", "") == (entry.name if entry else "") and name in draft -%}
@@ -67,7 +68,10 @@
     <p class="muted">Coordinates are optional. With them the altitude can be looked up, and absolute
       pressure is checked against a weather model; both send the coordinates to a public service
       (OpenTopoData or Open-Elevation, and Open-Meteo).</p>
+    <button class="secondary" type="button" data-geolocate data-lat="lat-{{ loop.index }}"
+            data-lon="lon-{{ loop.index }}" data-status="geo-{{ loop.index }}">Use this device's location</button>
     <button class="secondary" type="submit" name="action" value="lookup">Look up altitude</button>
+    <p class="muted" id="geo-{{ loop.index }}" role="status" aria-live="polite">Only useful when you are at the station.</p>
 
     <h3 style="margin-top:1.2rem">Sensor names</h3>
     <div class="row">
