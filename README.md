@@ -218,8 +218,9 @@ decided by the compose file's publish addresses.
 ```bash
 make install    # virtualenv and test extras
 make dev        # serve from the working copy
-make test       # the suite
-make check      # lint, suite, coverage gate
+make test       # the Python suite
+make test-js    # the page scripts' suite, with coverage (needs Node 22 or later)
+make check      # lint, both suites, coverage
 ```
 
 ## Licence
