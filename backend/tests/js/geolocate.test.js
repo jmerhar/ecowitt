@@ -126,3 +126,22 @@ for (const [why, nav, win] of [
     assert.match(elements["geo-1"].textContent, /needs the page to be opened over HTTPS/);
   });
 }
+
+test("loaded as a page script, it connects the page's buttons by itself", () => {
+  // A browser runs the file as a plain script, where `module` does not exist, so the file wires
+  // the page up itself. Run it that way, against the same stand-ins, to prove that path works.
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const vm = require("node:vm");
+  const file = path.join(__dirname, "../../src/ecowitt/static/geolocate.js");
+  const { doc, listeners } = page();
+
+  vm.runInNewContext(fs.readFileSync(file, "utf8"), {
+    document: doc,
+    navigator: { geolocation: geolocation(() => {}) },
+    window: { isSecureContext: true },
+  }, { filename: file });
+
+  assert.equal(listeners.length, 1);
+  assert.equal(listeners[0][0], "click");
+});
