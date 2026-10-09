@@ -5,6 +5,17 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 [Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
 says what under *Upgrading*.
 
+## 0.4.0 — 2026-10-09
+
+### Added
+
+- The status page shows wind, rain, sun and every other sensor, not only temperature and humidity.
+
+### Changed
+
+- The batteries of outdoor arrays (WS69, WS80, WS90) carry `sensor=outdoor`, so they appear with
+  the outdoor readings. A WS69's battery series stored before splits at this change.
+
 ## 0.3.0 — 2026-10-09
 
 ### Added
