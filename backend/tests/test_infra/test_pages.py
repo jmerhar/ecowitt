@@ -283,6 +283,9 @@ class TestStations:
             ({"new_sensor_id": "ch9"}, "identifier"),
             ({"sensor_BAD": "x"}, "look like"),
             ({"name": ""}, "name"),
+            ({"altitude_m": "1e308"}, "altitude"),
+            ({"altitude_m": "nan"}, "must be numbers"),
+            ({"latitude": "inf"}, "must be numbers"),
         ],
     )
     def test_invalid_edits_are_refused_with_the_reason(
@@ -577,6 +580,27 @@ class TestStatus:
 
         assert rig.client.get("/api/readings").json()["stations"][0]["pressure"] == {}
         assert "Pressure:" not in rig.client.get("/").text
+
+    @pytest.mark.parametrize("key", ["baromrelin", "baromabsin"])
+    async def test_a_report_with_one_pressure_shows_that_one(self, rig: Rig, key: str) -> None:
+        rig.store.replace(ConfigDocument(stations=[StationEntry(name="Home", passkey="K")]))
+        await rig.handler.handle({"PASSKEY": "K", "dateutc": "now", key: "29.9"}, "192.0.2.9")
+
+        page = rig.client.get("/")
+
+        assert page.status_code == 200
+        assert ("relative 1012" in page.text) is (key == "baromrelin")
+        assert ("absolute 1012" in page.text) is (key == "baromabsin")
+
+    def test_a_name_with_quotes_keeps_the_remove_confirmation(self, rig: Rig) -> None:
+        """The name is JSON-encoded into the handler, so a quote neither breaks it nor runs."""
+        rig.post("/setup/station", {"name": "Ann's x');alert(1);('", "passkey": "A"})
+
+        page = rig.client.get("/setup").text
+        (handler,) = re.findall(r"onclick='(return confirm\(.*?\))'", page)
+
+        assert "'" not in handler
+        assert handler.startswith('return confirm("Remove Ann\\u0027s x\\u0027);alert(1);(\\u0027?')
 
     async def test_a_non_numeric_correction_is_tolerated(self, rig: Rig) -> None:
         rig.store.replace(ConfigDocument(stations=[StationEntry(name="Home", passkey="K")]))

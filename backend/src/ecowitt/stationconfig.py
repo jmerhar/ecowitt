@@ -53,7 +53,9 @@ class StationEntry(BaseModel):
     name: str = Field(min_length=1)
     #: The console sends it on every report; it is the MD5 of the console's MAC address.
     passkey: str = Field(min_length=1)
-    altitude_m: float | None = None
+    #: Below the Dead Sea's shore to above the highest summit; outside it the sea-level
+    #: reduction is meaningless, and far enough outside it divides by zero.
+    altitude_m: float | None = Field(default=None, ge=-500, le=9000)
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
     sensors: dict[str, str] = Field(default_factory=dict)
