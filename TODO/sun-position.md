@@ -1,9 +1,9 @@
 # Sun position
 
-The station's coordinates are already known whenever its pressure is reduced to sea level, which
-is enough to compute where the sun is. With that, a solar radiation reading means something on its
-own: 300 W/m² is a clear evening or an overcast noon, and only the sun's elevation tells them
-apart.
+A station whose coordinates are configured -- the setup page asks for them, to look up altitude
+and check pressure calibration -- has enough to compute where the sun is. With that, a solar
+radiation reading means something on its own: 300 W/m² is a clear evening or an overcast noon,
+and only the sun's elevation tells them apart.
 
 ## Sketch
 
