@@ -1,0 +1,12 @@
+# Development overrides: the working copy's source, and verbose logging.
+#
+# The source is mounted over the installed package so an edit needs only
+# `docker compose restart ecowitt` rather than a rebuild. There is deliberately no file
+# watcher: two listeners share one event loop, and a reloader that restarts half of them is
+# more confusing than restarting the container.
+services:
+  ecowitt:
+    volumes:
+      - ./backend/src/ecowitt:/usr/local/lib/python3.14/site-packages/ecowitt:ro
+    environment:
+      LOG_LEVEL: DEBUG
