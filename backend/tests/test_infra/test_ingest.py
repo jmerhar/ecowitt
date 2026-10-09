@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Iterator
 
 import pytest
@@ -218,3 +219,80 @@ def test_the_default_budget_comes_from_settings(state: State, tmp_path) -> None:
         ]
 
     assert codes == [200, 429]
+
+
+class _Blocking:
+    """A handler that does not finish until released."""
+
+    def __init__(self) -> None:
+        self.release = asyncio.Event()
+        self.finished = False
+
+    async def handle(self, fields: dict[str, str], source: str) -> bool:
+        await self.release.wait()
+        self.finished = True
+        return True
+
+
+class _Failing:
+    async def handle(self, fields: dict[str, str], source: str) -> bool:
+        raise ZeroDivisionError("a formula met a value it cannot take")
+
+
+async def _call(app: object, sent: list[dict[str, object]]) -> None:
+    """Drive the ASGI app with one ingest POST, recording each message it sends."""
+    body = b"PASSKEY=" + FIXTURE_PASSKEY.encode() + b"&tempf=60"
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "POST",
+        "path": "/data/report/",
+        "raw_path": b"/data/report/",
+        "query_string": b"",
+        "headers": [(b"content-type", b"application/x-www-form-urlencoded")],
+        "client": ("192.0.2.1", 1234),
+        "server": ("127.0.0.1", 2551),
+        "scheme": "http",
+    }
+    messages = [{"type": "http.request", "body": body, "more_body": False}]
+
+    async def receive() -> dict[str, object]:
+        return messages.pop(0) if messages else {"type": "http.disconnect"}
+
+    async def send(message: dict[str, object]) -> None:
+        sent.append(message)
+
+    await app(scope, receive, send)  # type: ignore[operator]
+
+
+async def test_the_station_is_answered_before_its_report_is_handled(
+    settings: Settings, state: State
+) -> None:
+    """The reply must not wait on the database, nor take longer for a known PASSKEY."""
+    handler = _Blocking()
+    sent: list[dict[str, object]] = []
+    task = asyncio.create_task(_call(ingest.build_app(settings, state, handler), sent))
+
+    async with asyncio.timeout(5):
+        while not any(m["type"] == "http.response.body" for m in sent):
+            await asyncio.sleep(0.001)
+    assert sent[0]["status"] == 200
+    assert not handler.finished
+
+    handler.release.set()
+    await task
+    assert handler.finished
+    assert state.reports_accepted == 1
+
+
+async def test_a_report_that_cannot_be_handled_is_logged_and_counted(
+    settings: Settings, state: State, caplog: pytest.LogCaptureFixture
+) -> None:
+    sent: list[dict[str, object]] = []
+
+    await _call(ingest.build_app(settings, state, _Failing()), sent)
+
+    assert sent[0]["status"] == 200
+    assert state.reports_rejected == 1
+    assert "could not be processed" in caplog.text

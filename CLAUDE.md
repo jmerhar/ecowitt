@@ -79,9 +79,12 @@ bin/              every script the Makefile and CI run; its Python is linted wit
   process in `asyncio.gather` until SIGKILL. `serve.stop_all` is the single handler instead.
   `test_a_plain_uvicorn_server_would_have_claimed_them` pins the upstream behaviour, so a
   renamed hook fails loudly rather than leaving the override as dead code.
-- **A rejected report still answers `200`** with the same body as an accepted one. A station
-  cannot act on a refusal — it has no backlog to retry from — and a distinguishable response
-  would tell an anonymous caller which `PASSKEY` guesses were wrong.
+- **A rejected report still answers `200`** with the same body as an accepted one, and the
+  answer is sent before the report is handled at all (a Starlette background task). A station
+  cannot act on a refusal — it has no backlog to retry from — and a distinguishable response,
+  or one slower for a known `PASSKEY` because it waits on InfluxDB, would tell an anonymous
+  caller which guesses were right. Anything the handler raises is logged and counted as
+  rejected, since there is no response left to carry it.
 - **`PASSKEY` is never logged.** `ingest.redact` replaces it, and it is the one field the
   status API must not return. It is `MD5(MAC)` uppercased, so it is not rotatable.
 - **Bodies are streamed against a cap, not read whole.** `request.body()` would allocate

@@ -14,6 +14,7 @@ from typing import Protocol
 from urllib.parse import parse_qsl
 
 from fastapi import FastAPI
+from starlette.background import BackgroundTask
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 
@@ -94,15 +95,13 @@ def build_app(
             state.record_rejected()
             return PlainTextResponse("", status_code=413)
 
-        if await handler.handle(dict(pairs), source):
-            state.record_accepted()
-        else:
-            state.record_rejected()
-
-        # Always 200, whether or not the report was kept. A station cannot act on a refusal --
-        # it has no backlog to retry from -- and a distinguishable error would tell an
-        # anonymous caller which PASSKEY guesses were wrong.
-        return JSONResponse(OK_BODY)
+        # Always 200, whether or not the report is kept, and sent before the report is even
+        # looked at. A station cannot act on a refusal -- it has no backlog to retry from -- and
+        # a distinguishable answer, or one that takes longer for a known PASSKEY because it
+        # waits on the database, would tell an anonymous caller which guesses were right.
+        return JSONResponse(
+            OK_BODY, background=BackgroundTask(_process, handler, state, dict(pairs), source)
+        )
 
     for path in settings.ingest_paths:
         app.add_api_route(path, report, methods=["POST", "GET"], include_in_schema=False)
@@ -113,6 +112,25 @@ def build_app(
         return PlainTextResponse("", status_code=404)
 
     return app
+
+
+async def _process(
+    handler: ReportHandler, state: State, fields: dict[str, str], source: str
+) -> None:
+    """Handle one report after its answer has gone, counting what became of it.
+
+    Nothing raised here can reach the station any more, so an unexpected failure is logged and
+    counted as a rejected report rather than left to end the task unseen.
+    """
+    try:
+        kept = await handler.handle(fields, source)
+    except Exception:
+        logger.exception("report from %s could not be processed", source)
+        kept = False
+    if kept:
+        state.record_accepted()
+    else:
+        state.record_rejected()
 
 
 class LoggingHandler:
