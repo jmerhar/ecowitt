@@ -30,6 +30,7 @@ backend/src/ecowitt/
 
   admin.py        status and setup pages, the read API, the login and form checks
   templates/      the pages, Jinja2 with autoescaping
+  static/         scripts the pages load, as files so they can be tested (geolocate.js)
   auth.py         scrypt password hashes, Basic login, CSRF token and origin check
   configstore.py  the live configuration: validate, save, then apply and notify
   pending.py      unconfigured stations offered for adoption, by fingerprint
@@ -49,6 +50,7 @@ backend/tests/
   test_data/      the data path, module by module, and the golden end-to-end test
   test_store/     configuration, rate limiting, the handler, and the writer against a real
                   HTTP server standing in for InfluxDB
+  js/             node:test suites for static/, against stand-in DOM and browser APIs
 bin/              every script the Makefile and CI run
 ```
 
@@ -89,6 +91,11 @@ bin/              every script the Makefile and CI run
   automatically, so without both any site the operator visits could post forms here. A new
   form route must use `_form`; `test_no_form_from_elsewhere_changes_anything` lists every
   route and must be extended with it.
+- **Page scripts live in `static/` and are tested with `node --test`**, not inlined. They are not
+  measured by the coverage gate, which covers Python only, so a new branch in one needs a test
+  in `tests/js/` by hand. Browsers give location only to HTTPS or localhost pages, so the
+  location button explains itself instead of failing silently anywhere else -- and it fills the
+  location of the device viewing the page, which is not necessarily the station's.
 - **Adopting a station never displays its PASSKEY.** `PendingStations` keeps it in memory; the
   page refers to an entry by fingerprint. An entry leaves the list only after the station is
   saved, so a refused form or an altitude lookup leaves it there to adopt.
@@ -144,7 +151,8 @@ bin/              every script the Makefile and CI run
 make install      # virtualenv + test extras
 make dev          # serve from the working copy (ingest :2551, admin :2552)
 make test ARGS="tests/test_infra/test_ingest.py -k slash"
-make check        # lint + suite + coverage gate
+make test-js      # the page scripts' tests (needs node)
+make check        # lint + both suites + coverage gate
 UPDATE_GOLDEN=1 bin/test-backend.sh tests/test_data/test_pipeline.py   # after an intended output change
 ```
 
