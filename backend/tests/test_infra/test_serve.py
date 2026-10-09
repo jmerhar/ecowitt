@@ -7,7 +7,6 @@ import contextlib
 import logging
 import signal
 from collections.abc import AsyncIterator
-from pathlib import Path
 
 import pytest
 import uvicorn
@@ -84,28 +83,15 @@ async def _noop_app(scope: object, receive: object, send: object) -> None:
     """An ASGI app that is never called; uvicorn.Config only needs something callable."""
 
 
-def test_missing_admin_authentication_is_announced(caplog: pytest.LogCaptureFixture) -> None:
-    """Starting without admin authentication says so, since the publish is then the only gate."""
-    with caplog.at_level(logging.WARNING, logger="ecowitt.serve"):
-        warned = serve.warn_if_admin_unauthenticated(Settings(admin_port=8001))
-
-    assert warned is True
-    assert "no authentication configured" in caplog.text
-    assert "8001" in caplog.text
-
-
-def test_configured_admin_authentication_is_silent(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
+def test_the_admin_listener_warns_that_it_has_no_authentication(
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """With a login configured there is nothing to warn about."""
-    htpasswd = tmp_path / "htpasswd"
-    htpasswd.write_text("admin:x\n", encoding="utf-8")
-
+    """The publish is the only gate, so startup says where to publish it."""
     with caplog.at_level(logging.WARNING, logger="ecowitt.serve"):
-        warned = serve.warn_if_admin_unauthenticated(Settings(htpasswd_file=htpasswd))
+        serve.warn_if_admin_unauthenticated(Settings(admin_port=2552))
 
-    assert warned is False
-    assert caplog.text == ""
+    assert "no authentication" in caplog.text
+    assert "2552" in caplog.text
 
 
 def test_configure_logging_sets_the_level() -> None:

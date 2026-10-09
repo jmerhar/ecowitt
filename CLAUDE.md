@@ -63,11 +63,11 @@ bin/              every script the Makefile and CI run
 - **Bodies are streamed against a cap, not read whole.** `request.body()` would allocate
   whatever an anonymous caller chose to send; `read_capped_body` checks a declared
   Content-Length first and aborts mid-stream otherwise.
-- **The bind address is not a usable signal for "is the admin interface exposed?"** In a
-  container both listeners must bind every interface, since a loopback bind there is
-  unreachable even through a published port. `warn_if_admin_unauthenticated` keys on the thing
-  the operator controls — whether a login is configured — because a warning that fires on
-  every start is a warning that gets ignored.
+- **The admin listener has no authentication of its own**, so its host-side publish is the
+  only gate. The process cannot tell whether that publish is safe: in a container both
+  listeners must bind every interface, since a loopback bind there is unreachable even through
+  a published port. `warn_if_admin_unauthenticated` therefore states the requirement on every
+  start rather than guessing.
 - **The unit belongs in the field name** (`temp_c`, `abs_hpa`). A bare `temp` whose unit
   depends on configuration history would silently mix °F and °C in one series.
 - **Every number is written as a float**, `60.0` and never `60i`. InfluxDB fixes a field's type

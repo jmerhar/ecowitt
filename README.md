@@ -66,15 +66,15 @@ exposed on its own listener:
 | Listener | Default publish | Serves |
 |---|---|---|
 | ingest | `0.0.0.0:2551` | the configured path, and nothing else |
-| admin | `127.0.0.1:2552` | status page, setup, read API, health |
+| admin | `127.0.0.1:2552` | status page, read API, health |
 
 The admin routes are not merely *refused* on the ingest listener — they are not mounted on it,
 so no mistake in a guard can expose them. Ask the ingest port for the status page and it
 answers `404`, because there is nothing there.
 
-Keep the admin listener on loopback and reach it through a reverse proxy. If you widen that
-bind, configure a login first: set `HTPASSWD_FILE`, or add credentials in the setup wizard.
-The server says so on startup when none is configured.
+The admin listener has no login of its own, so keep it on loopback and reach it through a
+reverse proxy — one that requires a login, if anyone you do not trust can reach it. The server
+says so on every start.
 
 The ingest endpoint authenticates the station by its `PASSKEY`, which the console sends on
 every report; reports from an unlisted station are discarded. Requests are rate limited and
@@ -137,7 +137,6 @@ file:
 | `INGEST_PATH` | `/data/report/` | both slash spellings are served |
 | `INGEST_HOST` / `INGEST_PORT` | `0.0.0.0` / `8000` | inside the container |
 | `ADMIN_HOST` / `ADMIN_PORT` | `0.0.0.0` / `8001` | inside the container |
-| `HTPASSWD_FILE` | — | guards every admin route |
 | `DATA_DIR` | `/data` | configuration and spool |
 | `LOG_LEVEL` | `INFO` | |
 

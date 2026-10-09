@@ -51,7 +51,7 @@ def test_derived_paths_sit_under_the_data_directory(tmp_path: Path) -> None:
     assert settings.spool_dir == tmp_path / "spool"
 
 
-@pytest.mark.parametrize("field", ["influx_token_file", "htpasswd_file"])
+@pytest.mark.parametrize("field", ["influx_token_file"])
 def test_an_empty_optional_path_is_treated_as_unset(field: str) -> None:
     """Compose passes an unset `${VAR:-}` through as an empty string.
 
