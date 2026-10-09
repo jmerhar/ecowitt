@@ -70,7 +70,7 @@ jobs:
         run: pip install ruff
 
       - name: Ruff
-        run: cd backend && ruff check . && ruff format --check .
+        run: bin/ci-ruff.sh
 
       # Catches a typo in a compose file before a deployment does. The runner has Docker, so
       # `config` resolves and validates all three combinations the README documents.
