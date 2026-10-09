@@ -66,8 +66,9 @@ ever being shown. From then on its reports are stored; there is nothing to resta
 
 On the same page: the altitude (looked up from coordinates if you give them — or from the
 location of the device you are using, when you are at the station), what each sensor is called, the units you keep, and an optional login for these pages. The status page at
-<http://127.0.0.1:2552/> shows each room's latest readings, whether airing it would help, and
-anything wrong with the console's pressure calibration.
+<http://127.0.0.1:2552/> shows each room's latest readings and whether airing it would help, the
+wind, rain and sun, every other sensor reporting, battery states, and anything wrong with the
+console's pressure calibration.
 
 Everything the setup page writes goes to `data/config.yaml`, which can also be written by hand:
 
