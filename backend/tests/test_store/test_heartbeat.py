@@ -89,7 +89,7 @@ async def test_an_unreachable_monitor_never_logs_the_token(
     ("url", "host"),
     [
         ("https://user:pw@hc-ping.com/uuid-token", "hc-ping.com"),
-        ("http://10.0.0.5:3001/api/push/token?status=up", "10.0.0.5"),
+        ("http://192.0.2.5:3001/api/push/token?status=up", "192.0.2.5"),
         ("not a url", "?"),
     ],
 )
