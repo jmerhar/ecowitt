@@ -12,12 +12,18 @@ import logging
 from fastapi import FastAPI
 
 from .config import Settings
+from .spool import Spool
 from .state import State
 
 logger = logging.getLogger(__name__)
 
 
-def build_app(settings: Settings, state: State, stations: list[str] | None = None) -> FastAPI:
+def build_app(
+    settings: Settings,
+    state: State,
+    stations: list[str] | None = None,
+    spool: Spool | None = None,
+) -> FastAPI:
     """Build the admin application."""
     app = FastAPI(
         title="Ecowitt Server",
@@ -57,8 +63,10 @@ def build_app(settings: Settings, state: State, stations: list[str] | None = Non
             "writes": {
                 "succeeded": state.writes_succeeded,
                 "failed": state.writes_failed,
+                "rejected": state.writes_rejected,
                 "seconds_since_last_success": _rounded(state.seconds_since_last_write),
             },
+            "spool": _spool_status(state, spool),
             "influx": {
                 "url": settings.influx_url,
                 "database": settings.influx_database,
@@ -69,6 +77,21 @@ def build_app(settings: Settings, state: State, stations: list[str] | None = Non
         }
 
     return app
+
+
+def _spool_status(state: State, spool: Spool | None) -> dict[str, object] | None:
+    """What is waiting for InfluxDB, or None when this process keeps no spool."""
+    if spool is None:
+        return None
+    stats = spool.stats()
+    return {
+        "waiting": stats.files,
+        "bytes": stats.bytes,
+        "oldest_seconds": _rounded(stats.oldest_seconds),
+        "spooled_total": state.reports_spooled,
+        "dropped": spool.dropped,
+        "rejected_kept": spool.rejected_count(),
+    }
 
 
 def _rounded(value: float | None) -> float | None:

@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     ingest_rate: float = 2.0
     ingest_burst: int = 20
 
+    #: Most the spool may hold while InfluxDB is unreachable; beyond it the oldest reports are
+    #: dropped. A report is a few kilobytes, so the default keeps days of them.
+    spool_max_bytes: int = 100 * 1024 * 1024
+
     #: The console's "Path" field. Ecowitt firmware sends it with a trailing slash; both
     #: spellings are served, so either value works here.
     ingest_path: str = "/data/report/"

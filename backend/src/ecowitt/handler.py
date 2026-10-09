@@ -11,7 +11,6 @@ from typing import Protocol
 from .lineprotocol import encode
 from .pipeline import process
 from .staleness import StalenessTracker
-from .state import State
 from .stationconfig import StationConfig
 
 logger = logging.getLogger(__name__)
@@ -21,11 +20,11 @@ logger = logging.getLogger(__name__)
 MAX_ANNOUNCED_UNKNOWN = 100
 
 
-class Writer(Protocol):
-    """Somewhere encoded rows can be written."""
+class Sink(Protocol):
+    """Where encoded rows go: written now, or kept until they can be."""
 
-    async def write(self, body: str) -> bool:
-        """Write rows, returning whether they were accepted."""
+    async def submit(self, body: str) -> None:
+        """Accept one report's rows for delivery."""
 
 
 class StationHandler:
@@ -34,14 +33,12 @@ class StationHandler:
     def __init__(
         self,
         config: StationConfig,
-        writer: Writer,
-        state: State,
+        sink: Sink,
         *,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         self._config = config
-        self._writer = writer
-        self._state = state
+        self._sink = sink
         self._clock = clock
         self._tracker = StalenessTracker()
         self._announced: set[str] = set()
@@ -49,8 +46,8 @@ class StationHandler:
     async def handle(self, fields: Mapping[str, str], source: str) -> bool:
         """Process one report, returning whether it came from a configured station.
 
-        A report from a configured station counts as accepted even if the write then fails: it
-        was authentic, and the failure is the database's, recorded separately.
+        A report from a configured station counts as accepted whatever then becomes of the
+        write: it was authentic, and delivery records its own outcome.
         """
         passkey = fields.get("PASSKEY", "")
         station = self._config.lookup(passkey)
@@ -65,8 +62,7 @@ class StationHandler:
             preferences=station.preferences,
             tracker=self._tracker,
         )
-        written = await self._writer.write(encode(points))
-        self._state.record_write(written)
+        await self._sink.submit(encode(points))
         return True
 
     def _announce_unknown(self, passkey: str, source: str) -> None:
