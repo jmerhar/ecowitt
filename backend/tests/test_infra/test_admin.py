@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from ecowitt import admin
@@ -138,3 +139,23 @@ def test_a_configured_host_name_is_answered(tmp_path: Path) -> None:
         base_url="https://wx.example", app=admin.build_app(admin.AdminContext(settings, State()))
     ) as client:
         assert client.get("/").status_code == 200
+
+
+@pytest.mark.parametrize(
+    ("url", "shown"),
+    [
+        ("http://writer:s3cr3t@influx:8181", "http://influx:8181"),
+        ("https://user@[::1]:8181/x", "https://[::1]:8181/x"),
+        ("http://influx:8181", "http://influx:8181"),
+    ],
+)
+def test_status_never_returns_credentials_in_the_influx_url(
+    state: State, tmp_path: Path, url: str, shown: str
+) -> None:
+    settings = Settings(data_dir=tmp_path, influx_url=url)
+    with TestClient(
+        base_url="http://localhost", app=admin.build_app(admin.AdminContext(settings, state))
+    ) as client:
+        body = client.get("/api/status").json()
+
+    assert body["influx"]["url"] == shown

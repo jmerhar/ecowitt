@@ -11,13 +11,14 @@ except `/healthz` is behind the optional login once one is set.
 from __future__ import annotations
 
 import logging
+import math
 import re
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qsl, urlencode
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import httpx2
 from fastapi import FastAPI
@@ -342,7 +343,7 @@ def _status(context: AdminContext) -> dict[str, object]:
         },
         "spool": _spool_status(state, context.spool),
         "influx": {
-            "url": settings.influx_url,
+            "url": _without_credentials(settings.influx_url),
             "database": settings.influx_database,
             "api": settings.influx_api,
             # Whether a token is present, never the token itself.
@@ -766,7 +767,24 @@ def _render(
 def _optional_float(text: str | None) -> float | None:
     """A number from a form field, or None when it was left empty."""
     text = (text or "").strip().replace(",", ".")
-    return float(text) if text else None
+    if not text:
+        return None
+    value = float(text)
+    if not math.isfinite(value):
+        raise ValueError(f"{text!r} is not a number")
+    return value
+
+
+def _without_credentials(url: str) -> str:
+    """A URL with any `user:password@` removed, for showing."""
+    parts = urlsplit(url)
+    if not parts.username and not parts.password:
+        return url
+    host = parts.hostname or ""
+    if ":" in host:
+        host = f"[{host}]"
+    netloc = host + (f":{parts.port}" if parts.port else "")
+    return urlunsplit(parts._replace(netloc=netloc))
 
 
 def _validation_message(exc: ValidationError) -> str:
