@@ -16,8 +16,10 @@ backend/src/ecowitt/
   http.py         read_capped_body, shared by both
   state.py        in-process counters both listeners see
   healthcheck.py  module entrypoint for the container's HEALTHCHECK
+  __main__.py     `python -m ecowitt`: configure logging and serve
 
   pipeline.py     report fields -> rows: parse, derive, render   <- the data path
+  readings.py     Reading, the canonical-unit value parse produces and derive consumes
   fields.py       the declarative table: which key is stored where, in what unit
   parse.py        fields -> readings in canonical units (°C, hPa, mm, m/s, km); never raises
   derive.py       moisture, ventilation, sea-level pressure, staleness
@@ -52,6 +54,8 @@ backend/tests/
   test_store/     configuration, rate limiting, the handler, and the writer against a real
                   HTTP server standing in for InfluxDB
   js/             node:test suites for static/, against stand-in DOM and browser APIs
+  test_tooling/   the scripts in bin/ that have logic of their own
+  test_data/grafana_sql.py  the table and field checks the Grafana tests share
 grafana/          weather.json, the dashboard, and alerts.json, the alert rules; test_dashboard and
                   test_alerts check their queries against the golden output, so a renamed table or
                   field fails there rather than blanking a panel or silencing an alert
@@ -104,9 +108,10 @@ bin/              every script the Makefile and CI run; its Python is linted wit
   coverage measures them -- no npm packages -- and `bin/lcov-to-istanbul.py` turns its lcov into
   the istanbul files the shared tooling reads, so they are the `pages` suite in `coverage.toml`
   with its own gate. A script that runs itself in a browser has a path Node never takes when it
-  `require`s the file; `geolocate.test.js` runs it through `vm` as a plain script to cover it. Browsers give location only to HTTPS or localhost pages, so the
-  location button explains itself instead of failing silently anywhere else -- and it fills the
-  location of the device viewing the page, which is not necessarily the station's.
+  `require`s the file; `geolocate.test.js` runs it through `vm` as a plain script to cover it.
+  Browsers give location only to HTTPS or localhost pages, so the location button explains
+  itself instead of failing silently anywhere else -- and it fills the location of the device
+  viewing the page, which is not necessarily the station's.
 - **Adopting a station never displays its PASSKEY.** `PendingStations` keeps it in memory; the
   page refers to an entry by fingerprint. An entry leaves the list only after the station is
   saved, so a refused form or an altitude lookup leaves it there to adopt.
@@ -173,8 +178,9 @@ UPDATE_GOLDEN=1 bin/test-backend.sh tests/test_data/test_pipeline.py   # after a
 - Recorded console payloads live in `tests/fixtures/`, as the station sends them — one line,
   form-encoded, unmodified apart from the `PASSKEY`, which is a placeholder. A real one
   authenticates a station's reports and belongs in no repository. Names and altitudes in tests
-  are invented for the same reason.
-- `fixtures/hp2551_indoor.lp` is the golden output for that payload. A diff in it is a change of
+  are invented for the same reason, and `hp2551_ws69.txt` has its relative pressure set equal to
+  its absolute one, since the difference between them gives away the site's altitude.
+- Each payload's `.lp` file is its golden output. A diff in it is a change of
   output to review line by line, not a file to regenerate and commit unread; the values behind it
   are pinned independently by `test_units` and `test_psychro`, which check against published
   reference tables rather than against this code.

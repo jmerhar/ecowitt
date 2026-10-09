@@ -84,8 +84,8 @@ def build_app(
             state.record_rejected()
             return PlainTextResponse("", status_code=413)
 
-        # The Ecowitt protocol posts form-encoded fields; the Wunderground variant puts the
-        # same names in the query string, and both are accepted. parse_qsl is total -- it
+        # The Ecowitt protocol posts form-encoded fields; fields in the query string are read
+        # too, for consoles and tools that send a GET. parse_qsl is total -- it
         # yields what it can and never raises -- so a malformed body degrades to fewer fields
         # rather than to a 500.
         pairs = parse_qsl(body.decode("utf-8", errors="replace"), keep_blank_values=True)

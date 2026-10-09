@@ -14,8 +14,8 @@ hardware it talks to.</sub>
 
 ## What it does
 
-- **Receives what the console sends**, over the Ecowitt protocol or the Wunderground one, by
-  POST or GET, and stores all of it. Unrecognised fields are stored too, under their original
+- **Receives what the console sends**, over the Ecowitt protocol ("Same As Ecowitt"), and
+  stores all of it. Unrecognised fields are stored too, under their original
   names, so a sensor this server has never heard of still produces data.
 - **Converts to the units you keep**, chosen per quantity. The unit is part of each field's
   name, so changing your mind later adds fields instead of silently mixing °C into a column of
@@ -41,14 +41,27 @@ hardware it talks to.</sub>
 ```bash
 mkdir -p ecowitt/data && cd ecowitt
 curl -O https://raw.githubusercontent.com/jmerhar/ecowitt/main/docker-compose.yml
+cat > .env <<EOF
+INFLUX_URL=http://influxdb:8181
+INFLUX_TOKEN=your-write-token
+ECOWITT_UID=$(id -u)
+ECOWITT_GID=$(id -g)
+EOF
 docker compose up -d
 ```
 
-One file is all it takes; there is nothing to clone or build. `data` is created first because
-Docker would otherwise create it as root, and the container does not run as root.
+One file is all it takes; there is nothing to clone or build. Compose reads `.env` when it
+starts the container, so settings go there first (all of them are in
+[Configuration](#configuration)); change one later and run `docker compose up -d` again.
 
-Set `INFLUX_URL` and a token in the environment (see [Configuration](#configuration)). Then, on
-the console — *Menu → Weather Services → Customized*:
+- **`data` is created first** because Docker would otherwise create it as root.
+- **The container runs as `ECOWITT_UID`:`ECOWITT_GID`** (1000:1000 if unset), which must be
+  able to write `data`.
+- **The InfluxDB token needs write access** to the database. On InfluxDB 3 Enterprise:
+  `influxdb3 create token --permission "db:weather:read,write" --name ecowitt`. InfluxDB 3 Core
+  issues only admin tokens.
+
+Then, on the console — *Menu → Weather Services → Customized*:
 
 | Field | Value |
 |---|---|
@@ -59,7 +72,9 @@ the console — *Menu → Weather Services → Customized*:
 | Path | `/data/report/` |
 | Interval | see below |
 
-Open <http://127.0.0.1:2552/setup>. Within one upload interval the console appears under
+Open <http://127.0.0.1:2552/setup> on the host running the server. From another machine, use a
+reverse proxy (see [Two ports](#two-ports-and-why-it-matters)) or a tunnel,
+`ssh -L 2552:127.0.0.1:2552 that-host`. Within one upload interval the console appears under
 *Stations reporting, not configured*, by model and fingerprint; give it a name and adopt it.
 Its PASSKEY — the credential every upload carries — is copied into the configuration without
 ever being shown. From then on its reports are stored; there is nothing to restart.
@@ -250,21 +265,34 @@ file:
 
 | Variable | Default | |
 |---|---|---|
-| `INFLUX_URL` | — | e.g. `http://influxdb:8181` |
+| `INFLUX_URL` | — | e.g. `http://influxdb:8181`; a malformed one stops startup |
 | `INFLUX_DATABASE` | `weather` | |
-| `INFLUX_TOKEN` / `INFLUX_TOKEN_FILE` | — | the file form reads a Docker secret |
+| `INFLUX_TOKEN` / `INFLUX_TOKEN_FILE` | — | the file form reads a Docker secret, which you add to the compose file under `secrets:` |
 | `INFLUX_API` | `v3` | `v3` writes line protocol to `/api/v3/write_lp`; `v2` to `/api/v2/write` |
-| `INFLUX_ORG` | — | InfluxDB 2.x only |
+| `INFLUX_ORG` | — | required with `INFLUX_API=v2`; InfluxDB 2.x only |
 | `INGEST_PATH` | `/data/report/` | both slash spellings are served |
 | `INGEST_HOST` / `INGEST_PORT` | `0.0.0.0` / `2551` | inside the container; keep the port equal to the published one |
 | `ADMIN_HOST` / `ADMIN_PORT` | `0.0.0.0` / `2552` | same |
 | `ADMIN_HOSTS` | `localhost,127.0.0.1,::1` | host names the admin listener answers to; `*` for any |
 | `INGEST_RATE` / `INGEST_BURST` | `2` / `20` | requests per second per address, and the burst before that applies |
-| `DATA_DIR` | `/data` | holds `config.yaml` and the spool |
+| `DATA_DIR` | `/data` | holds `config.yaml`, the spool, and `secret.key`, which signs the admin forms |
 | `SPOOL_MAX_BYTES` | `104857600` | most the spool keeps while InfluxDB is unreachable |
 | `HEARTBEAT_URL` / `HEARTBEAT_URL_FILE` | — | a push monitor's URL, called after readings are written; see below |
 | `HEARTBEAT_INTERVAL_SECONDS` | `60` | the least time between two heartbeat calls |
 | `LOG_LEVEL` | `INFO` | |
+| `REFERENCE_INTERVAL_SECONDS` | `1800` | how often a located station's model surface pressure is fetched |
+| `OPEN_METEO_URL`, `OPENTOPODATA_URL`, `OPEN_ELEVATION_URL` | the public services | the model pressure and elevation lookups, for a mirror or an air-gapped host |
+
+The shipped compose file passes all of these through except the last two rows, the listeners'
+bind addresses and `DATA_DIR`, which the container fixes; add those to its `environment:` to
+change them. It also reads a few of its own:
+
+| Variable | Default | |
+|---|---|---|
+| `ECOWITT_UID` / `ECOWITT_GID` | `1000` / `1000` | the user the container runs as; it must be able to write `data` |
+| `ECOWITT_INGEST_BIND` / `ECOWITT_INGEST_PORT` | `0.0.0.0` / `2551` | where the ingest listener is published |
+| `ECOWITT_ADMIN_BIND` / `ECOWITT_ADMIN_PORT` | `127.0.0.1` / `2552` | where the admin listener is published |
+| `TZ` | `UTC` | the container's time zone, for log timestamps |
 
 Everything describing *your* stations — units, sensor names, the `PASSKEY` allowlist, the
 altitude — is in `data/config.yaml`, shown above. Sensor names and altitude are per station,
