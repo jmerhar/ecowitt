@@ -53,19 +53,48 @@
   "panels": [
     {
       "id": 1,
+      "type": "alertlist",
+      "title": "Alerts",
+      "description": "Alerts firing or about to fire, from the rules labelled app=ecowitt.",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 4
+      },
+      "options": {
+        "viewMode": "list",
+        "groupMode": "default",
+        "groupBy": [],
+        "maxItems": 20,
+        "sortOrder": 1,
+        "dashboardAlerts": false,
+        "alertName": "",
+        "alertInstanceLabelFilter": "{app=\"ecowitt\"}",
+        "stateFilter": {
+          "firing": true,
+          "pending": true,
+          "noData": false,
+          "normal": false,
+          "error": true
+        }
+      }
+    },
+    {
+      "id": 2,
       "type": "row",
       "title": "Outside now",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 0,
+        "y": 4,
         "w": 24,
         "h": 1
       },
       "panels": []
     },
     {
-      "id": 2,
+      "id": 3,
       "type": "stat",
       "title": "Temperature",
       "datasource": {
@@ -74,7 +103,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 1,
+        "y": 5,
         "w": 4,
         "h": 4
       },
@@ -140,7 +169,7 @@
       }
     },
     {
-      "id": 3,
+      "id": 4,
       "type": "stat",
       "title": "Humidity",
       "datasource": {
@@ -149,7 +178,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 1,
+        "y": 5,
         "w": 4,
         "h": 4
       },
@@ -203,7 +232,7 @@
       }
     },
     {
-      "id": 4,
+      "id": 5,
       "type": "stat",
       "title": "Dew point",
       "datasource": {
@@ -212,7 +241,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 1,
+        "y": 5,
         "w": 4,
         "h": 4
       },
@@ -267,7 +296,7 @@
       "description": "The outdoor air's moisture content. Airing dries a room only when this is below the room's own dew point."
     },
     {
-      "id": 5,
+      "id": 6,
       "type": "stat",
       "title": "Wind",
       "datasource": {
@@ -276,7 +305,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 1,
+        "y": 5,
         "w": 4,
         "h": 4
       },
@@ -330,7 +359,7 @@
       }
     },
     {
-      "id": 6,
+      "id": 7,
       "type": "stat",
       "title": "Gust",
       "datasource": {
@@ -339,7 +368,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 1,
+        "y": 5,
         "w": 4,
         "h": 4
       },
@@ -393,7 +422,7 @@
       }
     },
     {
-      "id": 7,
+      "id": 8,
       "type": "stat",
       "title": "Direction",
       "datasource": {
@@ -402,7 +431,7 @@
       },
       "gridPos": {
         "x": 20,
-        "y": 1,
+        "y": 5,
         "w": 4,
         "h": 4
       },
@@ -628,7 +657,7 @@
       "description": "Ten-minute average wind direction, the direction the wind blows from."
     },
     {
-      "id": 8,
+      "id": 9,
       "type": "stat",
       "title": "Pressure",
       "datasource": {
@@ -637,7 +666,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 5,
+        "y": 9,
         "w": 3,
         "h": 4
       },
@@ -691,7 +720,7 @@
       }
     },
     {
-      "id": 9,
+      "id": 10,
       "type": "stat",
       "title": "Trend",
       "datasource": {
@@ -700,7 +729,7 @@
       },
       "gridPos": {
         "x": 3,
-        "y": 5,
+        "y": 9,
         "w": 3,
         "h": 4
       },
@@ -767,7 +796,7 @@
       "description": "Sea-level pressure now against three hours ago. A fall of more than 3 hPa usually means a front is approaching."
     },
     {
-      "id": 10,
+      "id": 11,
       "type": "stat",
       "title": "Sun",
       "datasource": {
@@ -776,7 +805,7 @@
       },
       "gridPos": {
         "x": 6,
-        "y": 5,
+        "y": 9,
         "w": 4,
         "h": 4
       },
@@ -830,7 +859,7 @@
       }
     },
     {
-      "id": 11,
+      "id": 12,
       "type": "stat",
       "title": "UV",
       "datasource": {
@@ -839,7 +868,7 @@
       },
       "gridPos": {
         "x": 10,
-        "y": 5,
+        "y": 9,
         "w": 2,
         "h": 4
       },
@@ -909,7 +938,7 @@
       }
     },
     {
-      "id": 12,
+      "id": 13,
       "type": "stat",
       "title": "Rain rate",
       "datasource": {
@@ -918,7 +947,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 5,
+        "y": 9,
         "w": 3,
         "h": 4
       },
@@ -976,7 +1005,7 @@
       }
     },
     {
-      "id": 13,
+      "id": 14,
       "type": "stat",
       "title": "Rain",
       "datasource": {
@@ -985,7 +1014,7 @@
       },
       "gridPos": {
         "x": 15,
-        "y": 5,
+        "y": 9,
         "w": 9,
         "h": 4
       },
@@ -1044,20 +1073,20 @@
       }
     },
     {
-      "id": 14,
+      "id": 15,
       "type": "row",
       "title": "Airing: should the windows be open?",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 9,
+        "y": 13,
         "w": 24,
         "h": 1
       },
       "panels": []
     },
     {
-      "id": 15,
+      "id": 16,
       "type": "table",
       "title": "Airing now",
       "datasource": {
@@ -1066,7 +1095,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 10,
+        "y": 14,
         "w": 24,
         "h": 11
       },
@@ -1260,7 +1289,7 @@
       "description": "For each room: its dew point against the outdoor one, and the humidity it would settle at if its air were replaced with outside air at the room's temperature. Green means airing would dry the room, red that it would add moisture."
     },
     {
-      "id": 16,
+      "id": 17,
       "type": "timeseries",
       "title": "Dew point above outside",
       "datasource": {
@@ -1269,7 +1298,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 21,
+        "y": 25,
         "w": 24,
         "h": 9
       },
@@ -1345,20 +1374,20 @@
       "description": "Room dew point minus outdoor dew point. Above the shaded band airing dries the room; below it, airing brings moisture in."
     },
     {
-      "id": 17,
+      "id": 18,
       "type": "row",
       "title": "Indoor",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 30,
+        "y": 34,
         "w": 24,
         "h": 1
       },
       "panels": []
     },
     {
-      "id": 18,
+      "id": 19,
       "type": "timeseries",
       "title": "Humidity",
       "datasource": {
@@ -1367,7 +1396,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 31,
+        "y": 35,
         "w": 24,
         "h": 9
       },
@@ -1452,7 +1481,7 @@
       "description": "Shading marks the usual comfort range of 40-60%; mould becomes likely when a room stays above 70%."
     },
     {
-      "id": 19,
+      "id": 20,
       "type": "timeseries",
       "title": "Temperature",
       "datasource": {
@@ -1461,7 +1490,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 40,
+        "y": 44,
         "w": 24,
         "h": 9
       },
@@ -1516,7 +1545,7 @@
       }
     },
     {
-      "id": 20,
+      "id": 21,
       "type": "timeseries",
       "title": "Dew point",
       "datasource": {
@@ -1525,7 +1554,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 49,
+        "y": 53,
         "w": 24,
         "h": 9
       },
@@ -1627,7 +1656,7 @@
       "description": "Each room's dew point, with the outdoor one dashed. The room whose line sits highest above it gains most from airing."
     },
     {
-      "id": 21,
+      "id": 22,
       "type": "timeseries",
       "title": "Absolute humidity",
       "datasource": {
@@ -1636,7 +1665,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 58,
+        "y": 62,
         "w": 24,
         "h": 9
       },
@@ -1692,20 +1721,20 @@
       "description": "Water vapour per cubic metre of air. Unlike relative humidity it does not change with temperature, so rooms can be compared directly."
     },
     {
-      "id": 22,
+      "id": 23,
       "type": "row",
       "title": "Outdoor",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 67,
+        "y": 71,
         "w": 24,
         "h": 1
       },
       "panels": []
     },
     {
-      "id": 23,
+      "id": 24,
       "type": "timeseries",
       "title": "Temperature and dew point",
       "datasource": {
@@ -1714,7 +1743,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 68,
+        "y": 72,
         "w": 12,
         "h": 8
       },
@@ -1805,7 +1834,7 @@
       }
     },
     {
-      "id": 24,
+      "id": 25,
       "type": "timeseries",
       "title": "Humidity",
       "datasource": {
@@ -1814,7 +1843,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 68,
+        "y": 72,
         "w": 12,
         "h": 8
       },
@@ -1865,7 +1894,7 @@
       }
     },
     {
-      "id": 25,
+      "id": 26,
       "type": "timeseries",
       "title": "Wind",
       "datasource": {
@@ -1874,7 +1903,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 76,
+        "y": 80,
         "w": 12,
         "h": 8
       },
@@ -1940,7 +1969,7 @@
       }
     },
     {
-      "id": 26,
+      "id": 27,
       "type": "timeseries",
       "title": "Wind direction",
       "datasource": {
@@ -1949,7 +1978,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 76,
+        "y": 80,
         "w": 12,
         "h": 8
       },
@@ -1996,7 +2025,7 @@
       "description": "Ten-minute average direction the wind blows from: 0° north, 90° east, 180° south, 270° west."
     },
     {
-      "id": 27,
+      "id": 28,
       "type": "timeseries",
       "title": "Pressure",
       "datasource": {
@@ -2005,7 +2034,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 84,
+        "y": 88,
         "w": 12,
         "h": 8
       },
@@ -2054,7 +2083,7 @@
       "description": "Reduced to sea level from the absolute reading, the station's altitude and the outdoor temperature."
     },
     {
-      "id": 28,
+      "id": 29,
       "type": "timeseries",
       "title": "Rain",
       "datasource": {
@@ -2063,7 +2092,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 84,
+        "y": 88,
         "w": 12,
         "h": 8
       },
@@ -2171,7 +2200,7 @@
       }
     },
     {
-      "id": 29,
+      "id": 30,
       "type": "timeseries",
       "title": "Sun",
       "datasource": {
@@ -2180,7 +2209,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 92,
+        "y": 96,
         "w": 24,
         "h": 8
       },
@@ -2284,20 +2313,20 @@
       }
     },
     {
-      "id": 30,
+      "id": 31,
       "type": "row",
       "title": "Station",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 100,
+        "y": 104,
         "w": 24,
         "h": 1
       },
       "panels": []
     },
     {
-      "id": 31,
+      "id": 32,
       "type": "stat",
       "title": "Last report",
       "datasource": {
@@ -2306,7 +2335,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 101,
+        "y": 105,
         "w": 4,
         "h": 7
       },
@@ -2369,7 +2398,7 @@
       "description": "Time since the console's last accepted report."
     },
     {
-      "id": 32,
+      "id": 33,
       "type": "table",
       "title": "Sensors",
       "datasource": {
@@ -2378,7 +2407,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 101,
+        "y": 105,
         "w": 10,
         "h": 15
       },
@@ -2392,7 +2421,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH names AS (SELECT sensor, last_value(name ORDER BY time) AS room FROM derived WHERE station = '${station}' AND $__timeFilter(time) GROUP BY sensor),\nbat AS (SELECT sensor, last_value(low ORDER BY time) AS low, max(time) AS seen\n  FROM battery WHERE station = '${station}' AND $__timeFilter(time) GROUP BY sensor),\nlatest AS (SELECT max(seen) AS seen FROM bat),\nstale AS (SELECT sensor, last_value(unchanged_s ORDER BY time) AS unchanged\n  FROM derived WHERE station = '${station}' AND $__timeFilter(time) AND unchanged_s IS NOT NULL\n  AND sensor <> 'rain' GROUP BY sensor),\nids AS (SELECT b.sensor FROM bat b CROSS JOIN latest l\n  WHERE b.seen >= l.seen - interval '10 minutes'\n  UNION SELECT sensor FROM stale)\nSELECT CASE WHEN n.room IS NULL OR n.room = i.sensor THEN initcap(i.sensor)\n  ELSE n.room END AS \"Sensor\",\n  b.low AS \"Battery\", s.unchanged AS \"Unchanged\"\nFROM ids i LEFT JOIN names n ON n.sensor = i.sensor\n  LEFT JOIN bat b ON b.sensor = i.sensor LEFT JOIN stale s ON s.sensor = i.sensor\nORDER BY s.unchanged DESC NULLS LAST",
+          "rawSql": "WITH names AS (SELECT sensor, last_value(name ORDER BY time) AS room FROM derived WHERE station = '${station}' AND $__timeFilter(time) GROUP BY sensor),\nbat AS (SELECT sensor, last_value(low ORDER BY time) AS low, max(time) AS seen\n  FROM battery WHERE station = '${station}' AND $__timeFilter(time) GROUP BY sensor),\nlatest AS (SELECT max(seen) AS seen FROM bat),\nstale AS (SELECT sensor, last_value(unchanged_s ORDER BY time) AS unchanged\n  FROM derived WHERE station = '${station}' AND $__timeFilter(time) AND unchanged_s IS NOT NULL\n  AND (sensor IN ('indoor', 'outdoor') OR sensor LIKE 'ch%') GROUP BY sensor),\nids AS (SELECT b.sensor FROM bat b CROSS JOIN latest l\n  WHERE b.seen >= l.seen - interval '10 minutes'\n  UNION SELECT sensor FROM stale)\nSELECT CASE WHEN n.room IS NULL OR n.room = i.sensor THEN initcap(i.sensor)\n  ELSE n.room END AS \"Sensor\",\n  b.low AS \"Battery\", s.unchanged AS \"Unchanged\"\nFROM ids i LEFT JOIN names n ON n.sensor = i.sensor\n  LEFT JOIN bat b ON b.sensor = i.sensor LEFT JOIN stale s ON s.sensor = i.sensor\nORDER BY s.unchanged DESC NULLS LAST",
           "refId": "A"
         }
       ],
@@ -2472,11 +2501,11 @@
                     },
                     {
                       "color": "orange",
-                      "value": 600
+                      "value": 3600
                     },
                     {
                       "color": "red",
-                      "value": 1800
+                      "value": 10800
                     }
                   ]
                 }
@@ -2495,10 +2524,10 @@
         "showHeader": true,
         "cellHeight": "sm"
       },
-      "description": "Each sensor's latest low-battery flag, and how long its readings have stayed identical. The console repeats a sensor's last value when its radio goes quiet, so a long time unchanged usually means a lost or dead sensor. Rain is left out of that, since it stays unchanged whenever it is dry; sensors that stopped reporting their battery earlier in the range are left out entirely."
+      "description": "Each sensor's latest low-battery flag, and how long the rooms' and the outdoor sensor's readings have stayed identical. The console repeats a sensor's last value when its radio goes quiet, so a long time unchanged usually means a lost or dead sensor; the Sensor not updating alert fires at 3 hours. Solar, wind and rain are left out, since each can sit unchanged for hours (all night, in a calm, whenever it is dry), and so are sensors that stopped reporting their battery earlier in the range."
     },
     {
-      "id": 33,
+      "id": 34,
       "type": "timeseries",
       "title": "Pressure calibration",
       "datasource": {
@@ -2507,7 +2536,7 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 101,
+        "y": 105,
         "w": 10,
         "h": 15
       },
@@ -2576,7 +2605,7 @@
       "description": "The console's relative pressure minus this server's reduction of its absolute reading at the standard atmosphere's temperature. Near zero means the console's altitude setting is right."
     },
     {
-      "id": 34,
+      "id": 35,
       "type": "stat",
       "title": "Interval",
       "datasource": {
@@ -2585,7 +2614,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 108,
+        "y": 112,
         "w": 4,
         "h": 8
       },
