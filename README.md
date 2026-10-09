@@ -135,8 +135,8 @@ file:
 | `INFLUX_API` | `v3` | `v3` writes line protocol to `/api/v3/write_lp`; `v2` to `/api/v2/write` |
 | `INFLUX_ORG` | — | InfluxDB 2.x only |
 | `INGEST_PATH` | `/data/report/` | both slash spellings are served |
-| `INGEST_HOST` / `INGEST_PORT` | `0.0.0.0` / `8000` | inside the container |
-| `ADMIN_HOST` / `ADMIN_PORT` | `0.0.0.0` / `8001` | inside the container |
+| `INGEST_HOST` / `INGEST_PORT` | `0.0.0.0` / `2551` | inside the container; keep the port equal to the published one |
+| `ADMIN_HOST` / `ADMIN_PORT` | `0.0.0.0` / `2552` | same |
 | `DATA_DIR` | `/data` | configuration and spool |
 | `LOG_LEVEL` | `INFO` | |
 

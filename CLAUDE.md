@@ -100,7 +100,7 @@ bin/              every script the Makefile and CI run
 
 ```bash
 make install      # virtualenv + test extras
-make dev          # serve from the working copy (ingest :8000, admin :8001)
+make dev          # serve from the working copy (ingest :2551, admin :2552)
 make test ARGS="tests/test_infra/test_ingest.py -k slash"
 make check        # lint + suite + coverage gate
 UPDATE_GOLDEN=1 bin/test-backend.sh tests/test_data/test_pipeline.py   # after an intended output change
