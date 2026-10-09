@@ -21,7 +21,7 @@
               "datasourceUid": "weather",
               "model": {
                 "refId": "A",
-                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(name ORDER BY time) AS room,\n  last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(dewpoint_delta_c ORDER BY time) AS delta\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station, rh.sensor, rh.room,\n  CASE WHEN rh.rh >= 70 THEN vent.delta ELSE -99 END AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor",
+                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(name ORDER BY time) AS room,\n  last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(dewpoint_delta_c ORDER BY time) AS delta\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station, rh.sensor, rh.room,\n  CASE WHEN rh.rh >= 65 THEN vent.delta ELSE -99 END AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor",
                 "rawQuery": true,
                 "editorMode": "code",
                 "format": "table",
@@ -73,7 +73,7 @@
           "for": "15m",
           "annotations": {
             "summary": "{{ $labels.room }} is at {{ humanize $values.B.Value }}% humidity, and the outside air's dew point is {{ printf \"%.1f\" $values.A.Value }} °C lower: airing would dry it.",
-            "description": "A room at 70% humidity or more, with the outdoor dew point at least 2 °C below the room's, for 15 minutes."
+            "description": "A room at 65% humidity or more, with the outdoor dew point at least 2 °C below the room's, for 15 minutes."
           },
           "labels": {
             "app": "ecowitt",
