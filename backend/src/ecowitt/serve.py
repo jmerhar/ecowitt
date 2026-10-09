@@ -48,12 +48,22 @@ class _Listener(uvicorn.Server):
         setattr(state, attribute, True)
 
 
+#: Libraries that log every request at INFO. A station reports every few seconds, so at the
+#: default level each would add a line per report, for ever; their warnings still get through.
+CHATTY_LOGGERS = ("httpx2", "httpcore2")
+
+
 def configure_logging(level: str) -> None:
     """Send the application's logs to stderr at the configured level."""
     logging.basicConfig(
         level=level.upper(),
         format="%(asctime)s %(levelname)-8s %(name)s  %(message)s",
     )
+    # From the argument rather than read back from the root logger: basicConfig does nothing
+    # when the root logger already has handlers, so the root level is not a reliable echo.
+    configured = logging.getLevelNamesMapping()[level.upper()]
+    for name in CHATTY_LOGGERS:
+        logging.getLogger(name).setLevel(max(logging.WARNING, configured))
 
 
 def stop_all(listeners: Iterable[_Listener]) -> None:
