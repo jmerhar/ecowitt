@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ecowitt-dashboard"
+version = "0.1.0"
+description = "Ecowitt Server's public dashboard: a read-only API over what the collector stored"
+requires-python = ">=3.14"
+dependencies = [
+    "ecowitt-core",
+    "fastapi>=0.141,<0.142",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "pyyaml>=6.0",
+    "jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
+    "ruff>=0.8",
+]
+
+[project.urls]
+Homepage = "https://github.com/jmerhar/ecowitt"
+
+[tool.hatch.build.targets.wheel]
+# ecowitt is a namespace shared with ecowitt-core and ecowitt-collector: this project ships only
+# ecowitt/dashboard, and no project may add an ecowitt/__init__.py.
+packages = ["src/ecowitt"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+asyncio_default_test_loop_scope = "function"
+testpaths = ["tests"]
+# Each project's tests run on their own; importlib mode keeps same-named test modules in
+# different projects from colliding.
+addopts = ["--import-mode=importlib"]
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+source = ["ecowitt.dashboard"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__main__.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "@(abc\\.)?abstractmethod",
+]

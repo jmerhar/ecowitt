@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Set up the dashboard</title>
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1f21; --muted: #6b6f75; --line: #e3e0d8; --card: #ffffff;
+            --accent: #2f6f5e; --bad: #a33a2b; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #16181a; --fg: #e6e4df; --muted: #9a9ea4; --line: #2c2f33; --card: #1e2124;
+              --accent: #7cc4ad; --bad: #e0806f; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg);
+           font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 36rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+    section { background: var(--card); border: 1px solid var(--line); border-radius: .5rem;
+              padding: 1rem 1.25rem; margin: 1rem 0; }
+    h1 { font-size: 1.4rem; margin: .2rem 0 .6rem; } h2 { font-size: 1.1rem; margin: .2rem 0 .4rem; }
+    .muted { color: var(--muted); }
+    .notice { padding: .7rem 1rem; border-radius: .4rem; margin: 1rem 0; border: 1px solid var(--accent); }
+    .notice.error { border-color: var(--bad); color: var(--bad); }
+    label { display: block; font-size: .85rem; color: var(--muted); margin-top: .6rem; }
+    input, select { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line);
+                    border-radius: .3rem; padding: .3rem .5rem; width: 100%; }
+    fieldset { border: 0; padding: 0; margin: 0; }
+    button { font: inherit; padding: .35rem .9rem; border-radius: .3rem; border: 1px solid var(--accent);
+             background: var(--accent); color: var(--bg); cursor: pointer; margin-top: 1rem; }
+    button.secondary { background: transparent; color: var(--accent); }
+    /* Only the chosen kind's settings show; every kind's are in the form, prefixed by kind. */
+    fieldset.kind { display: none; }
+    {% for kind in kinds %}
+    form:has(option[value="{{ kind.name }}"]:checked) fieldset[data-kind="{{ kind.name }}"] { display: block; }
+    {% endfor %}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Set up the dashboard</h1>
+  <p class="muted">This page is shown until the dashboard is set up, to anyone who can reach it.
+    Saving writes <code>dashboard.yaml</code>; to change it later, edit or delete that file and
+    restart.</p>
+  {% if message %}<div class="notice">{{ message }}</div>{% endif %}
+  {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
+  <form method="post" action="/setup">
+    <section>
+      <h2>Database</h2>
+      <p class="muted">Where the collector stores readings. A token allowed only to read is enough.</p>
+      <label for="kind">Type of database</label>
+      <select id="kind" name="kind">
+        {% for kind in kinds %}<option value="{{ kind.name }}" {% if kind.name == chosen %}selected{% endif %}>{{ kind.label }}</option>{% endfor %}
+      </select>
+      {% for kind in kinds %}
+      <fieldset class="kind" data-kind="{{ kind.name }}">
+        {% for setting in kind.settings %}
+        {% set key = kind.name ~ "." ~ setting.name %}
+        <label for="{{ key }}">{{ setting.label }}{% if not setting.required %} (optional){% endif %}</label>
+        <input id="{{ key }}" name="{{ key }}" {% if setting.secret %}type="password" autocomplete="off"{% endif %}
+               value="{{ form.get(key, setting.default) }}" placeholder="{{ setting.help }}">
+        {% endfor %}
+      </fieldset>
+      {% endfor %}
+    </section>
+    <section>
+      <h2>Site</h2>
+      <label for="title">Title</label>
+      <input id="title" name="title" value="{{ form.get('title', default_title) }}">
+      <label for="stations">Stations to show (optional)</label>
+      <input id="stations" name="stations" value="{{ form.get('stations', '') }}"
+             placeholder="Names separated by commas; empty shows every station">
+    </section>
+    <button type="submit" name="action" value="test" class="secondary">Test connection</button>
+    <button type="submit" name="action" value="save">Save</button>
+  </form>
+</main>
+</body>
+</html>

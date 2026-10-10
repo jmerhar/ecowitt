@@ -25,7 +25,10 @@ core/src/ecowitt/core/   shared by the collector and the dashboard
                   the OK / RETRY / REJECT classification of a write's outcome
     influx3.py    Influx3Store: /api/v3/write_lp, bearer token
     influx2.py    Influx2Store: /api/v2/write, bucket and organisation, `Token` scheme
-    factory.py    store_for(kind, ...): the implementation for a configured kind
+    factory.py    store_for(kind, ...): the implementation for a configured kind; reader_for
+                  for the kinds that can be read back (InfluxDB 3)
+    settings.py   each kind's connection settings, declared once for every setup form
+    query.py      Reader: what a dashboard asks of a store (spans, extremes, time buckets)
 core/tests/       its own tests, which alone count towards its coverage
 
 collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init__.py anywhere;
@@ -78,6 +81,16 @@ collector/tests/  one folder per subpackage (ingest/, admin/, delivery/), plus
   js/             node:test suites for admin/static/, against stand-in DOM and browser APIs
   conftest.py     settings/state fixtures and the recorded console payloads
   fixtures/       recorded payloads, the golden line protocol, the known-keys list
+dashboard/api/src/ecowitt/dashboard/   the public dashboard's read-only API
+  app.py          /api/v1 routes behind one `access` dependency, /healthz, first-run /setup
+  service.py      answers built from a Reader: now, series, extremes; cached in stored units
+  catalogue.py    the metrics served: table, base field, kind, aggregates, which sensors
+  weather.py      compass, Beaufort, feels-like, pressure tendency, airing advice
+  sun.py          sunrise, solar noon and sunset (NOAA's equations)
+  siteconfig.py   /data/dashboard.yaml, written once by setup; edited or deleted by hand after
+  cache.py        a TTL cache whose concurrent requests share one computation
+  models.py       the answers, as the OpenAPI document publishes them
+dashboard/api/tests/  against an in-memory Reader (memory.py) that answers as the SQL does
 grafana/          weather.json, the dashboard, and alerts.json, the alert rules; a renamed table or
                   field fails tests/grafana rather than blanking a panel or silencing an alert
 TODO/             one note per planned feature; delete a note when its feature ships
@@ -199,9 +212,9 @@ UPDATE_GOLDEN=1 bin/test-python.sh collector tests/ingest/test_pipeline.py   # a
 
 ## Testing conventions
 
-- One coverage suite per project (`core`, `collector`) plus `pages` for the admin's scripts, with
-  their gates in `coverage.toml`. Each project measures only its own package, so shared code
-  must be covered by core's own tests.
+- One coverage suite per project (`core`, `collector`, `dashboard`) plus `pages` for the admin's
+  scripts, with their gates in `coverage.toml`. Each project measures only its own package, so
+  shared code must be covered by core's own tests.
 - Recorded console payloads live in `tests/fixtures/`, as the station sends them — one line,
   form-encoded, unmodified apart from the `PASSKEY`, which is a placeholder. A real one
   authenticates a station's reports and belongs in no repository. Names and altitudes in tests
