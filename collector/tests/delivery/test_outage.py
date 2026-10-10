@@ -14,16 +14,16 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from ecowitt.collector.admin.stationconfig import Station, StationConfig
-from ecowitt.collector.config import Settings
 from ecowitt.collector.delivery.delivery import Delivery
 from ecowitt.collector.delivery.spool import Spool
-from ecowitt.collector.delivery.writer import InfluxWriter
 from ecowitt.collector.ingest.handler import StationHandler
 from ecowitt.collector.state import State
 from ecowitt.core.preferences import Preferences
+from ecowitt.core.store.influx3 import Influx3Store
+from ecowitt.core.store.lineprotocol import encode
+from ecowitt.core.testing import StubInflux, serving
 
 from ..conftest import FIXTURE_PASSKEY, payload
-from ..stubs import StubInflux, serving
 
 CONFIG = StationConfig((Station("Home", Preferences(), FIXTURE_PASSKEY),))
 
@@ -57,7 +57,7 @@ async def until(condition, timeout: float = 10.0) -> None:  # noqa: ANN001
 
 
 def handler_for(delivery: Delivery) -> StationHandler:
-    return StationHandler(CONFIG, delivery, clock=lambda: RECEIVED)
+    return StationHandler(CONFIG, delivery, encode=encode, clock=lambda: RECEIVED)
 
 
 def stored_timestamps(stub: StubInflux) -> list[str]:
@@ -67,7 +67,7 @@ def stored_timestamps(stub: StubInflux) -> list[str]:
 
 async def test_an_outage_loses_nothing_and_keeps_order(tmp_path: Path) -> None:
     async with serving(StubInflux(status=503)) as stub:
-        writer = InfluxWriter(Settings(influx_url=stub.url, influx_token="t"))
+        writer = Influx3Store(stub.url, "weather", "t")
         spool, state = Spool(tmp_path / "spool", 10_000_000), State()
         delivery = Delivery(writer, spool, state, sleep=no_pause)
         handler = handler_for(delivery)
@@ -101,7 +101,7 @@ async def test_a_backlog_survives_a_restart_and_lands_when_influxdb_returns(tmp_
 
     # First process: nothing is listening, so every report is spooled. It then stops
     # without ever reaching the database.
-    writer = InfluxWriter(Settings(influx_url=url))
+    writer = Influx3Store(url, "weather")
     delivery = Delivery(writer, Spool(tmp_path / "spool", 10_000_000), State(), sleep=no_pause)
     try:
         for fields in reports(3):
@@ -111,7 +111,7 @@ async def test_a_backlog_survives_a_restart_and_lands_when_influxdb_returns(tmp_
 
     # Second process, same data directory, and the database is back on the same address.
     async with serving(StubInflux(), port) as stub:
-        writer = InfluxWriter(Settings(influx_url=url))
+        writer = Influx3Store(url, "weather")
         spool = Spool(tmp_path / "spool", 10_000_000)
         assert len(spool) == 3
         replay = asyncio.create_task(Delivery(writer, spool, State(), sleep=no_pause).run())
@@ -128,7 +128,7 @@ async def test_a_backlog_survives_a_restart_and_lands_when_influxdb_returns(tmp_
 
 async def test_a_report_influxdb_refuses_is_kept_aside_and_the_rest_flow(tmp_path: Path) -> None:
     async with serving(StubInflux(status=400, reply="field type conflict")) as stub:
-        writer = InfluxWriter(Settings(influx_url=stub.url))
+        writer = Influx3Store(stub.url, "weather")
         spool, state = Spool(tmp_path / "spool", 10_000_000), State()
         delivery = Delivery(writer, spool, state, sleep=no_pause)
         try:

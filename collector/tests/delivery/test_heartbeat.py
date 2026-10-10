@@ -10,8 +10,7 @@ import httpx2
 import pytest
 
 from ecowitt.collector.delivery.heartbeat import Heartbeat
-
-from ..stubs import StubInflux, serving
+from ecowitt.core.testing import StubInflux, serving
 
 DEAD = "http://127.0.0.1:1/api/push/s3cr3t"
 

@@ -11,6 +11,7 @@ import pytest
 from ecowitt.collector.admin.stationconfig import Station, StationConfig
 from ecowitt.collector.ingest.handler import MAX_ANNOUNCED_UNKNOWN, StationHandler
 from ecowitt.core.preferences import Preferences
+from ecowitt.core.store.lineprotocol import encode
 
 from ..conftest import FIXTURE_PASSKEY, payload
 
@@ -33,7 +34,7 @@ def report() -> dict[str, str]:
 
 async def test_a_configured_station_is_written_under_its_name() -> None:
     writer = MemorySink()
-    handler = StationHandler(CONFIG, writer, clock=CLOCK)
+    handler = StationHandler(CONFIG, writer, encode=encode, clock=CLOCK)
 
     assert await handler.handle(report(), "192.0.2.9") is True
 
@@ -47,7 +48,7 @@ async def test_an_unknown_station_is_refused_and_nothing_written(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     writer = MemorySink()
-    handler = StationHandler(CONFIG, writer, clock=CLOCK)
+    handler = StationHandler(CONFIG, writer, encode=encode, clock=CLOCK)
     fields = report() | {"PASSKEY": "FFFF0000FFFF0000FFFF0000FFFF0000"}
 
     with caplog.at_level(logging.WARNING):
@@ -59,13 +60,13 @@ async def test_an_unknown_station_is_refused_and_nothing_written(
 
 
 async def test_a_report_without_a_passkey_is_refused() -> None:
-    handler = StationHandler(CONFIG, MemorySink(), clock=CLOCK)
+    handler = StationHandler(CONFIG, MemorySink(), encode=encode, clock=CLOCK)
 
     assert await handler.handle({"tempf": "50"}, "192.0.2.9") is False
 
 
 async def test_each_unknown_station_is_announced_once(caplog: pytest.LogCaptureFixture) -> None:
-    handler = StationHandler(CONFIG, MemorySink(), clock=CLOCK)
+    handler = StationHandler(CONFIG, MemorySink(), encode=encode, clock=CLOCK)
 
     with caplog.at_level(logging.WARNING):
         for _ in range(5):
@@ -76,7 +77,7 @@ async def test_each_unknown_station_is_announced_once(caplog: pytest.LogCaptureF
 
 async def test_announcements_are_bounded(caplog: pytest.LogCaptureFixture) -> None:
     """A scan of invented PASSKEYs cannot fill the log."""
-    handler = StationHandler(CONFIG, MemorySink(), clock=CLOCK)
+    handler = StationHandler(CONFIG, MemorySink(), encode=encode, clock=CLOCK)
 
     with caplog.at_level(logging.WARNING):
         for i in range(MAX_ANNOUNCED_UNKNOWN + 50):
@@ -91,7 +92,7 @@ async def test_staleness_carries_across_reports() -> None:
     times = iter(
         [datetime(2026, 10, 8, 23, 1, 26, tzinfo=UTC), datetime(2026, 10, 8, 23, 2, 26, tzinfo=UTC)]
     )
-    handler = StationHandler(CONFIG, writer, clock=lambda: next(times))
+    handler = StationHandler(CONFIG, writer, encode=encode, clock=lambda: next(times))
     first = report()
     second = first | {"dateutc": "2026-10-08 23:02:24"}
 
@@ -102,7 +103,7 @@ async def test_staleness_carries_across_reports() -> None:
 
 
 async def test_the_latest_report_is_kept_per_station() -> None:
-    handler = StationHandler(CONFIG, MemorySink(), clock=CLOCK)
+    handler = StationHandler(CONFIG, MemorySink(), encode=encode, clock=CLOCK)
 
     await handler.handle(report(), "192.0.2.9")
 
@@ -115,7 +116,7 @@ async def test_an_unknown_station_is_offered_for_adoption() -> None:
     from ecowitt.collector.ingest.pending import PendingStations
 
     pending = PendingStations()
-    handler = StationHandler(CONFIG, MemorySink(), pending=pending, clock=CLOCK)
+    handler = StationHandler(CONFIG, MemorySink(), encode=encode, pending=pending, clock=CLOCK)
 
     await handler.handle(report() | {"PASSKEY": "NEWCONSOLE"}, "192.0.2.9")
 
@@ -132,7 +133,7 @@ async def test_reports_feed_the_calibration_checks_in_canonical_units() -> None:
     inhg = StationConfig(
         (Station("Home", Preferences(units=Units(pressure="inhg")), FIXTURE_PASSKEY),)
     )
-    handler = StationHandler(inhg, MemorySink(), calibration=monitor, clock=CLOCK)
+    handler = StationHandler(inhg, MemorySink(), encode=encode, calibration=monitor, clock=CLOCK)
 
     await handler.handle(report(), "192.0.2.9")
 
@@ -141,7 +142,7 @@ async def test_reports_feed_the_calibration_checks_in_canonical_units() -> None:
 
 
 async def test_a_replaced_configuration_takes_effect_on_the_next_report() -> None:
-    handler = StationHandler(StationConfig(), MemorySink(), clock=CLOCK)
+    handler = StationHandler(StationConfig(), MemorySink(), encode=encode, clock=CLOCK)
     assert await handler.handle(report(), "192.0.2.9") is False
 
     handler.config = CONFIG

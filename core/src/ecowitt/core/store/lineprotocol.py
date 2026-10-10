@@ -9,17 +9,17 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable
 
-from ecowitt.collector.ingest.points import Point
 from ecowitt.core.readings import Value
+from ecowitt.core.store.base import Row
 
 
-def encode(points: Iterable[Point]) -> str:
+def encode(points: Iterable[Row]) -> str:
     """Encode rows as newline-separated line protocol, skipping any that have no fields."""
     lines = [line for point in points if (line := encode_point(point))]
     return "\n".join(lines)
 
 
-def encode_point(point: Point) -> str:
+def encode_point(point: Row) -> str:
     """Encode one row, or return an empty string if none of its fields can be written."""
     fields = ",".join(
         f"{_escape_key(name)}={encoded}"

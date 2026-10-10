@@ -9,12 +9,21 @@ quantities the console does not send.
 ## Layout
 
 ```
-core/src/ecowitt/core/   shared by the collector and the dashboard; standard library only
+core/src/ecowitt/core/   shared by the collector and the dashboard
   units.py        conversions, and the Units preference
   psychro.py      the formulas behind derive, pure and reference-tested
   readings.py     Reading, the canonical-unit value parse produces and derive consumes
   preferences.py  units, sensor names, altitude
   ratelimit.py    the public listeners' per-address token bucket
+  testing.py      a stand-in HTTP server every project's tests use for InfluxDB and lookups
+  store/          where rows are written, behind one interface
+    base.py       Row, Outcome, and the Store protocol: encode(rows) -> payload, write(payload)
+    lineprotocol.py  rows -> InfluxDB line protocol
+    influx.py     InfluxStore: what every InfluxDB version shares -- HTTP, line protocol, and
+                  the OK / RETRY / REJECT classification of a write's outcome
+    influx3.py    Influx3Store: /api/v3/write_lp, bearer token
+    influx2.py    Influx2Store: /api/v2/write, bucket and organisation, `Token` scheme
+    factory.py    store_for(kind, ...): the implementation for a configured kind
 core/tests/       its own tests, which alone count towards its coverage
 
 collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init__.py anywhere;
@@ -25,7 +34,6 @@ collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init_
   state.py        in-process counters both listeners see
   http.py         read_capped_body, shared by both
   healthcheck.py  module entrypoint for the container's HEALTHCHECK
-  lineprotocol.py rows -> InfluxDB line protocol
 
   ingest/         the public listener and the data path
     app.py        the public app -- one route, and deliberately nothing else
@@ -49,8 +57,7 @@ collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init_
     lookups.py    elevation and model surface pressure from public services
     reference.py  the background refresh of model surface pressure
 
-  delivery/       getting rows into the database
-    writer.py     one write to InfluxDB 3 or 2.x, classified OK / RETRY / REJECT
+  delivery/       getting rows into the database (through a core Store)
     delivery.py   write now or spool; the replay loop that drains the spool
     spool.py      the bounded on-disk queue, one atomically written file per report
     heartbeat.py  calls a push monitor's URL after writes, at most once per interval
@@ -62,7 +69,6 @@ collector/tests/  one folder per subpackage (ingest/, admin/, delivery/), plus
   tooling/        the scripts in bin/ that have logic of their own
   js/             node:test suites for admin/static/, against stand-in DOM and browser APIs
   conftest.py     settings/state fixtures and the recorded console payloads
-  stubs.py        a stand-in InfluxDB: a real HTTP server that records what it gets
   fixtures/       recorded payloads, the golden line protocol, the known-keys list
 grafana/          weather.json, the dashboard, and alerts.json, the alert rules; a renamed table or
                   field fails tests/grafana rather than blanking a panel or silencing an alert

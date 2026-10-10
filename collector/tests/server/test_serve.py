@@ -16,6 +16,7 @@ from ecowitt.collector import serve
 from ecowitt.collector.config import Settings
 from ecowitt.collector.ingest.app import LoggingHandler
 from ecowitt.collector.state import State
+from ecowitt.core.store.influx import InfluxStore
 
 
 def test_build_binds_each_listener_to_its_own_port() -> None:
@@ -289,13 +290,13 @@ async def test_run_without_a_handler_loads_the_configured_stations(
     state = State()
     monkeypatch.setattr(serve, "State", lambda: state)
     closed: list[bool] = []
-    real_aclose = serve.InfluxWriter.aclose
+    real_aclose = InfluxStore.aclose
 
-    async def track_close(self: serve.InfluxWriter) -> None:
+    async def track_close(self: InfluxStore) -> None:
         closed.append(True)
         await real_aclose(self)
 
-    monkeypatch.setattr(serve.InfluxWriter, "aclose", track_close)
+    monkeypatch.setattr(InfluxStore, "aclose", track_close)
     woken: list[bool] = []
     monkeypatch.setattr(serve.ReferenceUpdater, "wake", lambda _self: woken.append(True))
     monitors: list[serve.CalibrationMonitor] = []
@@ -361,8 +362,7 @@ async def test_a_backlog_from_before_a_restart_is_delivered_at_startup(
 ) -> None:
     """Without the replay loop, reports spooled before a restart would wait for ever."""
     from ecowitt.collector.delivery.spool import Spool
-
-    from ..stubs import StubInflux, serving
+    from ecowitt.core.testing import StubInflux, serving
 
     Spool(tmp_path / "spool", 1_000_000).enqueue("indoor,station=Home temp_c=21.0 1791500484")
     (tmp_path / "config.yaml").write_text(
@@ -404,8 +404,7 @@ async def test_a_heartbeat_follows_a_delivered_write(
 ) -> None:
     """With HEARTBEAT_URL set, a write InfluxDB accepts reaches the monitor, and stops with run."""
     from ecowitt.collector.delivery.spool import Spool
-
-    from ..stubs import StubInflux, serving
+    from ecowitt.core.testing import StubInflux, serving
 
     Spool(tmp_path / "spool", 1_000_000).enqueue("indoor,station=Home temp_c=21.0 1791500484")
     state = State()
@@ -443,3 +442,13 @@ async def test_a_heartbeat_follows_a_delivered_write(
 
     assert influx.requests and monitor.requests[0].path == "/api/push/token"
     assert "heartbeat" not in {t.get_name() for t in asyncio.all_tasks()}
+
+
+@pytest.mark.parametrize(("api", "kind"), [("v3", "Influx3Store"), ("v2", "Influx2Store")])
+def test_the_store_matches_the_configured_influx_version(api: str, kind: str) -> None:
+    settings = Settings(influx_url="http://influx:8181", influx_api=api, influx_org="home")  # type: ignore[arg-type]
+
+    store = serve._store(settings)
+
+    assert type(store).__name__ == kind
+    assert (store.url, store.database) == ("http://influx:8181", "weather")  # type: ignore[attr-defined]

@@ -12,9 +12,8 @@ from ecowitt.collector.admin.calibration import CalibrationMonitor
 from ecowitt.collector.admin.stationconfig import StationConfig
 from ecowitt.collector.ingest.pending import PendingStations
 from ecowitt.collector.ingest.pipeline import process_report
-from ecowitt.collector.ingest.points import Point
 from ecowitt.collector.ingest.staleness import StalenessTracker
-from ecowitt.collector.lineprotocol import encode
+from ecowitt.core.store.base import Row
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,7 @@ class LatestReport:
 
     timestamp: int
     received_at: datetime
-    points: list[Point] = field(default_factory=list)
+    points: list[Row] = field(default_factory=list)
 
 
 class StationHandler:
@@ -51,12 +50,14 @@ class StationHandler:
         config: StationConfig,
         sink: Sink,
         *,
+        encode: Callable[[list[Row]], str],
         pending: PendingStations | None = None,
         calibration: CalibrationMonitor | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         self.config = config
         self._sink = sink
+        self._encode = encode
         self._pending = pending or PendingStations()
         self._calibration = calibration or CalibrationMonitor()
         self._clock = clock
@@ -87,7 +88,7 @@ class StationHandler:
         )
         self.latest[station.name] = LatestReport(processed.timestamp, received, processed.points)
         self._calibration.observe(station.name, processed.timestamp, processed.readings)
-        await self._sink.submit(encode(processed.points))
+        await self._sink.submit(self._encode(processed.points))
         return True
 
     def _announce_unknown(self, passkey: str, source: str) -> None:

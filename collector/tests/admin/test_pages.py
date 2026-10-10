@@ -24,6 +24,7 @@ from ecowitt.collector.config import Settings
 from ecowitt.collector.ingest.handler import StationHandler
 from ecowitt.collector.ingest.pending import PendingStations
 from ecowitt.collector.state import State
+from ecowitt.core.store.lineprotocol import encode
 
 from ..conftest import FIXTURE_PASSKEY, payload
 
@@ -80,7 +81,9 @@ def rig(tmp_path: Path) -> Iterator[Rig]:
     )
     store = ConfigStore(settings.config_file)
     pending, calibration = PendingStations(), CalibrationMonitor()
-    handler = StationHandler(store.stations, Sink(), pending=pending, calibration=calibration)
+    handler = StationHandler(
+        store.stations, Sink(), encode=encode, pending=pending, calibration=calibration
+    )
     store.subscribe(lambda stations: setattr(handler, "config", stations))
     context = admin.AdminContext(
         settings,

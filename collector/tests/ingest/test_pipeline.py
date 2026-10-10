@@ -17,8 +17,8 @@ from datetime import UTC, datetime
 
 from ecowitt.collector.ingest.pipeline import process
 from ecowitt.collector.ingest.staleness import StalenessTracker
-from ecowitt.collector.lineprotocol import encode
 from ecowitt.core.preferences import Preferences
+from ecowitt.core.store.lineprotocol import encode
 
 from ..conftest import FIXTURES, payload
 

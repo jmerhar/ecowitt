@@ -14,8 +14,8 @@ from collections.abc import Awaitable, Callable
 from typing import Protocol
 
 from ecowitt.collector.delivery.spool import Spool
-from ecowitt.collector.delivery.writer import Outcome
 from ecowitt.collector.state import State
+from ecowitt.core.store.base import Outcome
 
 logger = logging.getLogger(__name__)
 
@@ -23,29 +23,29 @@ FIRST_PAUSE_SECONDS = 1.0
 MAX_PAUSE_SECONDS = 60.0
 
 
-class Sender(Protocol):
-    """Something that attempts one write and says what became of it."""
+class Writer(Protocol):
+    """Something that attempts one write and says what became of it -- a `Store`, in practice."""
 
-    async def send(self, body: str) -> Outcome:
-        """Write rows once."""
+    async def write(self, payload: str) -> Outcome:
+        """Write one payload once."""
 
 
 class Delivery:
     """Writes reports, spooling the ones that cannot be written yet.
 
-    `on_written` is called after every write InfluxDB accepts, live or replayed.
+    `on_written` is called after every write the database accepts, live or replayed.
     """
 
     def __init__(
         self,
-        sender: Sender,
+        store: Writer,
         spool: Spool,
         state: State,
         *,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
         on_written: Callable[[], None] = lambda: None,
     ) -> None:
-        self._sender = sender
+        self._store = store
         self._on_written = on_written
         self._spool = spool
         self._state = state
@@ -59,7 +59,7 @@ class Delivery:
         if len(self._spool):
             self._queue(body)
             return
-        outcome = await self._sender.send(body)
+        outcome = await self._store.write(body)
         self._state.record_write(outcome is Outcome.OK)
         if outcome is Outcome.OK:
             self._on_written()
@@ -98,7 +98,7 @@ class Delivery:
             self._spool.quarantine(path)
             return pause
 
-        outcome = await self._sender.send(body)
+        outcome = await self._store.write(body)
         self._state.record_write(outcome is Outcome.OK)
         if outcome is Outcome.OK:
             self._spool.ack(path)
