@@ -10,6 +10,8 @@ from ecowitt.core.units import (
     Kind,
     Units,
     UnknownUnit,
+    convert,
+    field_name,
     from_canonical,
     to_canonical,
 )
@@ -127,3 +129,37 @@ def test_an_unknown_preference_is_refused_with_the_choices(bad: dict[str, str]) 
 def test_the_defaults_are_european() -> None:
     """Celsius, hectopascals, millimetres, kilometres per hour, kilometres."""
     assert Units() == Units(temperature="c", pressure="hpa", rain="mm", wind="kmh", distance="km")
+
+
+@pytest.mark.parametrize(
+    ("kind", "units", "name"),
+    [
+        (Kind.TEMPERATURE, Units(), "temp_c"),
+        (Kind.TEMPERATURE, Units(temperature="f"), "temp_f"),
+        (Kind.RAIN_RATE, Units(rain="in"), "temp_in_h"),
+        (Kind.HUMIDITY, Units(), "temp_pct"),
+        (Kind.UV_INDEX, Units(), "temp"),
+    ],
+)
+def test_field_name_carries_the_stored_unit(kind: Kind, units: Units, name: str) -> None:
+    assert field_name("temp", kind, units) == name
+
+
+@pytest.mark.parametrize(
+    ("kind", "source", "target", "value", "expected"),
+    [
+        (Kind.TEMPERATURE, Units(), Units(temperature="f"), 100.0, 212.0),
+        (Kind.TEMPERATURE, Units(temperature="f"), Units(), -40.0, -40.0),
+        (Kind.TEMPERATURE_DELTA, Units(temperature="f"), Units(), 9.0, 5.0),
+        (Kind.PRESSURE, Units(pressure="inhg"), Units(pressure="mmhg"), 29.92, 759.97),
+        (Kind.SPEED, Units(wind="kn"), Units(wind="kmh"), 1.0, 1.852),
+        (Kind.SPEED, Units(wind="mph"), Units(wind="ms"), 1.0, 0.44704),
+        (Kind.RAIN_RATE, Units(rain="in"), Units(), 1.0, 25.4),
+        (Kind.DISTANCE, Units(distance="mi"), Units(), 1.0, 1.609344),
+        (Kind.HUMIDITY, Units(temperature="f"), Units(), 55.0, 55.0),
+    ],
+)
+def test_convert_between_stored_units(
+    kind: Kind, source: Units, target: Units, value: float, expected: float
+) -> None:
+    assert convert(kind, value, source, target) == pytest.approx(expected, abs=0.01)
