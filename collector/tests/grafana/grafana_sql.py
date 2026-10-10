@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import re
 
+from ecowitt.core.stationinfo import TABLE, StationInfo
+
 from ..conftest import FIXTURES
 
 GOLDEN = [FIXTURES / "hp2551_indoor.lp", FIXTURES / "hp2551_ws69.lp"]
@@ -48,6 +50,10 @@ def schema() -> dict[str, set[str]]:
             columns = tables.setdefault(table, {"time"})
             columns.update(tag.split("=", 1)[0] for tag in tags)
             columns.update(re.findall(r"(?:^|,)([a-z0-9_]+)=", values))
+    # Written by the collector's metadata publisher rather than from a report, so it is in no
+    # golden file: its columns come from a row with every setting present.
+    info = StationInfo("s", 0.0, 0.0, 0.0, "UTC", sensors={"ch1": "x"}).to_row(0)
+    tables[TABLE] = {"time", *(tag for tag, _ in info.tags), *info.fields}
     return tables
 
 

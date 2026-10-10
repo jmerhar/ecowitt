@@ -225,8 +225,12 @@ Create it before first use if you want anything other than keeping everything.
   the humidity it would settle at;
 - indoor humidity, temperature, dew point and absolute humidity, room by room;
 - outdoor temperature, humidity, wind, pressure, rain and sun;
-- battery flags, rooms and outdoor sensors that have stopped changing, and the console's
-  pressure calibration.
+- battery flags, rooms and outdoor sensors that have stopped changing, the console's pressure
+  calibration, and the station's settings as last published (time zone, coordinates, altitude,
+  stored units).
+
+Two links at the top, *Station time* and *My time*, reopen it with times shown in the station's
+time zone or in your browser's, keeping the station and the time range.
 
 To install it, add an InfluxDB data source with query language **SQL**, the database this server
 writes to, and a token that can read it (`influxdb3 create token --permission
