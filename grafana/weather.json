@@ -44,6 +44,22 @@
         "refresh": 1,
         "hide": 0,
         "sort": 1
+      },
+      {
+        "name": "station_tz",
+        "label": "Station time zone",
+        "type": "query",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "query": {
+          "query": "SELECT timezone FROM station_info WHERE station = '${station}' ORDER BY time DESC LIMIT 1",
+          "refId": "InfluxVariableQueryEditor-VariableQuery"
+        },
+        "definition": "SELECT timezone FROM station_info WHERE station = '${station}' ORDER BY time DESC LIMIT 1",
+        "refresh": 2,
+        "hide": 2
       }
     ]
   },
@@ -2667,6 +2683,102 @@
         "wideLayout": true
       },
       "description": "The upload interval set on the console."
+    },
+    {
+      "id": 36,
+      "type": "table",
+      "title": "Station settings",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "description": "The station's settings as the collector last published them to the database: written when it starts and whenever the setup page changes them. The time zone decides where the station's day begins, and is taken from the coordinates unless one was entered.",
+      "gridPos": {
+        "x": 0,
+        "y": 120,
+        "w": 14,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH latest AS (SELECT * FROM station_info WHERE station = '${station}' ORDER BY time DESC LIMIT 1)\nSELECT 1 AS \"Order\", 'Time zone' AS \"Setting\", timezone AS \"Value\" FROM latest\nUNION ALL SELECT 2, 'Latitude', CAST(latitude_deg AS VARCHAR) FROM latest\nUNION ALL SELECT 3, 'Longitude', CAST(longitude_deg AS VARCHAR) FROM latest\nUNION ALL SELECT 4, 'Altitude', CAST(altitude_m AS VARCHAR) || ' m' FROM latest\nUNION ALL SELECT 5, 'Stored units', units_temperature || ', ' || units_pressure || ', ' || units_rain\n  || ', ' || units_wind || ', ' || units_distance FROM latest\nUNION ALL SELECT 6, 'Settings changed', CAST(time AS VARCHAR) || ' UTC' FROM latest\nORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Setting"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 160
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Order"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": false,
+        "cellHeight": "sm"
+      }
+    }
+  ],
+  "links": [
+    {
+      "title": "Station time",
+      "type": "link",
+      "icon": "clock-nine",
+      "tooltip": "Show times in the station's time zone",
+      "url": "/d/ecowitt-weather/weather?timezone=${station_tz}",
+      "includeVars": true,
+      "keepTime": true,
+      "targetBlank": false,
+      "asDropdown": false,
+      "tags": []
+    },
+    {
+      "title": "My time",
+      "type": "link",
+      "icon": "clock-nine",
+      "tooltip": "Show times in this browser's time zone",
+      "url": "/d/ecowitt-weather/weather?timezone=browser",
+      "includeVars": true,
+      "keepTime": true,
+      "targetBlank": false,
+      "asDropdown": false,
+      "tags": []
     }
   ]
 }
