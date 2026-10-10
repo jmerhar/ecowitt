@@ -69,6 +69,17 @@ ONLINE_INTERVALS = 3
 ONLINE_AT_LEAST = timedelta(minutes=5)
 
 
+#: Names for the sensors a console has one of, which nobody names on the setup page.
+SENSOR_NAMES = {
+    "indoor": "Indoor",
+    "outdoor": "Outdoor",
+    "pressure": "Barometer",
+    "rain": "Rain gauge",
+    "solar": "Light sensor",
+    "wind": "Wind sensor",
+}
+
+
 class UnknownStation(LookupError):
     """No station of that name is shown here."""
 
@@ -696,11 +707,18 @@ def _group(tags: dict[str, str]) -> str | None:
 
 
 def _name(info: StationInfo, tags: dict[str, str], written: str | None) -> str | None:
-    """A sensor's current name: the station's settings first, then its newest rows."""
+    """A sensor's current name: the station's settings, then its newest rows, then a default.
+
+    A sensor nobody named is written under its own identifier, which is no name at all.
+    """
     sensor = tags.get("sensor")
     if sensor is None:
         return None
-    return info.sensors.get(sensor) or written or sensor
+    if info.sensors.get(sensor):
+        return info.sensors[sensor]
+    if written and written != sensor:
+        return written
+    return SENSOR_NAMES.get(sensor, sensor)
 
 
 def _natural(sensor: str) -> tuple[int, int, str]:

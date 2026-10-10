@@ -90,6 +90,7 @@ async def test_sensor_health(board: Dashboard) -> None:
     assert sensors["ch1"].updating is False
     assert sensors["indoor"].battery_low is False and sensors["indoor"].updating
     assert sensors["pressure"].battery_low is None
+    assert sensors["pressure"].name == "Barometer", "written as its own identifier"
     assert sensors["outdoor"].name == "Garden"
 
 
@@ -377,3 +378,10 @@ async def test_a_gauge_without_a_metric_has_no_extremes_for_it(reader: MemoryRea
     found = await Dashboard(reader, clock=lambda: NOW).extremes("example", "today")
     rain = [(e.metric, e.sensor) for e in found.extremes if e.metric.startswith("rain.")]
     assert rain == [("rain.rate", "bucket"), ("rain.rate", "piezo"), ("rain.daily", "bucket")]
+
+
+async def test_an_unnamed_room_keeps_its_identifier(reader: MemoryReader) -> None:
+    reader.rows.append(row("channel", LAST, {"temp_c": 19.0}, sensor="ch2", name="ch2"))
+    reader.rows.append(row("channel", LAST, {"temp_c": 19.0}, sensor="ch3", name="Attic"))
+    rooms = (await Dashboard(reader, clock=lambda: NOW).now("example")).rooms
+    assert [r.name for r in rooms[2:]] == ["ch2", "Attic"]
