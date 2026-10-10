@@ -12,11 +12,11 @@ coverage:
 comment: false
 
 flags:
-  backend:
+  collector:
     paths:
-      - backend/
+      - collector/
     carryforward: true
   pages:
     paths:
-      - backend/src/ecowitt/static/
+      - collector/src/ecowitt/collector/static/
     carryforward: true

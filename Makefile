@@ -6,16 +6,16 @@ help: ## Show available commands
 
 ##@ Setup
 
-install: ## Create the virtualenv and install the package with its test extras
-	python3 -m venv backend/.venv
-	backend/.venv/bin/pip install --quiet --upgrade pip
-	backend/.venv/bin/pip install --quiet -e "backend[test]"
+install: ## Create the shared virtualenv and install every project with its test extras
+	python3 -m venv .venv
+	.venv/bin/pip install --quiet --upgrade pip
+	.venv/bin/pip install --quiet -e "collector[test]"
 	@echo "Installed. 'make test' runs the suite, 'make dev' serves locally."
 
 ##@ Development
 
 dev: ## Serve from the working copy with debug logging (ingest :2551, admin :2552)
-	cd backend && DATA_DIR=../data LOG_LEVEL=DEBUG .venv/bin/python -m ecowitt
+	DATA_DIR=data LOG_LEVEL=DEBUG .venv/bin/python -m ecowitt.collector
 
 up: ## Build and start the stack
 	docker compose -f docker-compose.yml -f docker-compose.build.yml up --build -d
@@ -35,8 +35,8 @@ build: ## Build the image without starting anything
 
 ##@ Testing
 
-test: ## Run the suite (arguments pass through to pytest, e.g. ARGS="-k slash")
-	bin/test-backend.sh $(ARGS)
+test: ## Run every project's suite (ARGS pass through to pytest, e.g. ARGS="-k slash")
+	bin/test-python.sh collector $(ARGS)
 
 test-js: ## Run the page script tests with coverage (needs node)
 	bin/test-js.sh
@@ -52,7 +52,7 @@ check: lint test coverage ## Everything (gate a commit on this; coverage runs bo
 ##@ Housekeeping
 
 clean: ## Remove build and coverage artefacts (all regenerable)
-	rm -rf backend/htmlcov backend/coverage.xml backend/coverage.json backend/.coverage backend/coverage-js \
-	       backend/junit backend/.ruff_cache backend/.pytest_cache \
+	rm -rf */htmlcov */coverage.xml */coverage.json */.coverage */coverage-js \
+	       */junit .ruff_cache */.pytest_cache \
 	       coverage-upload .coverage-report.py
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +

@@ -7,6 +7,6 @@
 services:
   ecowitt:
     volumes:
-      - ./backend/src/ecowitt:/usr/local/lib/python3.14/site-packages/ecowitt:ro
+      - ./collector/src/ecowitt/collector:/usr/local/lib/python3.14/site-packages/ecowitt/collector:ro
     environment:
       LOG_LEVEL: DEBUG

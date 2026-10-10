@@ -29,27 +29,27 @@ jobs:
           python-version: "3.14"
 
       - name: Install
-        run: pip install -e "backend[test]"
+        run: pip install -e "collector[test]"
 
       - name: Run tests with coverage
         env:
-          # See bin/test-backend.sh: the legacy coverage core under-reports lines after
+          # See bin/test-python.sh: the legacy coverage core under-reports lines after
           # `await`, and this package is async throughout.
           COVERAGE_CORE: sysmon
           PYTHON: python
         run: >-
-          bin/test-backend.sh -v --cov=ecowitt --junitxml=junit/backend.xml
+          bin/test-python.sh collector -v --cov=ecowitt.collector --junitxml=junit/collector.xml
           --cov-report=term-missing --cov-report=xml --cov-report=json --cov-report=html
 
       - name: Upload coverage
         uses: actions/upload-artifact@v5
         with:
-          name: coverage-backend
+          name: coverage-collector
           path: |
-            backend/coverage.xml
-            backend/coverage.json
-            backend/htmlcov
-            backend/junit
+            collector/coverage.xml
+            collector/coverage.json
+            collector/htmlcov
+            collector/junit
           if-no-files-found: error
 
   test-js:
@@ -68,7 +68,7 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: coverage-pages
-          path: backend/coverage-js
+          path: collector/coverage-js
           if-no-files-found: error
 
   lint:
@@ -111,18 +111,18 @@ jobs:
         with:
           python-version: "3.14"
 
-      # Restore the report to the path coverage.toml declares (backend/coverage.json).
-      - name: Download backend coverage
+      # Restore the report to the path coverage.toml declares (collector/coverage.json).
+      - name: Download collector coverage
         uses: actions/download-artifact@v6
         with:
-          name: coverage-backend
-          path: backend
+          name: coverage-collector
+          path: collector
 
       - name: Download page script coverage
         uses: actions/download-artifact@v6
         with:
           name: coverage-pages
-          path: backend/coverage-js
+          path: collector/coverage-js
 
       # At-a-glance coverage on the run's summary page. The suite, its label and its gate are
       # declared in coverage.toml; the tooling is shared by every project publishing to the
@@ -136,7 +136,7 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          junit: backend/junit/*.xml
+          junit: collector/junit/*.xml
 
       # Fails the build if line coverage drops below the bound in coverage.toml. publish needs
       # this job, so a regression blocks the image.
@@ -183,6 +183,7 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
+          file: collector/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

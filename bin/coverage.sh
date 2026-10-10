@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run both suites with coverage and print the summary.
+# Run every suite with coverage and print the summary.
 #
 # The summary and the gate are shared tooling from jmerhar/coverage, configured by
 # coverage.toml, so the numbers here are the ones CI enforces.
@@ -10,8 +10,8 @@ cd "$root"
 
 bin/coverage-tooling.sh
 
-bin/test-backend.sh \
-  --cov=ecowitt \
+bin/test-python.sh collector \
+  --cov=ecowitt.collector \
   --cov-report=term-missing \
   --cov-report=xml \
   --cov-report=json \

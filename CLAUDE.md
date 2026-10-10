@@ -9,14 +9,14 @@ quantities the console does not send.
 ## Layout
 
 ```
-backend/src/ecowitt/
+collector/src/ecowitt/collector/
   config.py       environment settings; every credential also accepts a *_FILE variant
   serve.py        builds both apps and runs both listeners in one event loop
   ingest.py       the public app -- one route, and deliberately nothing else
   http.py         read_capped_body, shared by both
   state.py        in-process counters both listeners see
   healthcheck.py  module entrypoint for the container's HEALTHCHECK
-  __main__.py     `python -m ecowitt`: configure logging and serve
+  __main__.py     `python -m ecowitt.collector`: configure logging and serve
 
   pipeline.py     report fields -> rows: parse, derive, render   <- the data path
   readings.py     Reading, the canonical-unit value parse produces and derive consumes
@@ -46,7 +46,7 @@ backend/src/ecowitt/
   spool.py        the bounded on-disk queue, one atomically written file per report
   heartbeat.py    calls a push monitor's URL after writes, at most once per interval
   ratelimit.py    the ingest listener's per-address token bucket
-backend/tests/
+collector/tests/
   conftest.py     settings/state fixtures and the recorded console payloads
   fixtures/       recorded payloads, the golden line protocol, the known-keys list
   test_infra/     wiring: the two listeners, config resolution, the health probe
@@ -60,8 +60,8 @@ grafana/          weather.json, the dashboard, and alerts.json, the alert rules;
                   test_alerts check their queries against the golden output, so a renamed table or
                   field fails there rather than blanking a panel or silencing an alert
 TODO/             one note per planned feature; delete a note when its feature ships
-bin/              every script the Makefile and CI run; its Python is linted with the backend's
-                  ruff configuration (bin/ci-ruff.sh)
+bin/              every script the Makefile and CI run; its Python is linted with the shared
+                  ruff.toml (bin/ci-ruff.sh)
 ```
 
 ## Things worth knowing before changing anything
@@ -169,12 +169,12 @@ make dev          # serve from the working copy (ingest :2551, admin :2552)
 make test ARGS="tests/test_infra/test_ingest.py -k slash"
 make test-js      # the page scripts' tests, with coverage (needs node)
 make check        # lint + both suites with coverage
-UPDATE_GOLDEN=1 bin/test-backend.sh tests/test_data/test_pipeline.py   # after an intended output change
+UPDATE_GOLDEN=1 bin/test-python.sh collector tests/test_data/test_pipeline.py   # after an intended output change
 ```
 
 ## Testing conventions
 
-- Two coverage suites, `backend` and `pages`, with their gates in `coverage.toml`.
+- Two coverage suites, `collector` and `pages`, with their gates in `coverage.toml`.
 - Recorded console payloads live in `tests/fixtures/`, as the station sends them — one line,
   form-encoded, unmodified apart from the `PASSKEY`, which is a placeholder. A real one
   authenticates a station's reports and belongs in no repository. Names and altitudes in tests

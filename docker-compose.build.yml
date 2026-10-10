@@ -7,3 +7,4 @@ services:
   ecowitt:
     build:
       context: .
+      dockerfile: collector/Dockerfile
