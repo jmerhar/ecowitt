@@ -39,7 +39,11 @@
     .warning { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: .4rem;
                padding: .7rem 1rem; margin: .6rem 0; }
     .warning form { margin-top: .4rem; }
-    form.inline { display: inline; }
+    /* A field and its button on one line: the field gives way, so the button is never pushed
+       out of a table cell. */
+    form.inline { display: flex; gap: .5rem; align-items: center; }
+    form.inline input { flex: 1 1 8rem; min-width: 0; }
+    form.inline button { flex: none; }
     label { display: block; font-size: .85rem; color: var(--muted); margin-top: .5rem; }
     input, select { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line);
                     border-radius: .3rem; padding: .3rem .5rem; width: 100%; max-width: 22rem; }
