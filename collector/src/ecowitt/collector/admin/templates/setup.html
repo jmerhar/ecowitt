@@ -64,10 +64,16 @@
         <input id="lon-{{ loop.index }}" name="longitude" inputmode="decimal" value="{{ value(entry, 'longitude') }}"></div>
       <div><label for="alt-{{ loop.index }}">Altitude of the barometer (m)</label>
         <input id="alt-{{ loop.index }}" name="altitude_m" inputmode="decimal" value="{{ value(entry, 'altitude_m') }}"></div>
+      <div><label for="tz-{{ loop.index }}">Time zone</label>
+        <input id="tz-{{ loop.index }}" name="timezone" list="zones" autocomplete="off"
+               value="{{ value(entry, 'timezone') }}"
+               placeholder="{{ item.derived_zone or 'from the coordinates' }}"></div>
     </div>
     <p class="muted">Coordinates are optional. With them the altitude can be looked up, and absolute
       pressure is checked against a weather model; both send the coordinates to a public service
-      (OpenTopoData or Open-Elevation, and Open-Meteo).</p>
+      (OpenTopoData or Open-Elevation, and Open-Meteo). The time zone, which decides where the
+      station's day begins on the dashboard, is taken from the coordinates offline unless you
+      enter one.</p>
     <button class="secondary" type="button" data-geolocate data-lat="lat-{{ loop.index }}"
             data-lon="lon-{{ loop.index }}" data-status="geo-{{ loop.index }}">Use this device's location</button>
     <button class="secondary" type="submit" name="action" value="lookup">Look up altitude</button>
@@ -146,4 +152,5 @@
     {% if login_set %}<button class="danger" type="submit" name="action" value="clear" formnovalidate>Remove login</button>{% endif %}
   </form>
 </section>
+<datalist id="zones">{% for zone in zones %}<option value="{{ zone }}">{% endfor %}</datalist>
 {% endblock %}

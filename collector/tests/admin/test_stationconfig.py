@@ -106,3 +106,37 @@ def test_a_malformed_file_is_refused_with_the_reason(
     """Running on with no stations would discard every report while looking healthy."""
     with pytest.raises(ConfigError, match=reason):
         load(write(tmp_path, text))
+
+
+def test_a_station_takes_its_zone_from_its_coordinates() -> None:
+    from ecowitt.collector.admin.stationconfig import ConfigDocument, StationEntry, build
+
+    entry = StationEntry(name="Home", passkey="A", latitude=38.72, longitude=-9.14)
+
+    (station,) = build(ConfigDocument(stations=[entry])).stations
+    assert station.timezone == "Europe/Lisbon"
+
+
+def test_a_configured_zone_wins_over_the_coordinates() -> None:
+    from ecowitt.collector.admin.stationconfig import ConfigDocument, StationEntry, build
+
+    entry = StationEntry(name="Home", passkey="A", latitude=38.72, longitude=-9.14, timezone="UTC")
+
+    (station,) = build(ConfigDocument(stations=[entry])).stations
+    assert station.timezone == "UTC"
+
+
+def test_without_coordinates_or_a_zone_there_is_none() -> None:
+    from ecowitt.collector.admin.stationconfig import ConfigDocument, StationEntry, build
+
+    (station,) = build(ConfigDocument(stations=[StationEntry(name="Home", passkey="A")])).stations
+    assert station.timezone is None
+
+
+def test_an_unknown_zone_name_is_refused() -> None:
+    from pydantic import ValidationError
+
+    from ecowitt.collector.admin.stationconfig import StationEntry
+
+    with pytest.raises(ValidationError, match="Europe/Lisbon"):
+        StationEntry(name="Home", passkey="A", timezone="Europe/Atlantis")

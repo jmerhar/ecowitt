@@ -80,7 +80,9 @@ Its PASSKEY — the credential every upload carries — is copied into the confi
 ever being shown. From then on its reports are stored; there is nothing to restart.
 
 On the same page: the altitude (looked up from coordinates if you give them — or from the
-location of the device you are using, when you are at the station), what each sensor is called, the units you keep, and an optional login for these pages. The status page at
+location of the device you are using, when you are at the station), the time zone (taken from the
+coordinates offline unless you enter one), what each sensor is called, the units you keep, and an
+optional login for these pages. The status page at
 <http://127.0.0.1:2552/> shows each room's latest readings and whether airing it would help, the
 wind, rain and sun, every other sensor reporting, battery states, and anything wrong with the
 console's pressure calibration.
@@ -194,6 +196,7 @@ tables) and `name` (its display name).
 | `ventilation` | per indoor sensor: dew-point difference from outdoors, and the humidity the room would settle at after airing |
 | `battery` | per sensor, in whichever form that sensor reports: a low flag, a voltage or a level |
 | `station` | the console's model, firmware, uptime, upload interval and clock skew |
+| `station_info` | each station's settings: coordinates, altitude, time zone, stored units and sensor names. Written at startup and when the configuration changes them, never otherwise; read the newest row as a whole |
 | `soil`, `soil_ec`, `pm`, `air`, `lightning`, `leak`, `probe`, `leaf`, `depth` | only when those sensors report |
 | `unmapped` | any field this server does not recognise, under its original name |
 

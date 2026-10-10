@@ -25,6 +25,7 @@ from ecowitt.collector.admin.reference import ReferenceUpdater
 from ecowitt.collector.config import Settings, get_settings
 from ecowitt.collector.delivery.delivery import Delivery
 from ecowitt.collector.delivery.heartbeat import Heartbeat
+from ecowitt.collector.delivery.metadata import MetadataPublisher
 from ecowitt.collector.delivery.spool import Spool
 from ecowitt.collector.ingest import app as ingest
 from ecowitt.collector.ingest.app import ReportHandler
@@ -211,6 +212,10 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
             calibration=calibration,
         )
         store.subscribe(lambda stations: setattr(station_handler, "config", stations))
+        # Subscribing delivers the current configuration at once, so every station's settings
+        # are published at startup, then again only when a change alters them.
+        metadata = MetadataPublisher(delivery, encode=writer.encode)
+        store.subscribe(metadata.update)
         handler = station_handler
         context = AdminContext(
             settings,
@@ -238,6 +243,7 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
         background += [
             asyncio.create_task(delivery.run(), name="spool-replay"),
             asyncio.create_task(reference.run(), name="reference-pressure"),
+            asyncio.create_task(metadata.run(), name="station-metadata"),
         ]
         if heartbeat is not None:
             background.append(asyncio.create_task(heartbeat.run(), name="heartbeat"))

@@ -14,6 +14,8 @@ core/src/ecowitt/core/   shared by the collector and the dashboard
   psychro.py      the formulas behind derive, pure and reference-tested
   readings.py     Reading, the canonical-unit value parse produces and derive consumes
   preferences.py  units, sensor names, altitude
+  stationinfo.py  a station's published settings: the station_info row the collector writes and
+                  the dashboard reads
   ratelimit.py    the public listeners' per-address token bucket
   testing.py      a stand-in HTTP server every project's tests use for InfluxDB and lookups
   store/          where rows are written, behind one interface
@@ -56,11 +58,13 @@ collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init_
     calibration.py  the relative, absolute-step and absolute-reference pressure checks
     lookups.py    elevation and model surface pressure from public services
     reference.py  the background refresh of model surface pressure
+    timezones.py  a station's time zone from its coordinates (offline, tzfpy), and validation
 
   delivery/       getting rows into the database (through a core Store)
     delivery.py   write now or spool; the replay loop that drains the spool
     spool.py      the bounded on-disk queue, one atomically written file per report
     heartbeat.py  calls a push monitor's URL after writes, at most once per interval
+    metadata.py   publishes each station's settings as station_info, only when they change
 collector/tests/  one folder per subpackage (ingest/, admin/, delivery/), plus
   server/         wiring: the two listeners, settings, the health probe
   common/         the top-level modules the listeners share

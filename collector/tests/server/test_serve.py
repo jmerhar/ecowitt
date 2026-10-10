@@ -334,7 +334,7 @@ async def test_run_without_a_handler_loads_the_configured_stations(
     assert (tmp_path / "spool" / "pending").is_dir()
     assert (tmp_path / "secret.key").is_file()
     names = {t.get_name() for t in asyncio.all_tasks()}
-    assert not names & {"spool-replay", "reference-pressure"}
+    assert not names & {"spool-replay", "reference-pressure", "station-metadata"}
     # Configuration changes and pressure steps both wake the reference refresh; subscribing
     # delivers the first configuration at once.
     assert woken
