@@ -1,13 +1,13 @@
-"""Group readings into the rows written to InfluxDB, in the operator's units."""
+"""Group readings into the rows written to the database, in the operator's units."""
 
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass, field
 
 from ecowitt.collector.ingest.fields import NAMED_TABLES
 from ecowitt.core.preferences import Preferences
 from ecowitt.core.readings import Reading, Value
+from ecowitt.core.store.base import Row
 from ecowitt.core.units import Kind, from_canonical
 
 #: Decimal places kept after conversion. Enough to round-trip every sensor's resolution --
@@ -16,19 +16,9 @@ from ecowitt.core.units import Kind, from_canonical
 PRECISION = 4
 
 
-@dataclass(frozen=True)
-class Point:
-    """One row: a table, its tags, its fields, and when it was measured."""
-
-    table: str
-    tags: tuple[tuple[str, str], ...]
-    timestamp: int
-    fields: dict[str, Value] = field(default_factory=dict)
-
-
 def render(
     readings: Iterable[Reading], preferences: Preferences, *, station: str, timestamp: int
-) -> list[Point]:
+) -> list[Row]:
     """Convert readings to the operator's units and group them into rows.
 
     Readings sharing a table and tags become one row. Where two report keys mean the same
@@ -45,7 +35,7 @@ def render(
         name, value = _field(reading, preferences)
         rows.setdefault(key, {})[name] = value
     return [
-        Point(table, tags, timestamp, dict(sorted(values.items())))
+        Row(table, tags, timestamp, dict(sorted(values.items())))
         for (table, tags), values in sorted(rows.items())
     ]
 

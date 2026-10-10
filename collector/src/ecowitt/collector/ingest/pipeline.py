@@ -8,10 +8,11 @@ from datetime import datetime
 
 from ecowitt.collector.ingest.derive import derive
 from ecowitt.collector.ingest.parse import parse
-from ecowitt.collector.ingest.points import Point, render
+from ecowitt.collector.ingest.points import render
 from ecowitt.collector.ingest.staleness import StalenessTracker
 from ecowitt.core.preferences import Preferences
 from ecowitt.core.readings import Reading
+from ecowitt.core.store.base import Row
 
 
 @dataclass(frozen=True)
@@ -22,7 +23,7 @@ class Processed:
     #: Parsed and derived readings in canonical units, for anything that reasons about values
     #: -- the calibration checks -- rather than displaying them.
     readings: list[Reading]
-    points: list[Point]
+    points: list[Row]
 
 
 def process_report(
@@ -50,7 +51,7 @@ def process(
     station: str,
     preferences: Preferences,
     tracker: StalenessTracker,
-) -> list[Point]:
+) -> list[Row]:
     """Parse, derive and render one report, returning only the rows."""
     return process_report(
         raw, received_at=received_at, station=station, preferences=preferences, tracker=tracker

@@ -11,8 +11,8 @@ import pytest
 
 from ecowitt.collector.delivery.delivery import FIRST_PAUSE_SECONDS, MAX_PAUSE_SECONDS, Delivery
 from ecowitt.collector.delivery.spool import Spool
-from ecowitt.collector.delivery.writer import Outcome
 from ecowitt.collector.state import State
+from ecowitt.core.store.base import Outcome
 
 
 class ScriptedSender:
@@ -22,7 +22,7 @@ class ScriptedSender:
         self.outcomes = list(outcomes)
         self.sent: list[str] = []
 
-    async def send(self, body: str) -> Outcome:
+    async def write(self, body: str) -> Outcome:
         self.sent.append(body)
         return self.outcomes.pop(0) if self.outcomes else Outcome.OK
 
@@ -284,12 +284,12 @@ class ExplodingSender(ScriptedSender):
         super().__init__()
         self.exploded = False
 
-    async def send(self, body: str) -> Outcome:
+    async def write(self, body: str) -> Outcome:
         if not self.exploded:
             self.exploded = True
             self.sent.append(body)
             raise RuntimeError("a client error the writer does not classify")
-        return await super().send(body)
+        return await super().write(body)
 
 
 async def test_an_unexpected_error_does_not_end_the_replay_loop(

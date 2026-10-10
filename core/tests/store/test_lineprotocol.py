@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from ecowitt.collector.ingest.points import Point
-from ecowitt.collector.lineprotocol import encode, encode_point
+from ecowitt.core.store.base import Row
+from ecowitt.core.store.lineprotocol import encode, encode_point
 
 
-def point(fields: dict, tags: tuple = (("station", "home"),), table: str = "indoor") -> Point:
-    return Point(table, tags, 1791500484, fields)
+def point(fields: dict, tags: tuple = (("station", "home"),), table: str = "indoor") -> Row:
+    return Row(table, tags, 1791500484, fields)
 
 
 def test_a_plain_row() -> None:

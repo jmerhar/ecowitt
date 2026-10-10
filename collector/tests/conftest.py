@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
+from collections.abc import AsyncIterator, Iterator, Mapping
 from pathlib import Path
 
 import pytest
@@ -12,9 +12,7 @@ from ecowitt.collector.admin import app as admin
 from ecowitt.collector.config import Settings
 from ecowitt.collector.ingest import app as ingest
 from ecowitt.collector.state import State
-
-# The stand-in InfluxDB's fixture, for every test folder.
-from .stubs import influx  # noqa: F401
+from ecowitt.core.testing import StubInflux, serving
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -86,3 +84,10 @@ def admin_client(settings: Settings, state: State) -> Iterator[TestClient]:
         base_url="http://localhost", app=admin.build_app(context), follow_redirects=False
     ) as client:
         yield client
+
+
+@pytest.fixture
+async def influx() -> AsyncIterator[StubInflux]:
+    """A stand-in InfluxDB for the length of one test."""
+    async with serving(StubInflux()) as stub:
+        yield stub

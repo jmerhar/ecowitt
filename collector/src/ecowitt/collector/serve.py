@@ -26,12 +26,13 @@ from ecowitt.collector.config import Settings, get_settings
 from ecowitt.collector.delivery.delivery import Delivery
 from ecowitt.collector.delivery.heartbeat import Heartbeat
 from ecowitt.collector.delivery.spool import Spool
-from ecowitt.collector.delivery.writer import InfluxWriter
 from ecowitt.collector.ingest import app as ingest
 from ecowitt.collector.ingest.app import ReportHandler
 from ecowitt.collector.ingest.handler import StationHandler
 from ecowitt.collector.ingest.pending import PendingStations
 from ecowitt.collector.state import State
+from ecowitt.core.store.base import Store
+from ecowitt.core.store.factory import store_for
 
 logger = logging.getLogger(__name__)
 
@@ -140,6 +141,17 @@ def build(
     return ingest_listener, admin_listener
 
 
+def _store(settings: Settings) -> Store:
+    """The database the environment describes."""
+    return store_for(
+        "influx2" if settings.influx_api == "v2" else "influx3",
+        url=settings.influx_url,
+        database=settings.influx_database,
+        token=settings.influx_token,
+        org=settings.influx_org,
+    )
+
+
 def warn_if_admin_unauthenticated(settings: Settings, login_set: bool = False) -> bool:
     """Say so when the admin listener has no login, returning whether it warned.
 
@@ -174,7 +186,7 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
     context: AdminContext | None = None
     if handler is None:
         store = ConfigStore(settings.config_file)
-        writer = InfluxWriter(settings)
+        writer = _store(settings)
         lookup_client = httpx2.AsyncClient()
         closers += [writer.aclose, lookup_client.aclose]
         spool = Spool(settings.spool_dir, settings.spool_max_bytes)
@@ -192,7 +204,11 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
         secret = auth.load_secret(settings.secret_file)
         pending, calibration = PendingStations(key=secret), CalibrationMonitor()
         station_handler = StationHandler(
-            store.stations, delivery, pending=pending, calibration=calibration
+            store.stations,
+            delivery,
+            encode=writer.encode,
+            pending=pending,
+            calibration=calibration,
         )
         store.subscribe(lambda stations: setattr(station_handler, "config", stations))
         handler = station_handler

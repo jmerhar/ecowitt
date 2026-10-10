@@ -1,4 +1,8 @@
-"""A stand-in InfluxDB: a real HTTP server on a kernel-chosen port that records what it gets."""
+"""A stand-in HTTP server for tests: a real server on a kernel-chosen port, recording requests.
+
+It stands in for InfluxDB and for the public lookup services. Shipped with ecowitt.core rather
+than kept in one project's tests so every project's tests can use the same one.
+"""
 
 from __future__ import annotations
 
@@ -7,8 +11,6 @@ import contextlib
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from urllib.parse import parse_qsl, urlsplit
-
-import pytest
 
 
 @dataclass
@@ -60,9 +62,3 @@ async def serving(stub: StubInflux, port: int = 0) -> AsyncIterator[StubInflux]:
         yield stub
     server.close()
     await server.wait_closed()
-
-
-@pytest.fixture
-async def influx() -> AsyncIterator[StubInflux]:
-    async with serving(StubInflux()) as stub:
-        yield stub

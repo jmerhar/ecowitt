@@ -14,8 +14,7 @@ from ecowitt.collector.admin.calibration import CalibrationMonitor
 from ecowitt.collector.admin.reference import ReferenceUpdater
 from ecowitt.collector.admin.stationconfig import Station, StationConfig
 from ecowitt.core.preferences import Preferences
-
-from ..stubs import StubInflux, serving
+from ecowitt.core.testing import StubInflux, serving
 
 DEAD = "http://127.0.0.1:1/nothing"
 
