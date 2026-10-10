@@ -200,6 +200,23 @@ def from_canonical(kind: Kind, value: float, units: Units) -> tuple[float, str]:
     return value, FIXED_SUFFIX.get(kind, "")
 
 
+def field_name(base: str, kind: Kind, units: Units) -> str:
+    """The name a reading called `base` is stored under in `units`: `temp` becomes `temp_c`."""
+    suffix = from_canonical(kind, 0.0, units)[1]
+    return f"{base}_{suffix}" if suffix else base
+
+
+def convert(kind: Kind, value: float, source: Units, target: Units) -> float:
+    """A value stored in `source` units, in `target` units instead.
+
+    Every conversion here is linear, so the stored value is undone through the two points
+    `from_canonical` gives for 0 and 1 rather than through a second table of inverses.
+    """
+    offset = from_canonical(kind, 0.0, source)[0]
+    scale = from_canonical(kind, 1.0, source)[0] - offset
+    return from_canonical(kind, (value - offset) / scale, target)[0]
+
+
 #: Kinds whose stored unit depends on the operator's preferences.
 CONVERTIBLE = frozenset(
     {
