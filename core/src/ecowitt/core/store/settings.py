@@ -30,6 +30,8 @@ class Setting:
     #: The kind of value, for checking it: "url" or "text".
     format: str = "text"
     help: str = ""
+    #: When an optional setting is needed, shown beside its label.
+    optional: str = "optional"
 
 
 @dataclass(frozen=True)
@@ -49,7 +51,15 @@ class Kind:
 _URL = Setting(
     "url", "URL", format="url", help="Where the database answers, e.g. http://influxdb:8181"
 )
-_TOKEN = Setting("token", "Token", required=False, secret=True, help="One allowed to write")
+_TOKEN = Setting(
+    "token",
+    "Token",
+    required=False,
+    secret=True,
+    help="One allowed to write",
+    # A database running without authentication takes none.
+    optional="if the database needs one",
+)
 
 KINDS: dict[str, Kind] = {
     kind.name: kind

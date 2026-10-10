@@ -927,6 +927,7 @@ class TestDatabaseForm:
         )
         # Each type's fields carry its prefix, so the hidden type's fields cannot interfere.
         assert 'name="influx3.url"' in page and 'name="influx2.org"' in page
+        assert "Token (if the database needs one)" in page
 
     def test_the_saved_type_is_the_one_selected(self, rig: Rig) -> None:
         rig.post("/setup/database", db("influx2", url="http://x:8086", org="home"))
