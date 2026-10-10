@@ -181,6 +181,12 @@ jobs:
     permissions:
       contents: read
       packages: write
+    # One image per app: the collector keeps the repository's name, the dashboard adds a suffix.
+    strategy:
+      matrix:
+        include:
+          - { image: "", dockerfile: collector/Dockerfile }
+          - { image: "-dashboard", dockerfile: dashboard/Dockerfile }
     steps:
       - uses: actions/checkout@v5
 
@@ -195,7 +201,7 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE }}${{ matrix.image }}
           # A moving tag for deployments that follow the branch, and an immutable one so a
           # specific build can always be pinned or rolled back to.
           tags: |
@@ -205,7 +211,7 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          file: collector/Dockerfile
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

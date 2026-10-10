@@ -26,9 +26,10 @@ class Settings(BaseSettings):
 
     log_level: str = "INFO"
 
-    #: Addresses of reverse proxies whose X-Forwarded-For is believed, comma-separated (`*` for
-    #: any). Behind a proxy every visitor arrives from its address, so without this the rate
-    #: limit below would be shared by all of them.
+    #: Addresses or networks of reverse proxies whose X-Forwarded-For is believed,
+    #: comma-separated. Behind a proxy every visitor arrives from its address, so without this
+    #: the rate limit below would be shared by all of them. Name the proxy rather than `*`: with
+    #: `*` the leftmost entry counts, which a visitor can write themselves.
     forwarded_allow_ips: str = "127.0.0.1"
 
     #: Each visitor's budget: requests per second, and the burst allowed before that applies.

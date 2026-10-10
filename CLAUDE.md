@@ -90,6 +90,7 @@ dashboard/api/src/ecowitt/dashboard/   the public dashboard's read-only API
   siteconfig.py   /data/dashboard.yaml, written once by setup; edited or deleted by hand after
   cache.py        a TTL cache whose concurrent requests share one computation
   models.py       the answers, as the OpenAPI document publishes them
+  healthcheck.py  module entrypoint for the image's HEALTHCHECK (dashboard/Dockerfile)
 dashboard/api/tests/  against an in-memory Reader (memory.py) that answers as the SQL does
 grafana/          weather.json, the dashboard, and alerts.json, the alert rules; a renamed table or
                   field fails tests/grafana rather than blanking a panel or silencing an alert
