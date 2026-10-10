@@ -294,7 +294,10 @@ def build_app(context: AdminContext) -> FastAPI:
         form = await _form(request, context)
         if isinstance(form, Response):
             return form
-        if form.get("action") == "clear":
+        current = context.document.admin
+        if form.get("enabled") != "on":
+            if current is None:
+                return RedirectResponse("/setup", status_code=303)
             return _save(
                 request,
                 context,
@@ -305,6 +308,14 @@ def build_app(context: AdminContext) -> FastAPI:
         password = form.get("password", "")
         if not username:
             return _setup_error(request, context, "A login needs a username.")
+        if current is not None and not password and not form.get("password_again"):
+            renamed = current.model_copy(update={"username": username})
+            return _save(
+                request,
+                context,
+                context.document.model_copy(update={"admin": renamed}),
+                "Login saved.",
+            )
         if len(password) < MIN_PASSWORD_LENGTH:
             return _setup_error(
                 request, context, f"Use a password of at least {MIN_PASSWORD_LENGTH} characters."
@@ -583,6 +594,7 @@ def _setup_view(
     error: str | None = None,
     message: str | None = None,
     draft: dict[str, object] | None = None,
+    db_draft: dict[str, object] | None = None,
 ) -> dict[str, object]:
     """Everything the setup page shows."""
     document = context.document
@@ -605,6 +617,7 @@ def _setup_view(
         "zones": timezones.all_zones(),
         "kinds": list(store_settings.KINDS.values()),
         "database": _database_status(context),
+        "db_draft": db_draft,
     }
 
 
@@ -629,16 +642,21 @@ async def _database_action(
     if declared is None:
         return _setup_error(request, context, "Choose a kind of database.")
     saved = context.document.store
+    # Each kind's fields are prefixed with its name, since the form carries every kind's.
+    typed = {s.name: form.get(f"{kind}.{s.name}", "").strip() for s in declared.settings}
+    # What the page shows again after a test or a refusal: exactly what was typed, a secret
+    # included -- it came from this browser in this request -- so nothing has to be re-entered.
+    draft = {"kind": kind, "values": typed}
     values = {}
     for setting in declared.settings:
-        value = form.get(setting.name, "").strip()
+        value = typed[setting.name]
         if not value and setting.secret and saved is not None and saved.kind == kind:
             value = saved.connection.get(setting.name, "")
         if value:
             values[setting.name] = value
     found = store_settings.problems(kind, values)
     if found:
-        return _setup_error(request, context, "; ".join(found) + ".")
+        return _setup_error(request, context, "; ".join(found) + ".", db_draft=draft)
     if action == "test":
         store = store_settings.store_from(kind, values)
         try:
@@ -646,12 +664,18 @@ async def _database_action(
         finally:
             await store.aclose()
         if problem:
-            return _setup_error(request, context, f"{declared.label} refused: {problem}.")
+            return _setup_error(
+                request, context, f"{declared.label} refused: {problem}.", db_draft=draft
+            )
         return _render(
             request,
             context,
             "setup.html",
-            _setup_view(context, message=f"{declared.label} would accept writes. Save to use it."),
+            _setup_view(
+                context,
+                message=f"{declared.label} would accept writes. Save to use it.",
+                db_draft=draft,
+            ),
         )
     return _save(
         request,
@@ -810,13 +834,19 @@ def _save(
 
 
 def _setup_error(
-    request: Request, context: AdminContext, error: str, *, draft: dict[str, object] | None = None
+    request: Request,
+    context: AdminContext,
+    error: str,
+    *,
+    draft: dict[str, object] | None = None,
+    db_draft: dict[str, object] | None = None,
 ) -> Response:
+    """The setup page again, with the error and whatever was typed into the refused form."""
     return _render(
         request,
         context,
         "setup.html",
-        _setup_view(context, error=error, draft=draft),
+        _setup_view(context, error=error, draft=draft, db_draft=db_draft),
         status_code=400,
     )
 

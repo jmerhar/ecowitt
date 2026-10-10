@@ -22,34 +22,48 @@
   {% else %}
     <p class="notice">No database is set up yet. Reports are kept on disk until one is, and written then.</p>
   {% endif %}
-  {% for kind in kinds %}
-  <details {% if database.kind == kind.name or (not database.configured and loop.first) %}open{% endif %}>
-    <summary>{{ kind.label }}</summary>
-    <form method="post" action="/setup/database">
-      <input type="hidden" name="csrf" value="{{ csrf }}">
-      <input type="hidden" name="kind" value="{{ kind.name }}">
+  {% set chosen = db_draft.kind if db_draft else (database.kind or kinds[0].name) %}
+  <style>
+    form.database fieldset.kind { display: none; border: 0; padding: 0; margin: 0; }
+    {% for kind in kinds %}
+    form.database:has(option[value="{{ kind.name }}"]:checked) fieldset[data-kind="{{ kind.name }}"] { display: block; }
+    {% endfor %}
+  </style>
+  <form method="post" action="/setup/database" class="database">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="row">
+      <div><label for="db-kind">Type of database</label>
+        <select id="db-kind" name="kind">
+        {% for kind in kinds %}<option value="{{ kind.name }}" {% if kind.name == chosen %}selected{% endif %}>{{ kind.label }}</option>{% endfor %}
+        </select></div>
+    </div>
+    {% for kind in kinds %}
+    <fieldset class="kind" data-kind="{{ kind.name }}">
       <div class="row">
       {% for setting in kind.settings %}
+        {% set key = kind.name ~ "." ~ setting.name %}
+        {% set typed = db_draft["values"].get(setting.name) if db_draft and db_draft.kind == kind.name else none %}
         <div><label for="db-{{ kind.name }}-{{ setting.name }}">{{ setting.label }}{% if not setting.required %} (optional){% endif %}</label>
         {% if setting.secret %}
-          <input id="db-{{ kind.name }}-{{ setting.name }}" name="{{ setting.name }}" type="password" autocomplete="off"
+          <input id="db-{{ kind.name }}-{{ setting.name }}" name="{{ key }}" type="password" autocomplete="off"
+                 value="{{ typed or '' }}"
                  placeholder="{{ 'set; leave empty to keep it' if database.kind == kind.name and database[setting.name ~ '_set'] else setting.help }}">
         {% else %}
-          <input id="db-{{ kind.name }}-{{ setting.name }}" name="{{ setting.name }}"
-                 value="{{ database[setting.name] if database.kind == kind.name and database[setting.name] else setting.default }}"
-                 placeholder="{{ setting.help }}" {% if setting.required and not setting.default %}required{% endif %}>
+          <input id="db-{{ kind.name }}-{{ setting.name }}" name="{{ key }}"
+                 value="{{ typed if typed is not none else (database[setting.name] if database.kind == kind.name and database[setting.name] else setting.default) }}"
+                 placeholder="{{ setting.help }}">
         {% endif %}
         </div>
       {% endfor %}
       </div>
-      <button type="submit" name="action" value="save">Save</button>
-      <button class="secondary" type="submit" name="action" value="test">Test connection</button>
-      {% if database.kind == kind.name %}
-      <button class="danger" type="submit" name="action" value="clear" formnovalidate>Remove</button>
-      {% endif %}
-    </form>
-  </details>
-  {% endfor %}
+    </fieldset>
+    {% endfor %}
+    <button type="submit" name="action" value="save">Save</button>
+    <button class="secondary" type="submit" name="action" value="test">Test connection</button>
+    {% if database.configured %}
+    <button class="danger" type="submit" name="action" value="clear">Remove</button>
+    {% endif %}
+  </form>
 </section>
 
 {% if pending %}
@@ -178,16 +192,24 @@
   <h2>Login</h2>
   <p class="muted">Optional. This page is meant to sit behind a reverse proxy on a private network;
     set a login if anyone you do not trust can reach it.</p>
-  <form method="post" action="/setup/admin">
+  <style>
+    form.login .login-fields { display: none; }
+    form.login:has(#a-enabled:checked) .login-fields { display: block; }
+  </style>
+  <form method="post" action="/setup/admin" class="login">
     <input type="hidden" name="csrf" value="{{ csrf }}">
-    <div class="row">
-      <div><label for="a-user">Username</label><input id="a-user" name="username" autocomplete="username"
-            value="{{ document.admin.username if document.admin else '' }}"></div>
-      <div><label for="a-pass">Password</label><input id="a-pass" name="password" type="password" autocomplete="new-password"></div>
-      <div><label for="a-pass2">Password again</label><input id="a-pass2" name="password_again" type="password" autocomplete="new-password"></div>
+    <label class="inline"><input id="a-enabled" name="enabled" type="checkbox" {% if login_set %}checked{% endif %}>
+      Require a login</label>
+    <div class="login-fields">
+      <div class="row">
+        <div><label for="a-user">Username</label><input id="a-user" name="username" autocomplete="username"
+              value="{{ document.admin.username if document.admin else '' }}"></div>
+        <div><label for="a-pass">Password{% if login_set %} (leave empty to keep it){% endif %}</label>
+          <input id="a-pass" name="password" type="password" autocomplete="new-password"></div>
+        <div><label for="a-pass2">Password again</label><input id="a-pass2" name="password_again" type="password" autocomplete="new-password"></div>
+      </div>
     </div>
-    <button type="submit" name="action" value="set">{{ "Change login" if login_set else "Set login" }}</button>
-    {% if login_set %}<button class="danger" type="submit" name="action" value="clear" formnovalidate>Remove login</button>{% endif %}
+    <button type="submit">Save</button>
   </form>
 </section>
 <datalist id="zones">{% for zone in zones %}<option value="{{ zone }}">{% endfor %}</datalist>
