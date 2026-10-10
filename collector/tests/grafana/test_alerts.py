@@ -83,7 +83,8 @@ def test_every_rule_refers_only_to_its_own_steps(rule: dict[str, Any]) -> None:
 
     assert rule["condition"] in refs
     assert {e["expression"] for e in expressions} <= refs
-    assert set(VALUE_REF.findall(rule["annotations"]["summary"])) <= refs
+    for text in (rule["annotations"][k] for k in ("summary", "item") if k in rule["annotations"]):
+        assert set(VALUE_REF.findall(text)) <= refs
 
 
 @pytest.mark.parametrize("rule", BY_TITLE)
@@ -100,7 +101,14 @@ def test_rule_uids_are_unique() -> None:
 
 
 @pytest.mark.parametrize(
-    "uid", ["ecowitt-airing", "ecowitt-gusts", "ecowitt-rain", "ecowitt-pressure-fall"]
+    "uid",
+    [
+        "ecowitt-airing",
+        "ecowitt-close-windows",
+        "ecowitt-gusts",
+        "ecowitt-rain",
+        "ecowitt-pressure-fall",
+    ],
 )
 def test_weather_rules_hold_before_resolving(uid: str) -> None:
     """Gusts, showers and humidity cross their thresholds back and forth; without a hold each
@@ -116,3 +124,19 @@ def test_a_silent_sensor_is_measured_against_the_station_not_the_clock() -> None
     sql = next(r for r in RULES if r["uid"] == "ecowitt-sensor-silent")["data"][0]["model"]
     assert "FROM station" in sql["rawSql"]
     assert "interval '7 days'" in sql["rawSql"]
+
+
+@pytest.mark.parametrize("rule", BY_TITLE)
+def test_a_rule_with_an_alert_per_room_lists_them_under_one_headline(rule: dict[str, Any]) -> None:
+    """Rooms firing together share one message: the headline once, then each room's item."""
+    per_room = " AS room" in rule["data"][0]["model"]["rawSql"]
+    annotations = rule["annotations"]
+    assert ("headline" in annotations) == per_room
+    if per_room:
+        assert "{{" not in annotations["headline"], "the headline is the same for every room"
+        assert annotations["item"].startswith("{{ $labels.room }}")
+
+
+def test_daily_rules_are_the_slow_house_conditions() -> None:
+    daily = {r["title"] for r in RULES if r["labels"].get("notify") == "daily"}
+    assert daily == {"Damp room", "Close the windows"}

@@ -74,12 +74,91 @@
           "keep_firing_for": "30m",
           "annotations": {
             "summary": "{{ $labels.room }} is at {{ humanize $values.B.Value }}% humidity, and the outside air's dew point is {{ printf \"%.1f\" $values.A.Value }} °C lower: airing would dry it.",
+            "headline": "Airing would dry these rooms: the outside air's dew point is more than 2 °C below theirs.",
+            "item": "{{ $labels.room }}: {{ humanize $values.B.Value }}% humidity, dew point {{ printf \"%.1f\" $values.A.Value }} °C above outdoors'",
             "description": "A room at 65% humidity or more, with the outdoor dew point at least 2 °C below the room's, for 15 minutes."
           },
           "labels": {
             "app": "ecowitt",
             "severity": "info",
             "resolve_message": "off"
+          },
+          "isPaused": false
+        },
+        {
+          "uid": "ecowitt-close-windows",
+          "title": "Close the windows",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "A",
+                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(dewpoint_delta_c ORDER BY time) AS delta\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station,\n  CASE WHEN median(rh.rh) >= 65 THEN median(vent.delta) ELSE 99 END AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor\nGROUP BY rh.station",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "B",
+                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(dewpoint_delta_c ORDER BY time) AS delta\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station, median(rh.rh) AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor\nGROUP BY rh.station",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "lt",
+                      "params": [
+                        1
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "for": "30m",
+          "keep_firing_for": "30m",
+          "annotations": {
+            "summary": "Airing won't dry the house: {{ if lt $values.A.Value 0.0 }}the outside air is more humid than the rooms{{ else }}the rooms' dew point is only {{ printf \"%.1f\" $values.A.Value }} °C above the outside air's{{ end }}, and they are at {{ humanize $values.B.Value }}% humidity. Keep the windows closed.",
+            "description": "The rooms at a median of 65% humidity or more, with their median dew point less than 1 °C above the outdoor one, for 30 minutes: outside air brought in holds about as much moisture as the air it replaces."
+          },
+          "labels": {
+            "app": "ecowitt",
+            "severity": "info",
+            "resolve_message": "off",
+            "notify": "daily"
           },
           "isPaused": false
         },
@@ -134,11 +213,14 @@
           "keep_firing_for": "0s",
           "annotations": {
             "summary": "{{ $labels.room }} has stayed at 70% humidity or more for 6 hours (lowest {{ humanize $values.A.Value }}%). Mould grows in air this damp.",
+            "headline": "These rooms have stayed at 70% humidity or more for 6 hours. Mould grows in air this damp.",
+            "item": "{{ $labels.room }} (lowest {{ humanize $values.A.Value }}%)",
             "description": "A room whose humidity has not dropped below 70% in the last 6 hours."
           },
           "labels": {
             "app": "ecowitt",
-            "severity": "warning"
+            "severity": "warning",
+            "notify": "daily"
           },
           "isPaused": false
         },
@@ -193,6 +275,8 @@
           "keep_firing_for": "0s",
           "annotations": {
             "summary": "{{ $labels.room }} has reported the same readings for {{ humanizeDuration $values.A.Value }}: its battery or radio has probably failed.",
+            "headline": "These sensors have reported the same readings for 3 hours or more: a battery or radio has probably failed.",
+            "item": "{{ $labels.room }}, for {{ humanizeDuration $values.A.Value }}",
             "description": "A room or outdoor sensor whose readings have not changed, or not arrived, for 3 hours of the station's reports. A console repeats a lost sensor's last values, so unchanged readings are how a lost one shows. Measured against the station's last report rather than the clock, so a station that stops uploading altogether does not flag every sensor; a sensor silent for more than 7 days drops out."
           },
           "labels": {
@@ -252,6 +336,8 @@
           "keep_firing_for": "0s",
           "annotations": {
             "summary": "{{ $labels.room }}'s battery is low.",
+            "headline": "These sensors' batteries are low.",
+            "item": "{{ $labels.room }}",
             "description": "A sensor's low-battery flag, set for an hour."
           },
           "labels": {
@@ -311,6 +397,8 @@
           "keep_firing_for": "0s",
           "annotations": {
             "summary": "{{ $labels.room }} is at {{ printf \"%.1f\" $values.A.Value }} °C.",
+            "headline": "These rooms are below 8 °C: pipes and plants are at risk.",
+            "item": "{{ $labels.room }}: {{ printf \"%.1f\" $values.A.Value }} °C",
             "description": "A room below 8 °C for 15 minutes: pipes and plants are at risk."
           },
           "labels": {
@@ -370,6 +458,8 @@
           "keep_firing_for": "0s",
           "annotations": {
             "summary": "{{ $labels.room }} is at {{ printf \"%.1f\" $values.A.Value }} °C.",
+            "headline": "These rooms are above 32 °C.",
+            "item": "{{ $labels.room }}: {{ printf \"%.1f\" $values.A.Value }} °C",
             "description": "A room above 32 °C for 15 minutes."
           },
           "labels": {

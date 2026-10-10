@@ -244,11 +244,12 @@ change the field names in the queries to match.
 ## Grafana alerts
 
 [`grafana/alerts.json`](grafana/alerts.json) holds alert rules in Grafana's provisioning format,
-one alert per room or station:
+one alert per room or station (*Close the windows* is one per station):
 
 | Rule | Fires when | Severity |
 |---|---|---|
 | Good time to air | a room is at 65% humidity or more and the outdoor dew point is more than 2 °C below the room's, for 15 minutes | info |
+| Close the windows | the rooms are at a median of 65% humidity or more, and their median dew point is less than 1 °C above the outdoor one, for 30 minutes: airing would not dry them | info |
 | Damp room | a room has not dropped below 70% humidity in 6 hours | warning |
 | Sensor not updating | a room or outdoor sensor's readings have not changed, or not arrived, for 3 hours of the station's reports | warning |
 | Battery low | a sensor's low-battery flag has been set for an hour | warning |
@@ -262,11 +263,18 @@ one alert per room or station:
 - Load the file through Grafana's file provisioning or its alerting API.
 - Routing is yours to set up. Every rule carries the labels `app=ecowitt` and `severity`
   (`warning` or `info`, the second suiting quiet hours); *Good time to air* also carries
-  `resolve_message=off`, for a contact point that sends no message when the window closes.
+  `resolve_message=off`, for a contact point that sends no message when the window closes, and
+  so does *Close the windows*. *Damp room* and *Close the windows* carry `notify=daily`: they
+  describe the house over hours, so one message a day is enough -- route them with a 24-hour
+  group interval and repeat interval, so a room that turns damp while others still are waits for
+  the next day's message.
 - Each rule's `summary` annotation is a complete sentence, ready to send as the notification.
-- The weather rules (airing, wind, rain, pressure) keep firing for 30 minutes, or an hour for
-  pressure, after their condition clears, so a value hovering at a threshold does not send a
-  stream of firing and resolved messages.
+  Rules with an alert per room also have a `headline`, the same for every room, and an `item`
+  naming the room: a message about several rooms reads better as the headline once and an item
+  per room.
+- The weather rules (both airing rules, wind, rain, pressure) keep firing for 30 minutes, or an
+  hour for pressure, after their condition clears, so a value hovering at a threshold does not
+  send a stream of firing and resolved messages.
 - *Sensor not updating* counts a sensor's age against the station's last report, so a station
   that stops uploading does not flag every sensor; watch the station itself with the heartbeat.
   A sensor silent for more than 7 days drops out of the rule.

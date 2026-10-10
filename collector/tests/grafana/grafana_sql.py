@@ -21,6 +21,7 @@ FUNCTIONS = {
     "avg",
     "min",
     "max",
+    "median",
     "last_value",
     "first_value",
     "now",
