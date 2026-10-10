@@ -133,9 +133,14 @@ def json_server(reply: object, *, status: int = 200, body: str | None = None) ->
         thread.join(timeout=5)
 
 
+def db(kind: str, **values: str) -> dict[str, str]:
+    """A database form: the chosen kind, and that kind's fields under its prefix."""
+    return {"kind": kind, **{f"{kind}.{name}": value for name, value in values.items()}}
+
+
 def use_database(rig: Rig, url: str = "http://127.0.0.1:1") -> None:
     """Save an InfluxDB 3 connection; port 1 refuses, so nothing is ever written."""
-    response = rig.post("/setup/database", {"kind": "influx3", "url": url, "token": "t0ken"})
+    response = rig.post("/setup/database", db("influx3", url=url, token="t0ken"))
     assert response.status_code == 303, response.text
 
 
@@ -212,10 +217,15 @@ class TestCrossSiteForms:
             ("/setup/units", {"temperature": "f"}),
             (
                 "/setup/admin",
-                {"username": "evil", "password": "takeover1", "password_again": "takeover1"},
+                {
+                    "enabled": "on",
+                    "username": "evil",
+                    "password": "takeover1",
+                    "password_again": "takeover1",
+                },
             ),
             ("/dismiss", {"station": "Home", "kind": "location"}),
-            ("/setup/database", {"kind": "influx3", "url": "http://evil.example"}),
+            ("/setup/database", {"kind": "influx3", "influx3.url": "http://evil.example"}),
         ],
     )
     def test_no_form_from_elsewhere_changes_anything(
@@ -487,10 +497,11 @@ class TestUnitsAndLogin:
             ),
             ({"username": "a", "password": "short", "password_again": "short"}, "at least"),
             ({"username": "a", "password": "longenough", "password_again": "different"}, "differ"),
+            ({"username": "a"}, "at least"),
         ],
     )
     def test_a_bad_login_is_refused(self, rig: Rig, fields: dict[str, str], message: str) -> None:
-        response = rig.post("/setup/admin", fields)
+        response = rig.post("/setup/admin", {"enabled": "on", **fields})
 
         assert response.status_code == 400 and message in response.text
         assert rig.store.document.admin is None
@@ -498,7 +509,12 @@ class TestUnitsAndLogin:
     def test_once_set_everything_but_health_needs_it(self, rig: Rig) -> None:
         rig.post(
             "/setup/admin",
-            {"username": "admin", "password": "correct-horse", "password_again": "correct-horse"},
+            {
+                "enabled": "on",
+                "username": "admin",
+                "password": "correct-horse",
+                "password_again": "correct-horse",
+            },
         )
 
         assert rig.client.get("/setup").status_code == 401
@@ -510,7 +526,12 @@ class TestUnitsAndLogin:
     def test_failed_logins_are_throttled(self, rig: Rig) -> None:
         rig.post(
             "/setup/admin",
-            {"username": "admin", "password": "correct-horse", "password_again": "correct-horse"},
+            {
+                "enabled": "on",
+                "username": "admin",
+                "password": "correct-horse",
+                "password_again": "correct-horse",
+            },
         )
 
         codes = [rig.client.get("/", auth=("admin", f"guess{i}")).status_code for i in range(12)]
@@ -521,10 +542,16 @@ class TestUnitsAndLogin:
         creds = ("admin", "correct-horse")
         rig.post(
             "/setup/admin",
-            {"username": "admin", "password": "correct-horse", "password_again": "correct-horse"},
+            {
+                "enabled": "on",
+                "username": "admin",
+                "password": "correct-horse",
+                "password_again": "correct-horse",
+            },
         )
 
-        assert rig.post("/setup/admin", {"action": "clear"}, auth=creds).status_code == 303
+        assert rig.post("/setup/admin", {}, auth=creds).status_code == 303
+        assert rig.store.document.admin is None
         assert rig.client.get("/setup").status_code == 200
 
 
@@ -830,7 +857,7 @@ class TestDatabase:
     def test_an_empty_token_keeps_the_saved_one(self, rig: Rig) -> None:
         use_database(rig, "http://influx:8181")
 
-        rig.post("/setup/database", {"kind": "influx3", "url": "http://other:8181", "token": ""})
+        rig.post("/setup/database", db("influx3", url="http://other:8181", token=""))
 
         entry = rig.store.document.store
         assert entry is not None and entry.connection == {
@@ -841,7 +868,7 @@ class TestDatabase:
     def test_a_token_is_not_carried_over_to_another_kind(self, rig: Rig) -> None:
         use_database(rig)
 
-        rig.post("/setup/database", {"kind": "influx2", "url": "http://x:8086", "org": "home"})
+        rig.post("/setup/database", db("influx2", url="http://x:8086", org="home"))
 
         entry = rig.store.document.store
         assert entry is not None and entry.kind == "influx2" and "token" not in entry.connection
@@ -849,10 +876,10 @@ class TestDatabase:
     @pytest.mark.parametrize(
         ("fields", "message"),
         [
-            ({"kind": "influx3"}, "URL is required"),
-            ({"kind": "influx3", "url": "influx:8181"}, "must start with http://"),
-            ({"kind": "influx2", "url": "http://x"}, "Organisation is required"),
-            ({"kind": "sqlite", "url": "http://x"}, "Choose a kind of database"),
+            (db("influx3"), "URL is required"),
+            (db("influx3", url="influx:8181"), "must start with http://"),
+            (db("influx2", url="http://x"), "Organisation is required"),
+            (db("sqlite", url="http://x"), "Choose a kind of database"),
         ],
     )
     def test_an_unusable_connection_is_refused_with_the_reason(
@@ -872,7 +899,7 @@ class TestDatabase:
     def test_a_working_connection_tests_as_working_and_is_not_saved(self, rig: Rig) -> None:
         with json_server({}, status=400, body="incoming write was empty") as url:
             response = rig.post(
-                "/setup/database", {"kind": "influx3", "url": url, "action": "test"}
+                "/setup/database", {**db("influx3", url=url, token="typed"), "action": "test"}
             )
 
         assert response.status_code == 200
@@ -882,9 +909,94 @@ class TestDatabase:
     def test_a_refused_connection_tests_as_refused_with_only_the_reason(self, rig: Rig) -> None:
         with json_server({}, status=401, body="internal detail") as url:
             response = rig.post(
-                "/setup/database", {"kind": "influx3", "url": url, "action": "test"}
+                "/setup/database", {**db("influx3", url=url, token="typed"), "action": "test"}
             )
 
         assert response.status_code == 400
         assert "InfluxDB 3 refused: the token was not accepted" in response.text
         assert "internal detail" not in response.text
+
+
+class TestDatabaseForm:
+    def test_there_is_one_form_with_a_choice_of_type(self, rig: Rig) -> None:
+        page = rig.client.get("/setup").text
+
+        assert page.count('action="/setup/database"') == 1
+        assert re.search(
+            r'<select id="db-kind" name="kind">.*InfluxDB 3.*InfluxDB 2\.x', page, re.S
+        )
+        # Each type's fields carry its prefix, so the hidden type's fields cannot interfere.
+        assert 'name="influx3.url"' in page and 'name="influx2.org"' in page
+
+    def test_the_saved_type_is_the_one_selected(self, rig: Rig) -> None:
+        rig.post("/setup/database", db("influx2", url="http://x:8086", org="home"))
+
+        page = rig.client.get("/setup").text
+
+        assert re.search(r'<option value="influx2"\s+selected>', page)
+        assert 'value="home"' in page
+
+    def test_a_test_keeps_everything_that_was_typed(self, rig: Rig) -> None:
+        """Re-entering the connection after a successful test would be pointless toil."""
+        with json_server({}, status=400, body="incoming write was empty") as url:
+            response = rig.post(
+                "/setup/database",
+                {**db("influx3", url=url, database="wx", token="typed-token"), "action": "test"},
+            )
+
+        assert 'value="' + url + '"' in response.text
+        assert 'value="wx"' in response.text
+        assert 'value="typed-token"' in response.text
+
+    def test_a_refused_form_keeps_what_was_typed(self, rig: Rig) -> None:
+        response = rig.post("/setup/database", db("influx2", url="http://x:8086", token="tk"))
+
+        assert response.status_code == 400 and "Organisation is required" in response.text
+        assert re.search(r'<option value="influx2"\s+selected>', response.text)
+        assert 'value="http://x:8086"' in response.text and 'value="tk"' in response.text
+
+    def test_a_saved_token_is_never_put_back_into_the_page(self, rig: Rig) -> None:
+        use_database(rig)
+
+        assert "t0ken" not in rig.client.get("/setup").text
+
+
+class TestLoginForm:
+    def test_the_switch_is_off_with_no_login_and_on_with_one(self, rig: Rig) -> None:
+        assert not re.search(r'id="a-enabled"[^>]*checked', rig.client.get("/setup").text)
+
+        rig.post(
+            "/setup/admin",
+            {
+                "enabled": "on",
+                "username": "a",
+                "password": "longenough",
+                "password_again": "longenough",
+            },
+        )
+
+        page = rig.client.get("/setup", auth=("a", "longenough")).text
+        assert re.search(r'id="a-enabled"[^>]*checked', page)
+
+    def test_saving_with_the_switch_off_and_no_login_changes_nothing(self, rig: Rig) -> None:
+        response = rig.post("/setup/admin", {})
+
+        assert response.status_code == 303 and rig.store.document.admin is None
+
+    def test_an_empty_password_keeps_the_saved_one_and_renames(self, rig: Rig) -> None:
+        rig.post(
+            "/setup/admin",
+            {
+                "enabled": "on",
+                "username": "a",
+                "password": "longenough",
+                "password_again": "longenough",
+            },
+        )
+        before = rig.store.document.admin
+
+        rig.post("/setup/admin", {"enabled": "on", "username": "b"}, auth=("a", "longenough"))
+
+        after = rig.store.document.admin
+        assert before is not None and after is not None
+        assert after.username == "b" and after.password_hash == before.password_hash
