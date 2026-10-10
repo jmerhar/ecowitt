@@ -5,6 +5,36 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 [Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
 says what under *Upgrading*.
 
+## 1.0.0 — 2026-10-10
+
+The first stable release.
+
+### Added
+
+- `ADMIN_HOSTS` names the host names the admin listener answers; any other gets 421, so a site
+  cannot rebind its own domain to the admin listener.
+
+### Changed
+
+- The station's reply is sent before its report is handled, so a slow database no longer holds
+  it, and a known PASSKEY answers no slower than an unknown one.
+- The PASSKEY fingerprint shown on the setup page and in the log is keyed with the server's
+  secret, so it cannot be reversed to the PASSKEY.
+- The shipped container runs with a read-only root filesystem and no capabilities.
+
+### Fixed
+
+- Request headers and connections are bounded on both listeners.
+- The spool's replay loop and the heartbeat survive unexpected errors; a malformed `INFLUX_URL`,
+  or InfluxDB 2.x without `INFLUX_ORG`, stops startup with the reason.
+- Admin pages cope with names and values containing quotes, line breaks, `nan` or `inf`;
+  derivations ignore impossible temperatures; line breaks are kept out of line protocol.
+- The shipped compose file forwards every documented setting.
+
+### Upgrading
+
+- Behind a reverse proxy, add the host name the admin pages are reached by to `ADMIN_HOSTS`.
+
 ## 0.6.0 — 2026-10-09
 
 ### Added
