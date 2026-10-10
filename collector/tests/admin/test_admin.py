@@ -39,18 +39,8 @@ def test_status_counts_what_arrived(admin_client: TestClient, state: State) -> N
     assert body["ingest_path"] == "/data/report/"
 
 
-def test_status_never_returns_the_influx_token(state: State, tmp_path) -> None:
-    """The token's presence is reported; its value is not."""
-    secret = "apiv3_do-not-leak-this"
-    settings = Settings(data_dir=tmp_path, influx_token=secret)
-
-    with TestClient(
-        base_url="http://localhost", app=admin.build_app(admin.AdminContext(settings, state))
-    ) as client:
-        response = client.get("/api/status")
-
-    assert response.json()["influx"]["token_configured"] is True
-    assert secret not in response.text
+def test_status_reports_no_database_until_one_is_configured(admin_client: TestClient) -> None:
+    assert admin_client.get("/api/status").json()["database"] == {"kind": None, "configured": False}
 
 
 def test_status_before_any_report(admin_client: TestClient) -> None:
@@ -146,13 +136,21 @@ def test_a_configured_host_name_is_answered(tmp_path: Path) -> None:
         ("http://influx:8181", "http://influx:8181"),
     ],
 )
-def test_status_never_returns_credentials_in_the_influx_url(
+def test_status_shows_the_connection_but_never_a_secret(
     state: State, tmp_path: Path, url: str, shown: str
 ) -> None:
-    settings = Settings(data_dir=tmp_path, influx_url=url)
-    with TestClient(
-        base_url="http://localhost", app=admin.build_app(admin.AdminContext(settings, state))
-    ) as client:
-        body = client.get("/api/status").json()
+    from ecowitt.collector.admin.configstore import ConfigStore
+    from ecowitt.collector.admin.stationconfig import ConfigDocument, StoreEntry
 
-    assert body["influx"]["url"] == shown
+    store = ConfigStore(tmp_path / "config.yaml")
+    entry = StoreEntry(kind="influx3", url=url, token="apiv3_do-not-leak-this")  # type: ignore[call-arg]
+    store.replace(ConfigDocument(store=entry))
+    context = admin.AdminContext(Settings(data_dir=tmp_path), state, store=store)
+    with TestClient(base_url="http://localhost", app=admin.build_app(context)) as client:
+        response = client.get("/api/status")
+
+    database = response.json()["database"]
+    assert database["url"] == shown
+    assert database["database"] == "weather"
+    assert database["token_set"] is True
+    assert "do-not-leak-this" not in response.text and "s3cr3t" not in response.text

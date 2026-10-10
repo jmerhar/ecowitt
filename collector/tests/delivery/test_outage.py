@@ -20,7 +20,6 @@ from ecowitt.collector.ingest.handler import StationHandler
 from ecowitt.collector.state import State
 from ecowitt.core.preferences import Preferences
 from ecowitt.core.store.influx3 import Influx3Store
-from ecowitt.core.store.lineprotocol import encode
 from ecowitt.core.testing import StubInflux, serving
 
 from ..conftest import FIXTURE_PASSKEY, payload
@@ -57,7 +56,7 @@ async def until(condition, timeout: float = 10.0) -> None:  # noqa: ANN001
 
 
 def handler_for(delivery: Delivery) -> StationHandler:
-    return StationHandler(CONFIG, delivery, encode=encode, clock=lambda: RECEIVED)
+    return StationHandler(CONFIG, delivery, clock=lambda: RECEIVED)
 
 
 def stored_timestamps(stub: StubInflux) -> list[str]:

@@ -140,3 +140,41 @@ def test_an_unknown_zone_name_is_refused() -> None:
 
     with pytest.raises(ValidationError, match="Europe/Lisbon"):
         StationEntry(name="Home", passkey="A", timezone="Europe/Atlantis")
+
+
+def test_the_database_connection_is_saved_beside_its_kind(tmp_path: Path) -> None:
+    from ecowitt.collector.admin.stationconfig import (
+        ConfigDocument,
+        StoreEntry,
+        load_document,
+        save_document,
+    )
+
+    entry = StoreEntry(kind="influx2", url="http://influx:8086", org="home", token="t")  # type: ignore[call-arg]
+    save_document(tmp_path / "config.yaml", ConfigDocument(store=entry))
+
+    text = (tmp_path / "config.yaml").read_text()
+    loaded = load_document(tmp_path / "config.yaml").store
+    assert "kind: influx2" in text and "org: home" in text
+    assert loaded is not None and loaded.connection == {
+        "url": "http://influx:8086",
+        "org": "home",
+        "token": "t",
+    }
+
+
+@pytest.mark.parametrize(
+    ("store", "problem"),
+    [
+        ("{kind: sqlite}", "unknown kind"),
+        ("{kind: influx3}", "URL is required"),
+        ("{kind: influx3, url: 'http://x', bucket: y}", "bucket is not a setting"),
+    ],
+)
+def test_a_connection_the_kind_would_not_accept_stops_startup(
+    tmp_path: Path, store: str, problem: str
+) -> None:
+    (tmp_path / "config.yaml").write_text(f"store: {store}\n", encoding="utf-8")
+
+    with pytest.raises(ConfigError, match=problem):
+        load(tmp_path / "config.yaml")

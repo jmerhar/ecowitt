@@ -15,6 +15,7 @@ from ecowitt.core.store.influx3 import Influx3Store
 from ecowitt.core.testing import StubInflux
 
 LINE = "indoor,station=home temp_c=23.2 1791500484"
+ROWS = [Row("indoor", (("station", "home"),), 1791500484, {"temp_c": 23.2})]
 
 
 @pytest.fixture
@@ -34,7 +35,7 @@ async def store_for_stub(influx: StubInflux) -> AsyncIterator[Callable[..., Infl
 async def test_v3_writes_line_protocol_with_a_bearer_token(
     influx: StubInflux, store_for_stub: Callable[..., InfluxStore]
 ) -> None:
-    assert await store_for_stub().write(LINE) is Outcome.OK
+    assert await store_for_stub().write(ROWS) is Outcome.OK
 
     (request,) = influx.requests
     assert (request.method, request.path) == ("POST", "/api/v3/write_lp")
@@ -49,7 +50,7 @@ async def test_v2_writes_to_a_bucket_with_a_token_scheme(
 ) -> None:
     store = store_for_stub("influx2", org="home", database="wx")
 
-    assert await store.write(LINE) is Outcome.OK
+    assert await store.write(ROWS) is Outcome.OK
 
     (request,) = influx.requests
     assert request.path == "/api/v2/write"
@@ -62,7 +63,7 @@ async def test_no_token_sends_no_authorization(
     influx: StubInflux, store_for_stub: Callable[..., InfluxStore], kind: str
 ) -> None:
     """An InfluxDB with authentication disabled needs none, and an empty header would be wrong."""
-    await store_for_stub(kind, token="").write(LINE)
+    await store_for_stub(kind, token="").write(ROWS)
 
     assert "authorization" not in influx.requests[0].headers
 
@@ -70,7 +71,7 @@ async def test_no_token_sends_no_authorization(
 async def test_a_trailing_slash_on_the_url_is_tolerated(
     influx: StubInflux, store_for_stub: Callable[..., InfluxStore]
 ) -> None:
-    await store_for_stub(url=influx.url + "/").write(LINE)
+    await store_for_stub(url=influx.url + "/").write(ROWS)
 
     assert influx.requests[0].path == "/api/v3/write_lp"
 
@@ -81,7 +82,7 @@ async def test_a_rejected_write_reports_failure_with_the_reason(
     influx.status, influx.reply = 400, "partial write: field type conflict"
     store = store_for_stub()
 
-    assert await store.write(LINE) is Outcome.REJECT
+    assert await store.write(ROWS) is Outcome.REJECT
     assert store.last_error is not None and "field type conflict" in store.last_error
     assert "HTTP 400" in caplog.text
     assert "not retrying" in caplog.text
@@ -93,7 +94,7 @@ async def test_a_long_error_body_is_truncated(
     influx.status, influx.reply = 502, "<html>" + "x" * 5000
     store = store_for_stub()
 
-    await store.write(LINE)
+    await store.write(ROWS)
 
     assert store.last_error is not None
     assert len(store.last_error) <= ERROR_EXCERPT + len("HTTP 502: ")
@@ -104,10 +105,10 @@ async def test_a_success_clears_the_last_error(
 ) -> None:
     store = store_for_stub()
     influx.status = 500
-    await store.write(LINE)
+    await store.write(ROWS)
     influx.status = 204
 
-    assert await store.write(LINE) is Outcome.OK
+    assert await store.write(ROWS) is Outcome.OK
     assert store.last_error is None
 
 
@@ -118,7 +119,7 @@ async def test_an_unreachable_server_is_a_failure_not_an_exception(
     store = Influx3Store("http://127.0.0.1:1", "weather")
     try:
         with caplog.at_level(logging.ERROR):
-            assert await store.write(LINE) is Outcome.RETRY
+            assert await store.write(ROWS) is Outcome.RETRY
     finally:
         await store.aclose()
 
@@ -128,7 +129,7 @@ async def test_an_unreachable_server_is_a_failure_not_an_exception(
 async def test_nothing_to_write_is_not_sent(
     influx: StubInflux, store_for_stub: Callable[..., InfluxStore]
 ) -> None:
-    assert await store_for_stub().write("") is Outcome.OK
+    assert await store_for_stub().write([]) is Outcome.OK
     assert influx.requests == []
 
 
@@ -136,17 +137,19 @@ async def test_without_a_url_nothing_is_attempted() -> None:
     store = Influx3Store("", "weather")
     try:
         assert store.configured is False
-        assert await store.write(LINE) is Outcome.RETRY
+        assert await store.write(ROWS) is Outcome.RETRY
         assert store.last_error == "no database is configured"
     finally:
         await store.aclose()
 
 
-def test_rows_are_encoded_as_line_protocol() -> None:
-    store = Influx3Store("http://influx", "weather")
-    rows = [Row("indoor", (("station", "home"),), 1791500484, {"temp_c": 23.2})]
+async def test_rows_without_fields_send_nothing(
+    influx: StubInflux, store_for_stub: Callable[..., InfluxStore]
+) -> None:
+    empty = [Row("indoor", (("station", "home"),), 1791500484, {})]
 
-    assert store.encode(rows) == LINE
+    assert await store_for_stub().write(empty) is Outcome.OK
+    assert influx.requests == []
 
 
 def test_the_factory_builds_each_kind() -> None:
@@ -191,4 +194,65 @@ async def test_write_reports_the_classified_outcome(
 ) -> None:
     influx.status = status
 
-    assert await store_for_stub().write(LINE) is outcome
+    assert await store_for_stub().write(ROWS) is outcome
+
+
+@pytest.mark.parametrize("kind", KINDS)
+async def test_a_check_sends_an_empty_write_and_accepts_its_refusal_for_being_empty(
+    influx: StubInflux, store_for_stub: Callable[..., InfluxStore], kind: str
+) -> None:
+    """InfluxDB checks token and database before the body; 'empty' means both were fine."""
+    influx.status, influx.reply = 400, "incoming write was empty"
+
+    assert await store_for_stub(kind, org="home").check() is None
+    assert influx.requests[0].body == ""
+
+
+async def test_a_check_accepts_a_server_that_takes_an_empty_write(
+    influx: StubInflux, store_for_stub: Callable[..., InfluxStore]
+) -> None:
+    influx.status = 204
+
+    assert await store_for_stub().check() is None
+
+
+@pytest.mark.parametrize(
+    ("status", "reply", "reason"),
+    [
+        (401, "", "token was not accepted"),
+        (403, "", "may not write to that database"),
+        (404, "", "no such database"),
+        (400, "line 1: bad timestamp", "HTTP 400"),
+        (500, "secret internals", "HTTP 500"),
+    ],
+)
+async def test_a_failed_check_names_the_reason_but_not_the_response(
+    influx: StubInflux,
+    store_for_stub: Callable[..., InfluxStore],
+    status: int,
+    reply: str,
+    reason: str,
+) -> None:
+    """The reason reaches a web page, so the server's own words stay out of it."""
+    influx.status, influx.reply = status, reply
+
+    found = await store_for_stub().check()
+
+    assert found is not None and reason in found
+    assert "internals" not in found
+
+
+async def test_a_check_of_an_unreachable_server_says_it_cannot_connect() -> None:
+    store = Influx3Store("http://127.0.0.1:1", "weather")
+    try:
+        assert await store.check() == "cannot connect (ConnectError)"
+    finally:
+        await store.aclose()
+
+
+async def test_a_check_without_a_url_says_so() -> None:
+    store = Influx3Store("", "weather")
+    try:
+        assert await store.check() == "no database is configured"
+    finally:
+        await store.aclose()

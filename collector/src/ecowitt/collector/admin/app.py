@@ -31,14 +31,21 @@ from starlette.responses import PlainTextResponse, RedirectResponse, Response
 from ecowitt.collector.admin import auth, lookups, timezones
 from ecowitt.collector.admin.calibration import CalibrationMonitor
 from ecowitt.collector.admin.configstore import ConfigStore
-from ecowitt.collector.admin.stationconfig import AdminLogin, ConfigDocument, StationEntry
+from ecowitt.collector.admin.stationconfig import (
+    AdminLogin,
+    ConfigDocument,
+    StationEntry,
+    StoreEntry,
+)
 from ecowitt.collector.config import Settings
+from ecowitt.collector.delivery.database import ConfiguredStore
 from ecowitt.collector.delivery.spool import Spool
 from ecowitt.collector.http import BodyTooLarge, read_capped_body
 from ecowitt.collector.ingest.handler import StationHandler
 from ecowitt.collector.ingest.pending import PendingStations
 from ecowitt.collector.state import State
 from ecowitt.core.ratelimit import RateLimiter
+from ecowitt.core.store import settings as store_settings
 from ecowitt.core.units import Units
 
 logger = logging.getLogger(__name__)
@@ -142,6 +149,8 @@ class AdminContext:
     pending: PendingStations = field(default_factory=PendingStations)
     calibration: CalibrationMonitor = field(default_factory=CalibrationMonitor)
     spool: Spool | None = None
+    #: The database writes go to; None for processes run without one.
+    database: ConfiguredStore | None = None
     http: httpx2.AsyncClient | None = None
     #: Station names to report when there is no store, for processes run without one.
     stations: list[str] = field(default_factory=list)
@@ -230,6 +239,10 @@ def build_app(context: AdminContext) -> FastAPI:
 
     @app.get("/")
     async def status_page(request: Request) -> Response:
+        """The status page, or the setup page on a fresh install with nothing configured."""
+        document = context.document
+        if context.store is not None and document.store is None and not document.stations:
+            return RedirectResponse("/setup", status_code=303)
         return _render(
             request,
             context,
@@ -239,6 +252,13 @@ def build_app(context: AdminContext) -> FastAPI:
                 "status": _status(context),
             },
         )
+
+    @app.post("/setup/database")
+    async def save_database(request: Request) -> Response:
+        form = await _form(request, context)
+        if isinstance(form, Response):
+            return form
+        return await _database_action(request, context, form)
 
     @app.get("/setup")
     async def setup_page(request: Request) -> Response:
@@ -342,13 +362,32 @@ def _status(context: AdminContext) -> dict[str, object]:
             "seconds_since_last_success": _rounded(state.seconds_since_last_write),
         },
         "spool": _spool_status(state, context.spool),
-        "influx": {
-            "url": _without_credentials(settings.influx_url),
-            "database": settings.influx_database,
-            "api": settings.influx_api,
-            # Whether a token is present, never the token itself.
-            "token_configured": bool(settings.influx_token),
-        },
+        "database": _database_status(context),
+    }
+
+
+def _database_status(context: AdminContext) -> dict[str, object]:
+    """The configured connection, with every secret reduced to whether it is set."""
+    entry = context.document.store
+    if entry is None:
+        return {"kind": None, "configured": False}
+    declared = store_settings.KINDS[entry.kind]
+    values: dict[str, object] = {}
+    for setting in declared.settings:
+        value = entry.connection.get(setting.name, "")
+        if setting.secret:
+            values[f"{setting.name}_set"] = bool(value)
+        elif setting.format == "url":
+            values[setting.name] = _without_credentials(value)
+        else:
+            values[setting.name] = value or setting.default
+    database = context.database
+    return {
+        "kind": entry.kind,
+        "label": declared.label,
+        "configured": True,
+        "last_error": database.last_error if database else None,
+        **values,
     }
 
 
@@ -564,7 +603,62 @@ def _setup_view(
         "draft": draft,
         "units": Units(),
         "zones": timezones.all_zones(),
+        "kinds": list(store_settings.KINDS.values()),
+        "database": _database_status(context),
     }
+
+
+async def _database_action(
+    request: Request, context: AdminContext, form: dict[str, str]
+) -> Response:
+    """Save, test or remove the database connection.
+
+    A secret left empty keeps the saved one when the kind is unchanged, so editing the URL does
+    not mean typing the token again; secrets are never put back into the page.
+    """
+    action = form.get("action", "save")
+    if action == "clear":
+        return _save(
+            request,
+            context,
+            context.document.model_copy(update={"store": None}),
+            "Database connection removed; reports are spooled until one is set up.",
+        )
+    kind = form.get("kind", "")
+    declared = store_settings.KINDS.get(kind)
+    if declared is None:
+        return _setup_error(request, context, "Choose a kind of database.")
+    saved = context.document.store
+    values = {}
+    for setting in declared.settings:
+        value = form.get(setting.name, "").strip()
+        if not value and setting.secret and saved is not None and saved.kind == kind:
+            value = saved.connection.get(setting.name, "")
+        if value:
+            values[setting.name] = value
+    found = store_settings.problems(kind, values)
+    if found:
+        return _setup_error(request, context, "; ".join(found) + ".")
+    if action == "test":
+        store = store_settings.store_from(kind, values)
+        try:
+            problem = await store.check()
+        finally:
+            await store.aclose()
+        if problem:
+            return _setup_error(request, context, f"{declared.label} refused: {problem}.")
+        return _render(
+            request,
+            context,
+            "setup.html",
+            _setup_view(context, message=f"{declared.label} would accept writes. Save to use it."),
+        )
+    return _save(
+        request,
+        context,
+        context.document.model_copy(update={"store": StoreEntry(kind=kind, **values)}),
+        f"Saved the {declared.label} connection.",
+    )
 
 
 async def _station_action(

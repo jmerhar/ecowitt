@@ -41,25 +41,17 @@ hardware it talks to.</sub>
 ```bash
 mkdir -p ecowitt/data && cd ecowitt
 curl -O https://raw.githubusercontent.com/jmerhar/ecowitt/main/docker-compose.yml
-cat > .env <<EOF
-INFLUX_URL=http://influxdb:8181
-INFLUX_TOKEN=your-write-token
-ECOWITT_UID=$(id -u)
-ECOWITT_GID=$(id -g)
-EOF
 docker compose up -d
 ```
 
-One file is all it takes; there is nothing to clone or build. Compose reads `.env` when it
-starts the container, so settings go there first (all of them are in
-[Configuration](#configuration)); change one later and run `docker compose up -d` again.
+One file is all it takes; there is nothing to clone, build or edit. Everything else is set in
+the browser.
 
 - **`data` is created first** because Docker would otherwise create it as root.
-- **The container runs as `ECOWITT_UID`:`ECOWITT_GID`** (1000:1000 if unset), which must be
-  able to write `data`.
-- **The InfluxDB token needs write access** to the database. On InfluxDB 3 Enterprise:
-  `influxdb3 create token --permission "db:weather:read,write" --name ecowitt`. InfluxDB 3 Core
-  issues only admin tokens.
+- **The container runs as user 1000:1000.** If that user cannot write `data`, put
+  `ECOWITT_UID=$(id -u)` and `ECOWITT_GID=$(id -g)` in a `.env` file beside the compose file
+  first. Every other environment setting is optional; they are in
+  [Configuration](#configuration).
 
 Then, on the console — *Menu → Weather Services → Customized*:
 
@@ -72,9 +64,18 @@ Then, on the console — *Menu → Weather Services → Customized*:
 | Path | `/data/report/` |
 | Interval | see below |
 
-Open <http://127.0.0.1:2552/setup> on the host running the server. From another machine, use a
-reverse proxy (see [Two ports](#two-ports-and-why-it-matters)) or a tunnel,
-`ssh -L 2552:127.0.0.1:2552 that-host`. Within one upload interval the console appears under
+Open <http://127.0.0.1:2552/> on the host running the server; a fresh install opens on the setup
+page. From another machine, use a reverse proxy (see [Two ports](#two-ports-and-why-it-matters))
+or a tunnel, `ssh -L 2552:127.0.0.1:2552 that-host`.
+
+First, the **database**: choose InfluxDB 3 or InfluxDB 2.x and enter its URL, database (or bucket
+and organisation) and a token that may write to it; *Test connection* checks all of that without
+writing anything. Until a database is set, reports are kept on disk and written once it is. On
+InfluxDB 3 Enterprise a write-only token for one database is
+`influxdb3 create token --permission "db:weather:read,write" --name ecowitt`; InfluxDB 3 Core
+issues only admin tokens.
+
+Within one upload interval the console appears under
 *Stations reporting, not configured*, by model and fingerprint; give it a name and adopt it.
 Its PASSKEY — the credential every upload carries — is copied into the configuration without
 ever being shown. From then on its reports are stored; there is nothing to restart.
@@ -87,9 +88,15 @@ optional login for these pages. The status page at
 wind, rain and sun, every other sensor reporting, battery states, and anything wrong with the
 console's pressure calibration.
 
-Everything the setup page writes goes to `data/config.yaml`, which can also be written by hand:
+Everything the setup page writes goes to `data/config.yaml`, which can also be written by hand.
+It holds the PASSKEYs and the database token, so it is readable by its owner only:
 
 ```yaml
+store:            # the database; the setup page writes this section
+  kind: influx3   # influx3, influx2
+  url: http://influxdb:8181
+  database: weather   # influx2: the bucket, plus an org: setting
+  token: apiv3_...
 units:            # optional; these are the defaults
   temperature: c  # c, f
   pressure: hpa   # hpa, inhg, mmhg
@@ -102,6 +109,7 @@ stations:
     altitude_m: 180          # enables sea-level pressure
     latitude: 52.37          # optional; enables the absolute-pressure check
     longitude: 4.90
+    timezone: Europe/Amsterdam   # optional; taken from the coordinates if left out
     sensors:                 # display names; anything unnamed keeps its identifier
       indoor: Lounge
       ch1: Bathroom
@@ -263,16 +271,12 @@ one alert per room or station:
 
 ## Configuration
 
-Infrastructure comes from the environment, so a deployment is reproducible from its compose
-file:
+The environment holds only how the process runs -- ports, limits, logging. The database
+connection and everything about the stations are set on the setup page. All of these are
+optional:
 
 | Variable | Default | |
 |---|---|---|
-| `INFLUX_URL` | — | e.g. `http://influxdb:8181`; a malformed one stops startup |
-| `INFLUX_DATABASE` | `weather` | |
-| `INFLUX_TOKEN` / `INFLUX_TOKEN_FILE` | — | the file form reads a Docker secret, which you add to the compose file under `secrets:` |
-| `INFLUX_API` | `v3` | `v3` writes line protocol to `/api/v3/write_lp`; `v2` to `/api/v2/write` |
-| `INFLUX_ORG` | — | required with `INFLUX_API=v2`; InfluxDB 2.x only |
 | `INGEST_PATH` | `/data/report/` | both slash spellings are served |
 | `INGEST_HOST` / `INGEST_PORT` | `0.0.0.0` / `2551` | inside the container; keep the port equal to the published one |
 | `ADMIN_HOST` / `ADMIN_PORT` | `0.0.0.0` / `2552` | same |

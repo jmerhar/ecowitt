@@ -16,7 +16,10 @@ from ecowitt.collector import serve
 from ecowitt.collector.config import Settings
 from ecowitt.collector.ingest.app import LoggingHandler
 from ecowitt.collector.state import State
+from ecowitt.core.store.base import Row, dump_rows
 from ecowitt.core.store.influx import InfluxStore
+
+ROWS = [Row("indoor", (("station", "Home"),), 1791500484, {"temp_c": 21.0})]
 
 
 def test_build_binds_each_listener_to_its_own_port() -> None:
@@ -275,18 +278,18 @@ def test_main_configures_logging_and_runs(monkeypatch: pytest.MonkeyPatch) -> No
     assert len(ran) == 1
 
 
-@pytest.mark.parametrize("influx_url", ["", "http://127.0.0.1:1"])
+@pytest.mark.parametrize("database", ["", "store: {kind: influx3, url: 'http://127.0.0.1:1'}\n"])
 async def test_run_without_a_handler_loads_the_configured_stations(
-    influx_url: str,
+    database: str,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """The production path: stations from the file, a writer, a warning only with no database."""
     (tmp_path / "config.yaml").write_text(
-        "stations: [{name: Home, passkey: AAAA}]\n", encoding="utf-8"
+        database + "stations: [{name: Home, passkey: AAAA}]\n", encoding="utf-8"
     )
-    settings = Settings(data_dir=tmp_path, ingest_port=0, admin_port=0, influx_url=influx_url)
+    settings = Settings(data_dir=tmp_path, ingest_port=0, admin_port=0)
     state = State()
     monkeypatch.setattr(serve, "State", lambda: state)
     closed: list[bool] = []
@@ -327,8 +330,8 @@ async def test_run_without_a_handler_loads_the_configured_stations(
             await task
 
     assert "stations: Home" in caplog.text
-    assert ("INFLUX_URL is not set" in caplog.text) is (influx_url == "")
-    assert closed == [True]
+    assert ("no database is configured" in caplog.text) is (database == "")
+    assert closed == ([True] if database else [])
     # The spool and the form-signing secret exist under the data directory, and no background
     # task outlived `run`.
     assert (tmp_path / "spool" / "pending").is_dir()
@@ -364,10 +367,7 @@ async def test_a_backlog_from_before_a_restart_is_delivered_at_startup(
     from ecowitt.collector.delivery.spool import Spool
     from ecowitt.core.testing import StubInflux, serving
 
-    Spool(tmp_path / "spool", 1_000_000).enqueue("indoor,station=Home temp_c=21.0 1791500484")
-    (tmp_path / "config.yaml").write_text(
-        "stations: [{name: Home, passkey: AAAA}]\n", encoding="utf-8"
-    )
+    Spool(tmp_path / "spool", 1_000_000).enqueue(dump_rows(ROWS))
     state = State()
     monkeypatch.setattr(serve, "State", lambda: state)
     listeners: list[serve._Listener] = []
@@ -381,7 +381,12 @@ async def test_a_backlog_from_before_a_restart_is_delivered_at_startup(
     monkeypatch.setattr(serve, "build", capture)
 
     async with serving(StubInflux()) as stub:
-        settings = Settings(data_dir=tmp_path, ingest_port=0, admin_port=0, influx_url=stub.url)
+        (tmp_path / "config.yaml").write_text(
+            f"store: {{kind: influx3, url: '{stub.url}'}}\n"
+            "stations: [{name: Home, passkey: AAAA}]\n",
+            encoding="utf-8",
+        )
+        settings = Settings(data_dir=tmp_path, ingest_port=0, admin_port=0)
         task = asyncio.create_task(serve.run(settings))
         try:
             async with asyncio.timeout(10):
@@ -395,7 +400,8 @@ async def test_a_backlog_from_before_a_restart_is_delivered_at_startup(
             async with asyncio.timeout(10):
                 await task
 
-    assert stub.requests[0].body == "indoor,station=Home temp_c=21.0 1791500484"
+    backlog = [r for r in stub.requests if r.body.startswith("indoor")]
+    assert backlog[0].body == "indoor,station=Home temp_c=21.0 1791500484"
     assert not list((tmp_path / "spool" / "pending").iterdir())
 
 
@@ -406,7 +412,7 @@ async def test_a_heartbeat_follows_a_delivered_write(
     from ecowitt.collector.delivery.spool import Spool
     from ecowitt.core.testing import StubInflux, serving
 
-    Spool(tmp_path / "spool", 1_000_000).enqueue("indoor,station=Home temp_c=21.0 1791500484")
+    Spool(tmp_path / "spool", 1_000_000).enqueue(dump_rows(ROWS))
     state = State()
     monkeypatch.setattr(serve, "State", lambda: state)
     listeners: list[serve._Listener] = []
@@ -420,11 +426,13 @@ async def test_a_heartbeat_follows_a_delivered_write(
     monkeypatch.setattr(serve, "build", capture)
 
     async with serving(StubInflux()) as influx, serving(StubInflux(status=200)) as monitor:
+        (tmp_path / "config.yaml").write_text(
+            f"store: {{kind: influx3, url: '{influx.url}'}}\n", encoding="utf-8"
+        )
         settings = Settings(
             data_dir=tmp_path,
             ingest_port=0,
             admin_port=0,
-            influx_url=influx.url,
             heartbeat_url=monitor.url + "/api/push/token",
         )
         task = asyncio.create_task(serve.run(settings))
@@ -444,11 +452,18 @@ async def test_a_heartbeat_follows_a_delivered_write(
     assert "heartbeat" not in {t.get_name() for t in asyncio.all_tasks()}
 
 
-@pytest.mark.parametrize(("api", "kind"), [("v3", "Influx3Store"), ("v2", "Influx2Store")])
-def test_the_store_matches_the_configured_influx_version(api: str, kind: str) -> None:
-    settings = Settings(influx_url="http://influx:8181", influx_api=api, influx_org="home")  # type: ignore[arg-type]
+def test_the_writer_follows_the_saved_connection(tmp_path: Path) -> None:
+    """A save on the setup page reaches the writer through the configuration's subscribers."""
+    from ecowitt.collector.admin.configstore import ConfigStore
+    from ecowitt.collector.admin.stationconfig import ConfigDocument, StoreEntry
+    from ecowitt.collector.delivery.database import ConfiguredStore
 
-    store = serve._store(settings)
+    config, writer = ConfigStore(tmp_path / "config.yaml"), ConfiguredStore()
+    config.subscribe(lambda _: serve._use_store(writer, config))
+    assert writer.kind is None
 
-    assert type(store).__name__ == kind
-    assert (store.url, store.database) == ("http://influx:8181", "weather")  # type: ignore[attr-defined]
+    config.replace(ConfigDocument(store=StoreEntry(kind="influx3", url="http://influx:8181")))  # type: ignore[call-arg]
+    assert writer.kind == "influx3" and writer.configured
+
+    config.replace(ConfigDocument())
+    assert writer.kind is None and not writer.configured

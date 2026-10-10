@@ -24,6 +24,7 @@ from ecowitt.collector.config import Settings
 from ecowitt.collector.ingest.handler import StationHandler
 from ecowitt.collector.ingest.pending import PendingStations
 from ecowitt.collector.state import State
+from ecowitt.core.store.base import Row
 from ecowitt.core.store.lineprotocol import encode
 
 from ..conftest import FIXTURE_PASSKEY, payload
@@ -35,8 +36,8 @@ class Sink:
     def __init__(self) -> None:
         self.bodies: list[str] = []
 
-    async def submit(self, body: str) -> None:
-        self.bodies.append(body)
+    async def submit(self, rows: list[Row]) -> None:
+        self.bodies.append(encode(rows))
 
 
 @dataclass
@@ -81,9 +82,7 @@ def rig(tmp_path: Path) -> Iterator[Rig]:
     )
     store = ConfigStore(settings.config_file)
     pending, calibration = PendingStations(), CalibrationMonitor()
-    handler = StationHandler(
-        store.stations, Sink(), encode=encode, pending=pending, calibration=calibration
-    )
+    handler = StationHandler(store.stations, Sink(), pending=pending, calibration=calibration)
     store.subscribe(lambda stations: setattr(handler, "config", stations))
     context = admin.AdminContext(
         settings,
@@ -101,8 +100,8 @@ def rig(tmp_path: Path) -> Iterator[Rig]:
 
 
 @contextlib.contextmanager
-def json_server(reply: object) -> Iterator[str]:
-    """Serve one JSON answer from its own thread.
+def json_server(reply: object, *, status: int = 200, body: str | None = None) -> Iterator[str]:
+    """Serve one answer from its own thread: `reply` as JSON, or `body` as it is.
 
     Its own thread because TestClient blocks the test's event loop while a request runs, so a
     stand-in on that loop could never answer the lookup the request makes.
@@ -110,11 +109,15 @@ def json_server(reply: object) -> Iterator[str]:
 
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self) -> None:  # noqa: N802 - the name http.server calls
-            body = json.dumps(reply).encode()
-            self.send_response(200)
-            self.send_header("Content-Length", str(len(body)))
+            payload = json.dumps(reply).encode() if body is None else body.encode()
+            self.send_response(status)
+            self.send_header("Content-Length", str(len(payload)))
             self.end_headers()
-            self.wfile.write(body)
+            self.wfile.write(payload)
+
+        def do_POST(self) -> None:  # noqa: N802 - the name http.server calls
+            self.rfile.read(int(self.headers.get("Content-Length") or 0))
+            self.do_GET()
 
         def log_message(self, *_: object) -> None:
             """Keep test output quiet."""
@@ -130,6 +133,12 @@ def json_server(reply: object) -> Iterator[str]:
         thread.join(timeout=5)
 
 
+def use_database(rig: Rig, url: str = "http://127.0.0.1:1") -> None:
+    """Save an InfluxDB 3 connection; port 1 refuses, so nothing is ever written."""
+    response = rig.post("/setup/database", {"kind": "influx3", "url": url, "token": "t0ken"})
+    assert response.status_code == 303, response.text
+
+
 def adopt(rig: Rig, name: str = "Home") -> None:
     response = rig.post(
         "/setup/station", {"adopt": rig.pending.fingerprint(FIXTURE_PASSKEY), "name": name}
@@ -138,13 +147,23 @@ def adopt(rig: Rig, name: str = "Home") -> None:
 
 
 class TestFirstRun:
-    def test_an_empty_install_says_what_to_do(self, rig: Rig) -> None:
+    def test_an_empty_install_opens_on_the_setup_page(self, rig: Rig) -> None:
+        response = rig.client.get("/")
+
+        assert response.status_code == 303
+        assert response.headers["location"] == "/setup"
+        assert "No database is set up yet" in rig.client.get("/setup").text
+
+    def test_once_anything_is_configured_the_status_page_says_what_to_do(self, rig: Rig) -> None:
+        use_database(rig)
+
         page = rig.client.get("/").text
 
         assert "No station is configured yet" in page
         assert "Customized" in page
 
     async def test_a_reporting_station_is_offered_without_its_passkey(self, rig: Rig) -> None:
+        use_database(rig)
         assert await rig.report() is False
 
         status = rig.client.get("/").text
@@ -196,6 +215,7 @@ class TestCrossSiteForms:
                 {"username": "evil", "password": "takeover1", "password_again": "takeover1"},
             ),
             ("/dismiss", {"station": "Home", "kind": "location"}),
+            ("/setup/database", {"kind": "influx3", "url": "http://evil.example"}),
         ],
     )
     def test_no_form_from_elsewhere_changes_anything(
@@ -481,10 +501,10 @@ class TestUnitsAndLogin:
             {"username": "admin", "password": "correct-horse", "password_again": "correct-horse"},
         )
 
-        assert rig.client.get("/").status_code == 401
+        assert rig.client.get("/setup").status_code == 401
         assert rig.client.get("/api/status").status_code == 401
         assert rig.client.get("/healthz").status_code == 200
-        assert rig.client.get("/", auth=("admin", "correct-horse")).status_code == 200
+        assert rig.client.get("/setup", auth=("admin", "correct-horse")).status_code == 200
         assert "correct-horse" not in rig.store.path.read_text()
 
     def test_failed_logins_are_throttled(self, rig: Rig) -> None:
@@ -505,7 +525,7 @@ class TestUnitsAndLogin:
         )
 
         assert rig.post("/setup/admin", {"action": "clear"}, auth=creds).status_code == 303
-        assert rig.client.get("/").status_code == 200
+        assert rig.client.get("/setup").status_code == 200
 
 
 class TestStatus:
@@ -794,3 +814,77 @@ def test_a_save_failure_is_shown(rig: Rig, monkeypatch: pytest.MonkeyPatch) -> N
 
     assert response.status_code == 400
     assert "Could not save the configuration: Permission denied" in response.text
+
+
+class TestDatabase:
+    def test_a_connection_is_saved_and_shown_without_its_token(self, rig: Rig) -> None:
+        use_database(rig, "http://influx:8181")
+
+        entry = rig.store.document.store
+        page = rig.client.get("/setup").text
+        assert entry is not None and entry.connection["token"] == "t0ken"
+        assert "Writing to <strong>InfluxDB 3</strong>" in page and "http://influx:8181" in page
+        assert "t0ken" not in page
+        assert "set; leave empty to keep it" in page
+
+    def test_an_empty_token_keeps_the_saved_one(self, rig: Rig) -> None:
+        use_database(rig, "http://influx:8181")
+
+        rig.post("/setup/database", {"kind": "influx3", "url": "http://other:8181", "token": ""})
+
+        entry = rig.store.document.store
+        assert entry is not None and entry.connection == {
+            "url": "http://other:8181",
+            "token": "t0ken",
+        }
+
+    def test_a_token_is_not_carried_over_to_another_kind(self, rig: Rig) -> None:
+        use_database(rig)
+
+        rig.post("/setup/database", {"kind": "influx2", "url": "http://x:8086", "org": "home"})
+
+        entry = rig.store.document.store
+        assert entry is not None and entry.kind == "influx2" and "token" not in entry.connection
+
+    @pytest.mark.parametrize(
+        ("fields", "message"),
+        [
+            ({"kind": "influx3"}, "URL is required"),
+            ({"kind": "influx3", "url": "influx:8181"}, "must start with http://"),
+            ({"kind": "influx2", "url": "http://x"}, "Organisation is required"),
+            ({"kind": "sqlite", "url": "http://x"}, "Choose a kind of database"),
+        ],
+    )
+    def test_an_unusable_connection_is_refused_with_the_reason(
+        self, rig: Rig, fields: dict[str, str], message: str
+    ) -> None:
+        response = rig.post("/setup/database", fields)
+
+        assert response.status_code == 400 and message in response.text
+        assert rig.store.document.store is None
+
+    def test_the_connection_can_be_removed(self, rig: Rig) -> None:
+        use_database(rig)
+
+        assert rig.post("/setup/database", {"action": "clear"}).status_code == 303
+        assert rig.store.document.store is None
+
+    def test_a_working_connection_tests_as_working_and_is_not_saved(self, rig: Rig) -> None:
+        with json_server({}, status=400, body="incoming write was empty") as url:
+            response = rig.post(
+                "/setup/database", {"kind": "influx3", "url": url, "action": "test"}
+            )
+
+        assert response.status_code == 200
+        assert "would accept writes" in response.text
+        assert rig.store.document.store is None
+
+    def test_a_refused_connection_tests_as_refused_with_only_the_reason(self, rig: Rig) -> None:
+        with json_server({}, status=401, body="internal detail") as url:
+            response = rig.post(
+                "/setup/database", {"kind": "influx3", "url": url, "action": "test"}
+            )
+
+        assert response.status_code == 400
+        assert "InfluxDB 3 refused: the token was not accepted" in response.text
+        assert "internal detail" not in response.text

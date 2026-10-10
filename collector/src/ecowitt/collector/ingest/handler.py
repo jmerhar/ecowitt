@@ -23,9 +23,9 @@ MAX_ANNOUNCED_UNKNOWN = 100
 
 
 class Sink(Protocol):
-    """Where encoded rows go: written now, or kept until they can be."""
+    """Where rows go: written now, or kept until they can be."""
 
-    async def submit(self, body: str) -> None:
+    async def submit(self, rows: list[Row]) -> None:
         """Accept one report's rows for delivery."""
 
 
@@ -50,14 +50,12 @@ class StationHandler:
         config: StationConfig,
         sink: Sink,
         *,
-        encode: Callable[[list[Row]], str],
         pending: PendingStations | None = None,
         calibration: CalibrationMonitor | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         self.config = config
         self._sink = sink
-        self._encode = encode
         self._pending = pending or PendingStations()
         self._calibration = calibration or CalibrationMonitor()
         self._clock = clock
@@ -88,7 +86,7 @@ class StationHandler:
         )
         self.latest[station.name] = LatestReport(processed.timestamp, received, processed.points)
         self._calibration.observe(station.name, processed.timestamp, processed.readings)
-        await self._sink.submit(self._encode(processed.points))
+        await self._sink.submit(processed.points)
         return True
 
     def _announce_unknown(self, passkey: str, source: str) -> None:

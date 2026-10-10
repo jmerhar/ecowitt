@@ -24,15 +24,8 @@ services:
     environment:
       TZ: ${TZ:-UTC}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      # Where to store readings. Everything describing the stations -- the PASSKEY allowlist,
-      # names, altitude, units -- is in ./data/config.yaml; see the README.
-      INFLUX_URL: ${INFLUX_URL:-}
-      INFLUX_DATABASE: ${INFLUX_DATABASE:-weather}
-      INFLUX_TOKEN: ${INFLUX_TOKEN:-}
-      INFLUX_TOKEN_FILE: ${INFLUX_TOKEN_FILE:-}
-      # InfluxDB 2.x: INFLUX_API=v2, and INFLUX_ORG is required.
-      INFLUX_API: ${INFLUX_API:-v3}
-      INFLUX_ORG: ${INFLUX_ORG:-}
+      # The database connection, the stations and everything about them are set on the setup
+      # page and kept in ./data/config.yaml; see the README.
       # Optional: a push monitor's URL (Uptime Kuma, healthchecks.io), called after readings
       # are written, so the monitor alerts when they stop.
       HEARTBEAT_URL: ${HEARTBEAT_URL:-}

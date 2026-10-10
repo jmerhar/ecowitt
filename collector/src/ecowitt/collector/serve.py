@@ -23,6 +23,7 @@ from ecowitt.collector.admin.calibration import CalibrationMonitor
 from ecowitt.collector.admin.configstore import ConfigStore
 from ecowitt.collector.admin.reference import ReferenceUpdater
 from ecowitt.collector.config import Settings, get_settings
+from ecowitt.collector.delivery.database import ConfiguredStore
 from ecowitt.collector.delivery.delivery import Delivery
 from ecowitt.collector.delivery.heartbeat import Heartbeat
 from ecowitt.collector.delivery.metadata import MetadataPublisher
@@ -32,8 +33,6 @@ from ecowitt.collector.ingest.app import ReportHandler
 from ecowitt.collector.ingest.handler import StationHandler
 from ecowitt.collector.ingest.pending import PendingStations
 from ecowitt.collector.state import State
-from ecowitt.core.store.base import Store
-from ecowitt.core.store.factory import store_for
 
 logger = logging.getLogger(__name__)
 
@@ -142,15 +141,10 @@ def build(
     return ingest_listener, admin_listener
 
 
-def _store(settings: Settings) -> Store:
-    """The database the environment describes."""
-    return store_for(
-        "influx2" if settings.influx_api == "v2" else "influx3",
-        url=settings.influx_url,
-        database=settings.influx_database,
-        token=settings.influx_token,
-        org=settings.influx_org,
-    )
+def _use_store(writer: ConfiguredStore, config: ConfigStore) -> None:
+    """Point the writer at the connection the configuration names, or at none."""
+    entry = config.document.store
+    writer.configure(entry.kind if entry else None, entry.connection if entry else {})
 
 
 def warn_if_admin_unauthenticated(settings: Settings, login_set: bool = False) -> bool:
@@ -187,7 +181,10 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
     context: AdminContext | None = None
     if handler is None:
         store = ConfigStore(settings.config_file)
-        writer = _store(settings)
+        writer = ConfiguredStore()
+        # The connection lives in the configuration file, so a save on the setup page swaps the
+        # store with no restart; subscribing applies the saved one at once.
+        store.subscribe(lambda _: _use_store(writer, store))
         lookup_client = httpx2.AsyncClient()
         closers += [writer.aclose, lookup_client.aclose]
         spool = Spool(settings.spool_dir, settings.spool_max_bytes)
@@ -207,14 +204,13 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
         station_handler = StationHandler(
             store.stations,
             delivery,
-            encode=writer.encode,
             pending=pending,
             calibration=calibration,
         )
         store.subscribe(lambda stations: setattr(station_handler, "config", stations))
         # Subscribing delivers the current configuration at once, so every station's settings
         # are published at startup, then again only when a change alters them.
-        metadata = MetadataPublisher(delivery, encode=writer.encode)
+        metadata = MetadataPublisher(delivery)
         store.subscribe(metadata.update)
         handler = station_handler
         context = AdminContext(
@@ -226,6 +222,7 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
             pending=pending,
             calibration=calibration,
             spool=spool,
+            database=writer,
             http=lookup_client,
         )
         reference = ReferenceUpdater(
@@ -239,7 +236,7 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
         calibration.on_step = reference.wake
         logger.info("stations: %s", ", ".join(store.stations.names) or "none configured")
         if not writer.configured:
-            logger.warning("INFLUX_URL is not set: reports will be spooled until it is")
+            logger.warning("no database is configured: reports are spooled until one is set up")
         background += [
             asyncio.create_task(delivery.run(), name="spool-replay"),
             asyncio.create_task(reference.run(), name="reference-pressure"),

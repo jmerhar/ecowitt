@@ -15,7 +15,7 @@ from typing import Protocol
 
 from ecowitt.collector.delivery.spool import Spool
 from ecowitt.collector.state import State
-from ecowitt.core.store.base import Outcome
+from ecowitt.core.store.base import Outcome, Row, dump_rows, load_rows
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +26,8 @@ MAX_PAUSE_SECONDS = 60.0
 class Writer(Protocol):
     """Something that attempts one write and says what became of it -- a `Store`, in practice."""
 
-    async def write(self, payload: str) -> Outcome:
-        """Write one payload once."""
+    async def write(self, rows: list[Row]) -> Outcome:
+        """Write rows once."""
 
 
 class Delivery:
@@ -52,22 +52,22 @@ class Delivery:
         self._sleep = sleep
         self._wake = asyncio.Event()
 
-    async def submit(self, body: str) -> None:
+    async def submit(self, rows: list[Row]) -> None:
         """Deliver one report's rows now, or queue them for the replay loop."""
-        if not body:
+        if not rows:
             return
         if len(self._spool):
-            self._queue(body)
+            self._queue(rows)
             return
-        outcome = await self._store.write(body)
+        outcome = await self._store.write(rows)
         self._state.record_write(outcome is Outcome.OK)
         if outcome is Outcome.OK:
             self._on_written()
         elif outcome is Outcome.RETRY:
-            self._queue(body)
+            self._queue(rows)
         else:
             self._state.record_rejected_write()
-            self._spool.quarantine_body(body)
+            self._spool.quarantine_body(dump_rows(rows))
 
     async def run(self) -> None:
         """Replay spooled reports for ever, oldest first. Cancel the task to stop it.
@@ -92,13 +92,19 @@ class Delivery:
             await self._wake.wait()
             return FIRST_PAUSE_SECONDS
         try:
-            body = self._spool.read(path)
+            rows = load_rows(self._spool.read(path))
         except OSError, UnicodeDecodeError:
             logger.exception("cannot read spooled report %s; setting it aside", path.name)
             self._spool.quarantine(path)
             return pause
+        except ValueError:
+            # Not rows -- line protocol an older version spooled, or a file edited by hand -- so
+            # no store can be given it.
+            logger.error("spooled report %s is not rows; setting it aside", path.name)
+            self._spool.quarantine(path)
+            return pause
 
-        outcome = await self._store.write(body)
+        outcome = await self._store.write(rows)
         self._state.record_write(outcome is Outcome.OK)
         if outcome is Outcome.OK:
             self._spool.ack(path)
@@ -114,8 +120,8 @@ class Delivery:
             pause = min(pause * 2, MAX_PAUSE_SECONDS)
         return pause
 
-    def _queue(self, body: str) -> None:
+    def _queue(self, rows: list[Row]) -> None:
         """Add a report to the spool and wake the replay loop."""
-        if self._spool.enqueue(body):
+        if self._spool.enqueue(dump_rows(rows)):
             self._state.record_spooled()
         self._wake.set()

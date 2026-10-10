@@ -23,26 +23,6 @@ def test_both_slash_spellings_are_derived(configured: str, expected: tuple[str, 
     assert Settings(ingest_path=configured).ingest_paths == expected
 
 
-def test_a_token_file_supplies_the_token(tmp_path: Path) -> None:
-    """A Docker secret keeps the value out of the compose file."""
-    token_file = tmp_path / "token"
-    token_file.write_text("apiv3_from-a-file\n", encoding="utf-8")
-
-    settings = Settings(influx_token_file=token_file)
-
-    assert settings.influx_token == "apiv3_from-a-file"
-
-
-def test_an_unreadable_token_file_is_an_error(tmp_path: Path) -> None:
-    """Naming a file excludes the alternatives, so a missing one must not fall back.
-
-    Falling back to the empty default would surface much later, as an authentication failure
-    against InfluxDB, with nothing pointing at the real cause.
-    """
-    with pytest.raises(Exception, match="No such file"):
-        Settings(influx_token_file=tmp_path / "absent")
-
-
 def test_derived_paths_sit_under_the_data_directory(tmp_path: Path) -> None:
     """Everything mutable lives in one directory, so backing it up is enough."""
     settings = Settings(data_dir=tmp_path)
@@ -51,7 +31,7 @@ def test_derived_paths_sit_under_the_data_directory(tmp_path: Path) -> None:
     assert settings.spool_dir == tmp_path / "spool"
 
 
-@pytest.mark.parametrize("field", ["influx_token_file", "heartbeat_url_file"])
+@pytest.mark.parametrize("field", ["heartbeat_url_file"])
 def test_an_empty_optional_path_is_treated_as_unset(field: str) -> None:
     """Compose passes an unset `${VAR:-}` through as an empty string.
 
@@ -79,13 +59,6 @@ def test_an_unreadable_heartbeat_url_file_is_an_error(tmp_path: Path) -> None:
         Settings(heartbeat_url_file=tmp_path / "absent")
 
 
-def test_an_empty_token_file_does_not_blank_an_inline_token() -> None:
-    """An empty file variable must not displace a token given directly."""
-    settings = Settings(influx_token="apiv3_inline", influx_token_file="")
-
-    assert settings.influx_token == "apiv3_inline"
-
-
 def test_published_and_listening_ports_match_by_default() -> None:
     """Firewalls that see Docker traffic match the container's port, so the two must agree."""
     settings = Settings()
@@ -101,27 +74,6 @@ def test_admin_host_names_are_split_and_lowercased() -> None:
 
 def test_the_admin_listener_answers_only_to_loopback_names_by_default() -> None:
     assert Settings().admin_host_names == frozenset({"localhost", "127.0.0.1", "::1"})
-
-
-@pytest.mark.parametrize(
-    ("url", "reason"),
-    [
-        ("http://[::1:8181", "not a valid URL"),
-        ("http://influx:port", "not a valid URL"),
-        ("influxdb:8181", "http:// or https://"),
-        ("ftp://influx", "http:// or https://"),
-    ],
-)
-def test_an_unusable_influx_url_stops_startup(url: str, reason: str) -> None:
-    """Accepted, it would spool every report until the spool's cap started discarding them."""
-    with pytest.raises(ValueError, match=reason):
-        Settings(influx_url=url)
-
-
-def test_influxdb_2_needs_an_organisation() -> None:
-    with pytest.raises(ValueError, match="INFLUX_ORG"):
-        Settings(influx_api="v2")
-    assert Settings(influx_api="v2", influx_org="home").influx_org == "home"
 
 
 #: Settings the shipped compose file deliberately does not pass through: the bind addresses and

@@ -12,7 +12,17 @@ import pytest
 from ecowitt.collector.delivery.delivery import FIRST_PAUSE_SECONDS, MAX_PAUSE_SECONDS, Delivery
 from ecowitt.collector.delivery.spool import Spool
 from ecowitt.collector.state import State
-from ecowitt.core.store.base import Outcome
+from ecowitt.core.store.base import Outcome, Row, dump_rows
+
+
+def report(name: str) -> list[Row]:
+    """One report's rows, labelled so a test can tell reports apart."""
+    return [Row("indoor", (("station", "home"),), 1791500484, {"report": name})]
+
+
+def label(rows: list[Row]) -> str:
+    """The label `report` gave these rows."""
+    return str(rows[0].fields["report"])
 
 
 class ScriptedSender:
@@ -20,10 +30,11 @@ class ScriptedSender:
 
     def __init__(self, outcomes: Iterable[Outcome] = ()) -> None:
         self.outcomes = list(outcomes)
+        #: The label of each report sent, in order.
         self.sent: list[str] = []
 
-    async def write(self, body: str) -> Outcome:
-        self.sent.append(body)
+    async def write(self, rows: list[Row]) -> Outcome:
+        self.sent.append(label(rows))
         return self.outcomes.pop(0) if self.outcomes else Outcome.OK
 
 
@@ -63,7 +74,7 @@ async def until(condition, timeout: float = 5.0) -> None:  # noqa: ANN001
 async def test_a_healthy_database_is_written_straight_away(spool: Spool) -> None:
     sender, state = ScriptedSender(), State()
 
-    await Delivery(sender, spool, state).submit("r1")
+    await Delivery(sender, spool, state).submit(report("r1"))
 
     assert sender.sent == ["r1"]
     assert len(spool) == 0
@@ -73,7 +84,7 @@ async def test_a_healthy_database_is_written_straight_away(spool: Spool) -> None
 async def test_an_empty_report_is_not_sent(spool: Spool) -> None:
     sender = ScriptedSender()
 
-    await Delivery(sender, spool, State()).submit("")
+    await Delivery(sender, spool, State()).submit([])
 
     assert sender.sent == []
 
@@ -81,7 +92,7 @@ async def test_an_empty_report_is_not_sent(spool: Spool) -> None:
 async def test_a_failed_write_is_spooled_not_lost(spool: Spool) -> None:
     sender, state = ScriptedSender([Outcome.RETRY]), State()
 
-    await Delivery(sender, spool, state).submit("r1")
+    await Delivery(sender, spool, state).submit(report("r1"))
 
     assert len(spool) == 1
     assert (state.writes_failed, state.reports_spooled) == (1, 1)
@@ -92,9 +103,9 @@ async def test_while_anything_waits_new_reports_queue_behind_it(spool: Spool) ->
     sender = ScriptedSender([Outcome.RETRY])
     delivery = Delivery(sender, spool, State())
 
-    await delivery.submit("r1")
-    await delivery.submit("r2")
-    await delivery.submit("r3")
+    await delivery.submit(report("r1"))
+    await delivery.submit(report("r2"))
+    await delivery.submit(report("r3"))
 
     assert sender.sent == ["r1"]
     assert len(spool) == 3
@@ -104,7 +115,7 @@ async def test_the_backlog_replays_in_arrival_order(spool: Spool) -> None:
     sender, state = ScriptedSender([Outcome.RETRY]), State()
     delivery = Delivery(sender, spool, state, sleep=Pauses())
     for body in ("r1", "r2", "r3"):
-        await delivery.submit(body)
+        await delivery.submit(report(body))
 
     async with replaying(delivery):
         await until(lambda: len(spool) == 0)
@@ -117,13 +128,13 @@ async def test_pauses_double_up_to_the_maximum_and_reset_on_success(spool: Spool
     pauses = Pauses()
     sender = ScriptedSender([Outcome.RETRY] * 10)
     delivery = Delivery(sender, spool, State(), sleep=pauses)
-    await delivery.submit("r1")
+    await delivery.submit(report("r1"))
 
     async with replaying(delivery):
         await until(lambda: len(spool) == 0)
         # A second outage: the live attempt fails, then the loop's first retry does too.
         sender.outcomes = [Outcome.RETRY, Outcome.RETRY]
-        await delivery.submit("r2")
+        await delivery.submit(report("r2"))
         await until(lambda: len(spool) == 0)
 
     assert pauses.taken[:8] == [
@@ -143,7 +154,7 @@ async def test_pauses_double_up_to_the_maximum_and_reset_on_success(spool: Spool
 async def test_a_report_refused_live_is_set_aside_not_retried(spool: Spool) -> None:
     sender, state = ScriptedSender([Outcome.REJECT]), State()
 
-    await Delivery(sender, spool, state).submit("bad")
+    await Delivery(sender, spool, state).submit(report("bad"))
 
     assert len(spool) == 0
     assert spool.rejected_count() == 1
@@ -155,7 +166,7 @@ async def test_a_refused_report_does_not_block_the_queue(spool: Spool) -> None:
     sender, state = ScriptedSender([Outcome.RETRY]), State()
     delivery = Delivery(sender, spool, state, sleep=Pauses())
     for body in ("bad", "good1", "good2"):
-        await delivery.submit(body)
+        await delivery.submit(report(body))
     sender.outcomes = [Outcome.REJECT]
 
     async with replaying(delivery):
@@ -169,11 +180,11 @@ async def test_a_refused_report_does_not_block_the_queue(spool: Spool) -> None:
 async def test_an_unreadable_spool_file_is_set_aside(spool: Spool) -> None:
     sender = ScriptedSender([Outcome.RETRY])
     delivery = Delivery(sender, spool, State(), sleep=Pauses())
-    await delivery.submit("r1")
+    await delivery.submit(report("r1"))
     path = spool.oldest()
     assert path is not None
     path.write_bytes(b"\xff\xfe\x00 not utf-8")
-    await delivery.submit("r2")
+    await delivery.submit(report("r2"))
 
     async with replaying(delivery):
         await until(lambda: len(spool) == 0)
@@ -191,7 +202,7 @@ async def test_the_replay_loop_sleeps_while_nothing_waits(spool: Spool) -> None:
         await asyncio.sleep(0.01)
         assert sender.sent == []
         sender.outcomes = [Outcome.RETRY]
-        await delivery.submit("r1")
+        await delivery.submit(report("r1"))
         await until(lambda: len(spool) == 0)
 
     assert sender.sent == ["r1", "r1"]
@@ -200,7 +211,7 @@ async def test_the_replay_loop_sleeps_while_nothing_waits(spool: Spool) -> None:
 async def test_a_backlog_left_by_a_previous_process_is_replayed(tmp_path: Path) -> None:
     """Persisted before a restart, delivered after it."""
     before = Spool(tmp_path / "spool", 1_000_000)
-    before.enqueue("from-yesterday")
+    before.enqueue(dump_rows(report("from-yesterday")))
     after = Spool(tmp_path / "spool", 1_000_000)
     sender = ScriptedSender()
 
@@ -216,7 +227,7 @@ async def test_a_report_that_cannot_be_spooled_is_counted_as_lost_not_spooled(
     state = State()
     spool.pending_dir.chmod(0o500)
     try:
-        await Delivery(ScriptedSender([Outcome.RETRY]), spool, state).submit("r1")
+        await Delivery(ScriptedSender([Outcome.RETRY]), spool, state).submit(report("r1"))
     finally:
         spool.pending_dir.chmod(0o700)
 
@@ -233,7 +244,7 @@ async def test_a_success_mid_backlog_resets_the_pause(spool: Spool) -> None:
     sender = ScriptedSender([Outcome.RETRY] * 6 + [Outcome.OK, Outcome.RETRY])
     delivery = Delivery(sender, spool, State(), sleep=pauses)
     for body in ("r1", "r2", "r3"):
-        await delivery.submit(body)
+        await delivery.submit(report(body))
 
     async with replaying(delivery):
         await until(lambda: len(spool) == 0)
@@ -249,10 +260,10 @@ async def test_every_accepted_write_is_announced_live_or_replayed(spool: Spool) 
         sender, spool, State(), sleep=Pauses(), on_written=lambda: written.append(True)
     )
 
-    await delivery.submit("live")
+    await delivery.submit(report("live"))
     assert written == [True]
 
-    await delivery.submit("spooled")
+    await delivery.submit(report("spooled"))
     assert written == [True]
 
     async with replaying(delivery):
@@ -270,7 +281,7 @@ async def test_a_refused_write_is_not_announced(spool: Spool, live: bool) -> Non
         ScriptedSender(outcomes), spool, State(), on_written=lambda: written.append(True)
     )
 
-    await delivery.submit("refused")
+    await delivery.submit(report("refused"))
     async with replaying(delivery):
         await until(lambda: not len(spool))
 
@@ -284,19 +295,19 @@ class ExplodingSender(ScriptedSender):
         super().__init__()
         self.exploded = False
 
-    async def write(self, body: str) -> Outcome:
+    async def write(self, rows: list[Row]) -> Outcome:
         if not self.exploded:
             self.exploded = True
-            self.sent.append(body)
+            self.sent.append(label(rows))
             raise RuntimeError("a client error the writer does not classify")
-        return await super().write(body)
+        return await super().write(rows)
 
 
 async def test_an_unexpected_error_does_not_end_the_replay_loop(
     spool: Spool, caplog: pytest.LogCaptureFixture
 ) -> None:
     """With the loop gone, every later report would queue with nothing left to drain it."""
-    spool.enqueue("r1")
+    spool.enqueue(dump_rows(report("r1")))
     sender, pauses = ExplodingSender(), Pauses()
     delivery = Delivery(sender, spool, State(), sleep=pauses)
 
@@ -306,3 +317,20 @@ async def test_an_unexpected_error_does_not_end_the_replay_loop(
     assert sender.sent == ["r1", "r1"]
     assert pauses.taken == [FIRST_PAUSE_SECONDS]
     assert "replaying the spool failed" in caplog.text
+
+
+async def test_a_spooled_file_that_is_not_rows_is_set_aside(
+    spool: Spool, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Line protocol an older version spooled cannot be given to a store, so it is kept apart."""
+    legacy = spool.pending_dir / "00000000000000000001-0000000000.lp"
+    legacy.write_text("indoor,station=home temp_c=21.0 1791500484", encoding="utf-8")
+    spool = Spool(spool.pending_dir.parent, 1_000_000)
+    sender = ScriptedSender()
+
+    async with replaying(Delivery(sender, spool, State(), sleep=Pauses())):
+        await until(lambda: len(spool) == 0)
+
+    assert sender.sent == []
+    assert spool.rejected_count() == 1
+    assert "is not rows" in caplog.text
