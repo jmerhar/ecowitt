@@ -21,7 +21,7 @@
               "datasourceUid": "weather",
               "model": {
                 "refId": "A",
-                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(name ORDER BY time) AS room,\n  last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(dewpoint_delta_c ORDER BY time) AS delta\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station, rh.sensor, rh.room,\n  CASE WHEN rh.rh >= 65 THEN vent.delta ELSE -99 END AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor",
+                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(name ORDER BY time) AS room,\n  last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(dewpoint_delta_c ORDER BY time) AS delta\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station, rh.sensor, rh.room,\n  vent.delta AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor",
                 "rawQuery": true,
                 "editorMode": "code",
                 "format": "table",
@@ -53,18 +53,8 @@
               "datasourceUid": "__expr__",
               "model": {
                 "refId": "C",
-                "type": "threshold",
-                "expression": "A",
-                "conditions": [
-                  {
-                    "evaluator": {
-                      "type": "gt",
-                      "params": [
-                        2
-                      ]
-                    }
-                  }
-                ]
+                "type": "math",
+                "expression": "$A > 2 && $B >= 65"
               }
             }
           ],
@@ -81,7 +71,8 @@
           "labels": {
             "app": "ecowitt",
             "severity": "info",
-            "resolve_message": "off"
+            "resolve_message": "off",
+            "notify": "daily"
           },
           "isPaused": false
         },
@@ -99,7 +90,7 @@
               "datasourceUid": "weather",
               "model": {
                 "refId": "A",
-                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(dewpoint_delta_c ORDER BY time) AS delta\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station,\n  CASE WHEN median(rh.rh) >= 65 THEN median(vent.delta) ELSE 99 END AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor\nGROUP BY rh.station",
+                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(dewpoint_delta_c ORDER BY time) AS delta\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station, median(vent.delta) AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor\nGROUP BY rh.station",
                 "rawQuery": true,
                 "editorMode": "code",
                 "format": "table",
@@ -131,18 +122,8 @@
               "datasourceUid": "__expr__",
               "model": {
                 "refId": "C",
-                "type": "threshold",
-                "expression": "A",
-                "conditions": [
-                  {
-                    "evaluator": {
-                      "type": "lt",
-                      "params": [
-                        1
-                      ]
-                    }
-                  }
-                ]
+                "type": "math",
+                "expression": "$A < 1 && $B >= 65"
               }
             }
           ],

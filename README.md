@@ -264,10 +264,10 @@ one alert per room or station (*Close the windows* is one per station):
 - Routing is yours to set up. Every rule carries the labels `app=ecowitt` and `severity`
   (`warning` or `info`, the second suiting quiet hours); *Good time to air* also carries
   `resolve_message=off`, for a contact point that sends no message when the window closes, and
-  so does *Close the windows*. *Damp room* and *Close the windows* carry `notify=daily`: they
-  describe the house over hours, so one message a day is enough -- route them with a 24-hour
-  group interval and repeat interval, so a room that turns damp while others still are waits for
-  the next day's message.
+  so does *Close the windows*. *Damp room* and both airing rules carry `notify=daily`: they
+  describe the house over hours, so a message each time another room joins is noise -- route
+  them with a long group interval and a 24-hour repeat interval, so a room that turns damp while
+  others still are waits for a later message.
 - Each rule's `summary` annotation is a complete sentence, ready to send as the notification.
   Rules with an alert per room also have a `headline`, the same for every room, and an `item`
   naming the room: a message about several rooms reads better as the headline once and an item

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import pytest
 
@@ -130,14 +131,17 @@ def test_the_thresholds_match_the_alert_rules() -> None:
         for rule in group["rules"]
     }
 
-    def threshold(title: str) -> float:
-        (condition,) = [d for d in rules[title]["data"] if d["refId"] == "C"]
-        return condition["model"]["conditions"][0]["evaluator"]["params"][0]
+    def condition(title: str) -> dict[str, Any]:
+        (step,) = [d for d in rules[title]["data"] if d["refId"] == "C"]
+        return step["model"]
 
-    assert threshold("Good time to air") == weather.AIRING_DEWPOINT_DELTA_C
-    airing = next(d for d in rules["Good time to air"]["data"] if d["refId"] == "A")
-    assert f"rh >= {weather.AIRING_HUMIDITY_PCT:g}" in airing["model"]["rawSql"]
+    def threshold(title: str) -> float:
+        return condition(title)["conditions"][0]["evaluator"]["params"][0]
+
+    assert condition("Good time to air")["expression"] == (
+        f"$A > {weather.AIRING_DEWPOINT_DELTA_C:g} && $B >= {weather.AIRING_HUMIDITY_PCT:g}"
+    )
+    assert condition("Close the windows")["expression"] == (
+        f"$A < {weather.CLOSING_DEWPOINT_DELTA_C:g} && $B >= {weather.AIRING_HUMIDITY_PCT:g}"
+    )
     assert threshold("Sensor not updating") == weather.STALE_AFTER_S
-    assert threshold("Close the windows") == weather.CLOSING_DEWPOINT_DELTA_C
-    closing = next(d for d in rules["Close the windows"]["data"] if d["refId"] == "A")
-    assert f"median(rh.rh) >= {weather.AIRING_HUMIDITY_PCT:g}" in closing["model"]["rawSql"]

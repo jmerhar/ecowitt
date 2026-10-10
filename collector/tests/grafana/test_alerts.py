@@ -23,6 +23,8 @@ QUERIES = [
 ]
 #: A value from a rule's queries or expressions, as a summary refers to it.
 VALUE_REF = re.compile(r"\$values\.([A-Z])\.")
+#: A step a math expression refers to.
+MATH_REF = re.compile(r"\$([A-Z])\b")
 
 
 def test_the_rules_are_there() -> None:
@@ -82,7 +84,14 @@ def test_every_rule_refers_only_to_its_own_steps(rule: dict[str, Any]) -> None:
     expressions = [d["model"] for d in rule["data"] if d["datasourceUid"] == "__expr__"]
 
     assert rule["condition"] in refs
-    assert {e["expression"] for e in expressions} <= refs
+    for expression in expressions:
+        # A math expression names its steps as $A; a threshold or reduction names one bare.
+        named = (
+            MATH_REF.findall(expression["expression"])
+            if expression["type"] == "math"
+            else [expression["expression"]]
+        )
+        assert set(named) <= refs
     for text in (rule["annotations"][k] for k in ("summary", "item") if k in rule["annotations"]):
         assert set(VALUE_REF.findall(text)) <= refs
 
@@ -139,4 +148,14 @@ def test_a_rule_with_an_alert_per_room_lists_them_under_one_headline(rule: dict[
 
 def test_daily_rules_are_the_slow_house_conditions() -> None:
     daily = {r["title"] for r in RULES if r["labels"].get("notify") == "daily"}
-    assert daily == {"Damp room", "Close the windows"}
+    assert daily == {"Damp room", "Good time to air", "Close the windows"}
+
+
+@pytest.mark.parametrize("rule", BY_TITLE)
+def test_no_query_hides_a_condition_in_its_value(rule: dict[str, Any]) -> None:
+    """A value replaced by a stand-in (-99) when some other test fails is what a summary shows
+    while the rule keeps firing after that test stops holding; conditions belong in the
+    expression."""
+    for step in rule["data"]:
+        if step["datasourceUid"] != "__expr__":
+            assert not re.search(r"\b(?:-?99)\b", step["model"]["rawSql"]), step["refId"]
