@@ -5,6 +5,37 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 [Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
 says what under *Upgrading*.
 
+## 2.0.0 — 2026-10-10
+
+### Added
+
+- The database is set up on the setup page: choose InfluxDB 3 or 2.x, enter its settings, test
+  the connection, and save; a change applies without a restart. A fresh install opens on the setup
+  page and needs nothing in its compose file.
+- Each station's settings are published to the database as `station_info` rows, with a time zone
+  taken offline from its coordinates unless one is entered.
+- Grafana shows each station's settings, with links reopening the dashboard in the station's time
+  or the browser's.
+
+### Changed
+
+- The spool holds rows as JSON, so a backlog survives the database being set up or changed.
+- `/api/status` reports the database as `database` instead of `influx`, with secrets reduced to
+  whether they are set.
+- The server starts with `python -m ecowitt.collector`; the image does so already.
+
+### Removed
+
+- The `INFLUX_*` environment variables.
+
+### Upgrading
+
+- Enter the database connection on the setup page, then remove the `INFLUX_*` variables (and any
+  token secret mounted for them) from the compose file. Reports received before that are kept in
+  the spool and written once the database is set.
+- Line-protocol files left in the spool by 1.x are set aside in `spool/rejected/`, not replayed.
+- Anything reading `/api/status` reads `database` in place of `influx`.
+
 ## 1.0.0 — 2026-10-10
 
 The first stable release.
