@@ -507,7 +507,7 @@ class TestStatus:
     async def test_the_pressure_line_shows_every_value_in_the_operators_unit(
         self, rig: Rig
     ) -> None:
-        from ecowitt.collector.units import Units
+        from ecowitt.core.units import Units
 
         rig.store.replace(
             ConfigDocument(
@@ -615,7 +615,7 @@ class TestStatus:
 
     async def ws69(self, rig: Rig, **units: str) -> dict[str, object]:
         """The recorded WS69 upload, processed and read back from the API."""
-        from ecowitt.collector.units import Units
+        from ecowitt.core.units import Units
 
         rig.store.replace(
             ConfigDocument(

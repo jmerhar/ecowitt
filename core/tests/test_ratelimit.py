@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ecowitt.collector.ratelimit import RateLimiter
+from ecowitt.core.ratelimit import RateLimiter
 
 
 class Clock:

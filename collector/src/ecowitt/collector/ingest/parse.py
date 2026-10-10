@@ -13,8 +13,8 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 
 from ecowitt.collector.ingest import fields
-from ecowitt.collector.readings import Reading, Report
-from ecowitt.collector.units import Kind, UnknownUnit, to_canonical
+from ecowitt.core.readings import Reading, Report
+from ecowitt.core.units import Kind, UnknownUnit, to_canonical
 
 logger = logging.getLogger(__name__)
 

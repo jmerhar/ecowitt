@@ -2,6 +2,8 @@
 # out of the build context, which matters most for data/: config.yaml holds PASSKEYs and
 # secret.key signs the admin forms, and the context is sent to the Docker daemon in full.
 *
+!core/pyproject.toml
+!core/src/
 !collector/pyproject.toml
 !collector/src/
 **/__pycache__

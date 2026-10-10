@@ -12,6 +12,10 @@ coverage:
 comment: false
 
 flags:
+  core:
+    paths:
+      - core/
+    carryforward: true
   collector:
     paths:
       - collector/

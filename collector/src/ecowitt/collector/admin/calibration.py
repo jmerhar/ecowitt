@@ -33,7 +33,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from ecowitt.collector.admin.stationconfig import Station
-from ecowitt.collector.readings import Reading
+from ecowitt.core.readings import Reading
 
 #: Relative error worth acting on. Station barometers are good to 1-3 hPa absolute, and the
 #: reduction's temperature dependence is held out of this comparison, so anything tighter is

@@ -8,8 +8,8 @@ from datetime import UTC, datetime
 import pytest
 
 from ecowitt.collector.ingest.parse import MAX_CLOCK_SKEW_SECONDS, parse
-from ecowitt.collector.readings import Reading
-from ecowitt.collector.units import Kind
+from ecowitt.core.readings import Reading
+from ecowitt.core.units import Kind
 
 from ..conftest import payload
 

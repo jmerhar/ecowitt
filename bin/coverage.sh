@@ -10,13 +10,17 @@ cd "$root"
 
 bin/coverage-tooling.sh
 
-bin/test-python.sh collector \
-  --cov=ecowitt.collector \
-  --cov-report=term-missing \
-  --cov-report=xml \
-  --cov-report=json \
-  --cov-report=html \
-  -q
+# One run per Python project, each measuring only its own package: core must reach its gate
+# through its own tests, not through the collector's.
+for project in core collector; do
+  bin/test-python.sh "$project" \
+    --cov="ecowitt.$project" \
+    --cov-report=term-missing \
+    --cov-report=xml \
+    --cov-report=json \
+    --cov-report=html \
+    -q
+done
 
 bin/test-js.sh
 

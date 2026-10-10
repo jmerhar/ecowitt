@@ -9,18 +9,22 @@ quantities the console does not send.
 ## Layout
 
 ```
-collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init__.py anywhere)
+core/src/ecowitt/core/   shared by the collector and the dashboard; standard library only
+  units.py        conversions, and the Units preference
+  psychro.py      the formulas behind derive, pure and reference-tested
+  readings.py     Reading, the canonical-unit value parse produces and derive consumes
+  preferences.py  units, sensor names, altitude
+  ratelimit.py    the public listeners' per-address token bucket
+core/tests/       its own tests, which alone count towards its coverage
+
+collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init__.py anywhere;
+                                    tests/server/test_namespace.py and core's own copy guard it)
   __main__.py     `python -m ecowitt.collector`: configure logging and serve
   config.py       environment settings; every credential also accepts a *_FILE variant
   serve.py        builds both apps and runs both listeners in one event loop
   state.py        in-process counters both listeners see
   http.py         read_capped_body, shared by both
   healthcheck.py  module entrypoint for the container's HEALTHCHECK
-  units.py        conversions, and the Units preference
-  psychro.py      the formulas behind derive, pure and reference-tested
-  readings.py     Reading, the canonical-unit value parse produces and derive consumes
-  preferences.py  units, sensor names, altitude
-  ratelimit.py    the ingest listener's per-address token bucket
   lineprotocol.py rows -> InfluxDB line protocol
 
   ingest/         the public listener and the data path
@@ -52,7 +56,7 @@ collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init_
     heartbeat.py  calls a push monitor's URL after writes, at most once per interval
 collector/tests/  one folder per subpackage (ingest/, admin/, delivery/), plus
   server/         wiring: the two listeners, settings, the health probe
-  common/         the top-level shared modules
+  common/         the top-level modules the listeners share
   grafana/        the dashboard and alert rules checked against the golden output
                   (grafana_sql.py holds the checks both share)
   tooling/        the scripts in bin/ that have logic of their own
@@ -167,17 +171,19 @@ bin/              every script the Makefile and CI run; its Python is linted wit
 ## Commands
 
 ```bash
-make install      # virtualenv + test extras
+make install      # one virtualenv at the root, every project installed editable
 make dev          # serve from the working copy (ingest :2551, admin :2552)
 make test ARGS="tests/ingest/test_ingest.py -k slash"
 make test-js      # the page scripts' tests, with coverage (needs node)
-make check        # lint + both suites with coverage
+make check        # lint + every suite with coverage
 UPDATE_GOLDEN=1 bin/test-python.sh collector tests/ingest/test_pipeline.py   # after an intended output change
 ```
 
 ## Testing conventions
 
-- Two coverage suites, `collector` and `pages`, with their gates in `coverage.toml`.
+- One coverage suite per project (`core`, `collector`) plus `pages` for the admin's scripts, with
+  their gates in `coverage.toml`. Each project measures only its own package, so shared code
+  must be covered by core's own tests.
 - Recorded console payloads live in `tests/fixtures/`, as the station sends them — one line,
   form-encoded, unmodified apart from the `PASSKEY`, which is a placeholder. A real one
   authenticates a station's reports and belongs in no repository. Names and altitudes in tests

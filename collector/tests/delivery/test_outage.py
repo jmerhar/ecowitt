@@ -19,8 +19,8 @@ from ecowitt.collector.delivery.delivery import Delivery
 from ecowitt.collector.delivery.spool import Spool
 from ecowitt.collector.delivery.writer import InfluxWriter
 from ecowitt.collector.ingest.handler import StationHandler
-from ecowitt.collector.preferences import Preferences
 from ecowitt.collector.state import State
+from ecowitt.core.preferences import Preferences
 
 from ..conftest import FIXTURE_PASSKEY, payload
 from ..stubs import StubInflux, serving

@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from ecowitt.collector.admin.stationconfig import ConfigError, StationConfig, load
-from ecowitt.collector.units import Units
+from ecowitt.core.units import Units
 
 GOOD = """
 units:

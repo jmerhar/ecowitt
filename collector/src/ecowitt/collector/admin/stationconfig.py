@@ -35,8 +35,8 @@ from typing import Self
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
-from ecowitt.collector.preferences import Preferences
-from ecowitt.collector.units import Units
+from ecowitt.core.preferences import Preferences
+from ecowitt.core.units import Units
 
 logger = logging.getLogger(__name__)
 

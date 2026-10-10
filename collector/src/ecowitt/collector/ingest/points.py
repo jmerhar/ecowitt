@@ -6,9 +6,9 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 from ecowitt.collector.ingest.fields import NAMED_TABLES
-from ecowitt.collector.preferences import Preferences
-from ecowitt.collector.readings import Reading, Value
-from ecowitt.collector.units import Kind, from_canonical
+from ecowitt.core.preferences import Preferences
+from ecowitt.core.readings import Reading, Value
+from ecowitt.core.units import Kind, from_canonical
 
 #: Decimal places kept after conversion. Enough to round-trip every sensor's resolution --
 #: the finest is 0.001 inHg, about 0.03 hPa -- while dropping the float noise a conversion

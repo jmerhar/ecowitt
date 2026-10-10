@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from ecowitt.collector.ingest.points import render
-from ecowitt.collector.preferences import Preferences
-from ecowitt.collector.readings import Reading
-from ecowitt.collector.units import Kind, Units
+from ecowitt.core.preferences import Preferences
+from ecowitt.core.readings import Reading
+from ecowitt.core.units import Kind, Units
 
 
 def test_readings_sharing_a_table_and_tags_become_one_row() -> None:

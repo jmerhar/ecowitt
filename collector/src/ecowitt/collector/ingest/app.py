@@ -20,8 +20,8 @@ from starlette.responses import JSONResponse, PlainTextResponse, Response
 
 from ecowitt.collector.config import MAX_BODY_BYTES, MAX_BODY_FIELDS, Settings
 from ecowitt.collector.http import BodyTooLarge, read_capped_body
-from ecowitt.collector.ratelimit import RateLimiter
 from ecowitt.collector.state import State
+from ecowitt.core.ratelimit import RateLimiter
 
 logger = logging.getLogger(__name__)
 

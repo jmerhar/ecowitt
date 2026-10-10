@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from ecowitt.collector.units import (
+from ecowitt.core.units import (
     CONVERTIBLE,
     FIXED_SUFFIX,
     Kind,

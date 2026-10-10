@@ -14,7 +14,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from ecowitt.collector.units import Kind
+from ecowitt.core.units import Kind
 
 T = Kind.TEMPERATURE
 P = Kind.PRESSURE

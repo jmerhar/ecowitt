@@ -13,7 +13,7 @@ from ecowitt.collector.admin import lookups
 from ecowitt.collector.admin.calibration import CalibrationMonitor
 from ecowitt.collector.admin.reference import ReferenceUpdater
 from ecowitt.collector.admin.stationconfig import Station, StationConfig
-from ecowitt.collector.preferences import Preferences
+from ecowitt.core.preferences import Preferences
 
 from ..stubs import StubInflux, serving
 

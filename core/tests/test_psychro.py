@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from ecowitt.collector import psychro
+from ecowitt.core import psychro
 
 
 @pytest.mark.parametrize(

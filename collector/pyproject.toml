@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Ecowitt Server's collector: receive an Ecowitt station's reports and store them"
 requires-python = ">=3.14"
 dependencies = [
+    "ecowitt-core",
     "fastapi>=0.141,<0.142",
     "uvicorn[standard]>=0.30",
     "pydantic>=2.0",
