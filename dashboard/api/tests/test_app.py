@@ -18,14 +18,14 @@ from ecowitt.dashboard.settings import Settings
 from .conftest import CONFIG, NOW, readings
 from .memory import MemoryReader
 
-FORM = {
+CONNECTION = {
     "kind": "influx3",
     "influx3.url": "http://db:8181",
     "influx3.database": "weather",
     "influx3.token": "apiv3_read",
-    "title": "Home",
-    "stations": "example, other",
 }
+#: The second step: every station, under a title.
+FORM = CONNECTION | {"action": "save", "scope": "all", "title": "Home"}
 
 
 def config_path(client: TestClient) -> Path:
@@ -183,36 +183,49 @@ def test_a_broken_config_file_stops_the_app(settings: Settings) -> None:
         build_app(settings)
 
 
-def test_the_setup_page_offers_only_readable_kinds(fresh: TestClient) -> None:
+def test_the_setup_page_starts_with_the_connection(fresh: TestClient) -> None:
     page = fresh.get("/setup")
     assert page.status_code == 200
     assert 'value="influx3"' in page.text
     assert 'value="influx2"' not in page.text
     assert 'name="influx3.token" type="password"' in page.text
+    assert "Token (if the database needs one)" in page.text
+    assert 'placeholder="One allowed to read"' in page.text
+    assert "Connect and load stations" in page.text
+    assert "Finish setup" not in page.text
 
 
-def test_a_test_connection_lists_the_stations_and_keeps_the_form(fresh: TestClient) -> None:
-    page = fresh.post("/setup", data=FORM | {"action": "test"})
+def test_connecting_lists_the_stations_to_choose_from(
+    fresh: TestClient, reader: MemoryReader
+) -> None:
+    reader.infos["other"] = StationInfo("other")
+    page = fresh.post("/setup", data=CONNECTION | {"action": "connect"})
     assert page.status_code == 200
-    assert "Stations that published settings: example." in page.text
-    assert 'value="http://db:8181"' in page.text and 'value="Home"' in page.text
+    assert 'name="station" value="example"' in page.text
+    assert 'name="station" value="other"' in page.text
+    assert 'value="all" checked' in page.text
+    assert "Finish setup" in page.text
+    assert 'value="http://db:8181"' in page.text
+    assert 'value="apiv3_read"' in page.text, "the token is kept for the second step"
     assert not config_path(fresh).exists()
 
 
-def test_a_test_with_no_stations_yet_says_so(fresh: TestClient, reader: MemoryReader) -> None:
+def test_a_database_with_no_stations_yet_says_so(fresh: TestClient, reader: MemoryReader) -> None:
     reader.infos.clear()
-    assert "none yet" in fresh.post("/setup", data=FORM | {"action": "test"}).text
+    page = fresh.post("/setup", data=CONNECTION | {"action": "connect"})
+    assert "no station has published its settings yet" in page.text
+    assert 'name="scope" value="all"' in page.text and 'name="station"' not in page.text
 
 
-def test_saving_writes_the_file_and_starts_serving(fresh: TestClient) -> None:
-    response = fresh.post("/setup", data=FORM | {"action": "save"})
+def test_finishing_writes_the_file_and_starts_serving(fresh: TestClient) -> None:
+    response = fresh.post("/setup", data=FORM)
     assert (response.status_code, response.headers["location"]) == (303, "/")
     config = siteconfig.load(config_path(fresh))
     assert config is not None
     assert config.connection == {
         "url": "http://db:8181", "database": "weather", "token": "apiv3_read",
     }  # fmt: skip
-    assert (config.title, config.stations) == ("Home", ("example", "other"))
+    assert (config.title, config.stations) == ("Home", ())
     assert fresh.app.state.made[-1] == ("influx3", dict(config.connection))  # type: ignore[attr-defined]
     fresh.app.state.site.dashboard.clock = lambda: NOW  # type: ignore[attr-defined]
     assert fresh.get("/api/v1/stations").json()[0]["id"] == "example"
@@ -220,8 +233,31 @@ def test_saving_writes_the_file_and_starts_serving(fresh: TestClient) -> None:
     assert fresh.post("/setup", data=FORM).status_code == 404
 
 
+def test_only_the_chosen_stations_are_saved(fresh: TestClient, reader: MemoryReader) -> None:
+    reader.infos["other"] = StationInfo("other")
+    reader.infos["third"] = StationInfo("third")
+    form = FORM | {"scope": "chosen", "station": ["third", "example", "gone"]}
+    assert fresh.post("/setup", data=form).status_code == 303
+    config = siteconfig.load(config_path(fresh))
+    assert config is not None and config.stations == ("third", "example")
+
+
+def test_stations_ticked_without_choosing_only_them_are_ignored(fresh: TestClient) -> None:
+    fresh.post("/setup", data=FORM | {"station": ["example"]})
+    config = siteconfig.load(config_path(fresh))
+    assert config is not None and config.stations == ()
+
+
+def test_choosing_only_some_stations_needs_one(fresh: TestClient) -> None:
+    page = fresh.post("/setup", data=FORM | {"scope": "chosen", "station": ["gone"]})
+    assert page.status_code == 400
+    assert "Choose at least one station." in page.text
+    assert 'value="chosen" checked' in page.text
+    assert not config_path(fresh).exists()
+
+
 def test_empty_settings_take_their_defaults(fresh: TestClient) -> None:
-    form = {"kind": "influx3", "influx3.url": "http://db:8181", "title": " "}
+    form = {"kind": "influx3", "influx3.url": "http://db:8181", "title": " ", "action": "save"}
     fresh.post("/setup", data=form)
     config = siteconfig.load(config_path(fresh))
     assert config is not None

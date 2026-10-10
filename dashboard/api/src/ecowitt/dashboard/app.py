@@ -37,6 +37,8 @@ TEMPLATES = Jinja2Templates(directory=Path(__file__).parent / "templates")
 API = "/api/v1"
 #: Largest setup form accepted; the real one is well under a kilobyte.
 MAX_FORM_BYTES = 16 * 1024
+#: Setting help that differs from the shared declarations, which are worded for the collector.
+HELP = {"token": "One allowed to read"}
 #: Most metrics one /series request may ask for.
 MAX_METRICS = 12
 
@@ -162,7 +164,7 @@ def build_app(
     async def setup_page(request: Request) -> Response:
         if site.dashboard is not None:
             raise HTTPException(404)
-        return _setup(request, {})
+        return _setup(request)
 
     @app.post("/setup", include_in_schema=False)
     async def setup_save(request: Request) -> Response:
@@ -232,8 +234,12 @@ def build_app(
     return app
 
 
-async def _setup_action(request: Request, site: Site, form: dict[str, str]) -> Response:
-    """Test the connection, or save the configuration once a test of it passes."""
+async def _setup_action(request: Request, site: Site, form: Form) -> Response:
+    """Load the stations a connection can see, or save the configuration with those chosen.
+
+    Setup is two steps: the connection, whose stations `connect` lists, then which of them to
+    show. Saving connects again, so what is written is a connection that works.
+    """
     kind = form.get("kind", "")
     declared = store_settings.KINDS.get(kind)
     if declared is None or not declared.readable:
@@ -244,27 +250,25 @@ async def _setup_action(request: Request, site: Site, form: dict[str, str]) -> R
         if form.get(f"{kind}.{s.name}", "").strip()
     }
     found = store_settings.problems(kind, values)
-    title = form.get("title", "").strip() or siteconfig.DEFAULT_TITLE
-    stations = tuple(s.strip() for s in form.get("stations", "").split(",") if s.strip())
     if found:
         return _setup(request, form, error="; ".join(found) + ".")
     reader = site.make_reader(kind, values)
     try:
         problem = await reader.check_read()
-        if problem is None:
-            names = await reader.stations()
+        names = await reader.stations() if problem is None else []
     except ReadError as exc:
         problem = str(exc)
     finally:
         await reader.aclose()
     if problem:
         return _setup(request, form, error=f"{declared.label} refused: {problem}.")
-    if form.get("action") == "test":
-        listed = ", ".join(names) if names else "none yet"
-        return _setup(
-            request, form, message=f"Connected. Stations that published settings: {listed}."
-        )
-    config = SiteConfig(kind, values, title, stations)
+    if form.get("action") != "save":
+        return _setup(request, form, names=names)
+    chosen = tuple(name for name in form.stations if name in names)
+    if form.get("scope") == "chosen" and not chosen:
+        return _setup(request, form, names=names, error="Choose at least one station.")
+    title = form.get("title", "").strip() or siteconfig.DEFAULT_TITLE
+    config = SiteConfig(kind, values, title, chosen if form.get("scope") == "chosen" else ())
     try:
         siteconfig.create(site.settings.config_path, config)
     except AlreadyConfigured:
@@ -275,18 +279,25 @@ async def _setup_action(request: Request, site: Site, form: dict[str, str]) -> R
 
 
 def _setup(
-    request: Request, form: Mapping[str, str], *, message: str = "", error: str = ""
+    request: Request, form: Form | None = None, *, names: list[str] | None = None, error: str = ""
 ) -> Response:
-    """The setup page, showing what was typed so nothing has to be entered twice."""
+    """The setup page: the connection, then -- once its stations are loaded -- which to show.
+
+    What was typed is shown again, so nothing has to be entered twice.
+    """
+    form = form or Form()
     kinds = [kind for kind in store_settings.KINDS.values() if kind.readable]
     return TEMPLATES.TemplateResponse(
         request,
         "setup.html",
         {
             "kinds": kinds,
-            "form": dict(form),
+            "form": form,
             "chosen": form.get("kind") or kinds[0].name,
-            "message": message,
+            "help": HELP,
+            "names": names,
+            "scope": form.get("scope") or "all",
+            "picked": set(form.stations),
             "error": error,
             "default_title": siteconfig.DEFAULT_TITLE,
         },
@@ -294,7 +305,16 @@ def _setup(
     )
 
 
-async def _form(request: Request) -> dict[str, str] | Response:
+class Form(dict[str, str]):
+    """A submitted form: each field's value, and every station ticked."""
+
+    def __init__(self, pairs: list[tuple[str, str]] | None = None) -> None:
+        pairs = pairs or []
+        super().__init__((k, v) for k, v in pairs if k != "station")
+        self.stations = [v for k, v in pairs if k == "station"]
+
+
+async def _form(request: Request) -> Form | Response:
     """A submitted form's fields, or a refusal if it is larger than any real one."""
     declared = request.headers.get("content-length", "")
     if declared.isdigit() and int(declared) > MAX_FORM_BYTES:
@@ -304,4 +324,4 @@ async def _form(request: Request) -> dict[str, str] | Response:
         body += chunk
         if len(body) > MAX_FORM_BYTES:
             return PlainTextResponse("Form too large.", status_code=413)
-    return dict(parse_qsl(body.decode("utf-8", errors="replace"), keep_blank_values=True))
+    return Form(parse_qsl(body.decode("utf-8", errors="replace"), keep_blank_values=True))

@@ -28,6 +28,9 @@
     button { font: inherit; padding: .35rem .9rem; border-radius: .3rem; border: 1px solid var(--accent);
              background: var(--accent); color: var(--bg); cursor: pointer; margin-top: 1rem; }
     button.secondary { background: transparent; color: var(--accent); }
+    label.choice { display: flex; gap: .5rem; align-items: center; color: var(--fg); font-size: 1rem; }
+    label.choice input { width: auto; }
+    .stations { margin-left: 1.5rem; }
     /* Only the chosen kind's settings show; every kind's are in the form, prefixed by kind. */
     fieldset.kind { display: none; }
     {% for kind in kinds %}
@@ -41,12 +44,11 @@
   <p class="muted">This page is shown until the dashboard is set up, to anyone who can reach it.
     Saving writes <code>dashboard.yaml</code>; to change it later, edit or delete that file and
     restart.</p>
-  {% if message %}<div class="notice">{{ message }}</div>{% endif %}
   {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
   <form method="post" action="/setup">
     <section>
-      <h2>Database</h2>
-      <p class="muted">Where the collector stores readings. A token allowed only to read is enough.</p>
+      <h2>1. Database</h2>
+      <p class="muted">Where the collector stores readings.</p>
       <label for="kind">Type of database</label>
       <select id="kind" name="kind">
         {% for kind in kinds %}<option value="{{ kind.name }}" {% if kind.name == chosen %}selected{% endif %}>{{ kind.label }}</option>{% endfor %}
@@ -55,23 +57,39 @@
       <fieldset class="kind" data-kind="{{ kind.name }}">
         {% for setting in kind.settings %}
         {% set key = kind.name ~ "." ~ setting.name %}
-        <label for="{{ key }}">{{ setting.label }}{% if not setting.required %} (optional){% endif %}</label>
+        <label for="{{ key }}">{{ setting.label }}{% if not setting.required %} ({{ setting.optional }}){% endif %}</label>
         <input id="{{ key }}" name="{{ key }}" {% if setting.secret %}type="password" autocomplete="off"{% endif %}
-               value="{{ form.get(key, setting.default) }}" placeholder="{{ setting.help }}">
+               value="{{ form.get(key, setting.default) }}" placeholder="{{ help.get(setting.name, setting.help) }}">
         {% endfor %}
       </fieldset>
       {% endfor %}
+      <button type="submit" name="action" value="connect" {% if names is not none %}class="secondary"{% endif %}>
+        {{ "Load stations again" if names is not none else "Connect and load stations" }}</button>
     </section>
+    {% if names is not none %}
     <section>
-      <h2>Site</h2>
+      <h2>2. Stations</h2>
+      {% if names %}
+      <p class="muted">Connected. Choose what the dashboard shows.</p>
+      <label class="choice"><input type="radio" name="scope" value="all" {% if scope != "chosen" %}checked{% endif %}>
+        Every station, including ones added later</label>
+      <label class="choice"><input type="radio" name="scope" value="chosen" {% if scope == "chosen" %}checked{% endif %}>
+        Only these:</label>
+      <div class="stations">
+        {% for name in names %}
+        <label class="choice"><input type="checkbox" name="station" value="{{ name }}" {% if name in picked %}checked{% endif %}> {{ name }}</label>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="muted">Connected, but no station has published its settings yet. A collector
+        does when it starts with a station configured. Every station will be shown as it appears.</p>
+      <input type="hidden" name="scope" value="all">
+      {% endif %}
       <label for="title">Title</label>
       <input id="title" name="title" value="{{ form.get('title', default_title) }}">
-      <label for="stations">Stations to show (optional)</label>
-      <input id="stations" name="stations" value="{{ form.get('stations', '') }}"
-             placeholder="Names separated by commas; empty shows every station">
+      <button type="submit" name="action" value="save">Finish setup</button>
     </section>
-    <button type="submit" name="action" value="test" class="secondary">Test connection</button>
-    <button type="submit" name="action" value="save">Save</button>
+    {% endif %}
   </form>
 </main>
 </body>
