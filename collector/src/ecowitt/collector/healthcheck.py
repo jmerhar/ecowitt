@@ -10,7 +10,7 @@ import sys
 import urllib.error
 import urllib.request
 
-from .config import get_settings
+from ecowitt.collector.config import get_settings
 
 TIMEOUT_SECONDS = 5
 

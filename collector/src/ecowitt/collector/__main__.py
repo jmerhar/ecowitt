@@ -1,5 +1,5 @@
 """Allow `python -m ecowitt.collector` to start the server."""
 
-from .serve import main
+from ecowitt.collector.serve import main
 
 main()

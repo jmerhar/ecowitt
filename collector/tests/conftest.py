@@ -8,9 +8,13 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from ecowitt.collector import admin, ingest
+from ecowitt.collector.admin import app as admin
 from ecowitt.collector.config import Settings
+from ecowitt.collector.ingest import app as ingest
 from ecowitt.collector.state import State
+
+# The stand-in InfluxDB's fixture, for every test folder.
+from .stubs import influx  # noqa: F401
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

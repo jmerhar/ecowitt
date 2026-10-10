@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from .units import Units
+from ecowitt.collector.units import Units
 
 
 @dataclass(frozen=True)

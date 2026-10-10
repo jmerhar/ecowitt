@@ -6,7 +6,7 @@
 
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
-const { describeError, fillFromLocation, wire, OPTIONS } = require("../../src/ecowitt/collector/static/geolocate.js");
+const { describeError, fillFromLocation, wire, OPTIONS } = require("../../src/ecowitt/collector/admin/static/geolocate.js");
 
 /** A page holding one station form's inputs and one location button. */
 function page() {
@@ -133,7 +133,7 @@ test("loaded as a page script, it connects the page's buttons by itself", () => 
   const fs = require("node:fs");
   const path = require("node:path");
   const vm = require("node:vm");
-  const file = path.join(__dirname, "../../src/ecowitt/collector/static/geolocate.js");
+  const file = path.join(__dirname, "../../src/ecowitt/collector/admin/static/geolocate.js");
   const { doc, listeners } = page();
 
   vm.runInNewContext(fs.readFileSync(file, "utf8"), {

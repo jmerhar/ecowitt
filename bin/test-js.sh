@@ -3,9 +3,9 @@
 #
 # Node's own test runner and its own coverage, with no packages to install: the scripts are small
 # and tested against stand-ins for the DOM and the browser APIs rather than a real browser.
-# Coverage of collector/src/ecowitt/collector/static is written as lcov to collector/coverage-js/lcov.info and
-# converted to the istanbul files coverage.toml names. Called by `make test-js`, bin/coverage.sh
-# and CI, so all three run the same thing.
+# Coverage of collector/src/ecowitt/collector/admin/static is written as lcov to
+# collector/coverage-js/lcov.info and converted to the istanbul files coverage.toml names. Called
+# by `make test-js`, bin/coverage.sh and CI, so all three run the same thing.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -30,7 +30,7 @@ out=collector/coverage-js
 rm -rf "$out"
 mkdir -p "$out"
 node --test --experimental-test-coverage \
-  --test-coverage-include='collector/src/ecowitt/collector/static/**' \
+  --test-coverage-include='collector/src/ecowitt/collector/admin/static/**' \
   --test-reporter=spec --test-reporter-destination=stdout \
   --test-reporter=lcov --test-reporter-destination="$out/lcov.info" \
   "${tests[@]}"

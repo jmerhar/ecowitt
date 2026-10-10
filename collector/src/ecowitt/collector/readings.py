@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .units import Kind
+from ecowitt.collector.units import Kind
 
 Value = float | bool | str
 
