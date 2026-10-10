@@ -113,8 +113,10 @@ def test_tendency(change: float, words: str) -> None:
         (65, 2.1, Airing.OPEN),
         (64.9, 5, Airing.NO_NEED),
         (90, 2.0, Airing.NO_NEED),
-        (90, 0, Airing.NO_NEED),
-        (90, -0.1, Airing.KEEP_CLOSED),
+        (90, 1.0, Airing.NO_NEED),
+        (90, 0.9, Airing.KEEP_CLOSED),
+        (65, -3, Airing.KEEP_CLOSED),
+        (64.9, -3, Airing.NO_NEED),
     ],
 )
 def test_airing(humidity: float, delta: float, advice: Airing) -> None:
@@ -136,3 +138,6 @@ def test_the_thresholds_match_the_alert_rules() -> None:
     airing = next(d for d in rules["Good time to air"]["data"] if d["refId"] == "A")
     assert f"rh >= {weather.AIRING_HUMIDITY_PCT:g}" in airing["model"]["rawSql"]
     assert threshold("Sensor not updating") == weather.STALE_AFTER_S
+    assert threshold("Close the windows") == weather.CLOSING_DEWPOINT_DELTA_C
+    closing = next(d for d in rules["Close the windows"]["data"] if d["refId"] == "A")
+    assert f"median(rh.rh) >= {weather.AIRING_HUMIDITY_PCT:g}" in closing["model"]["rawSql"]
