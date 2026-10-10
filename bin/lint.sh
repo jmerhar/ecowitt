@@ -15,8 +15,7 @@ run() {
 }
 
 run "shellcheck" shellcheck bin/*.sh
-run "ruff" sh -c 'cd backend && .venv/bin/ruff check . && .venv/bin/ruff check --config pyproject.toml ../bin/*.py'
-run "ruff format" sh -c 'cd backend && .venv/bin/ruff format --check . ../bin/*.py'
+run "ruff" env RUFF=.venv/bin/ruff bin/ci-ruff.sh
 run "compose files parse" sh -c '
   docker compose -f docker-compose.yml config -q &&
   docker compose -f docker-compose.yml -f docker-compose.build.yml config -q &&
