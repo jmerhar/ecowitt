@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from ecowitt.collector import psychro
 from ecowitt.collector.ingest.derive import derive
 from ecowitt.collector.ingest.staleness import StalenessTracker
-from ecowitt.collector.preferences import Preferences
-from ecowitt.collector.readings import Reading
-from ecowitt.collector.units import Kind
+from ecowitt.core import psychro
+from ecowitt.core.preferences import Preferences
+from ecowitt.core.readings import Reading
+from ecowitt.core.units import Kind
 
 T, H = Kind.TEMPERATURE, Kind.HUMIDITY
 

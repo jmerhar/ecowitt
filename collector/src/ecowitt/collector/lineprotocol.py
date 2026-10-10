@@ -10,7 +10,7 @@ import math
 from collections.abc import Iterable
 
 from ecowitt.collector.ingest.points import Point
-from ecowitt.collector.readings import Value
+from ecowitt.core.readings import Value
 
 
 def encode(points: Iterable[Point]) -> str:

@@ -10,7 +10,7 @@ import pytest
 
 from ecowitt.collector.admin.stationconfig import Station, StationConfig
 from ecowitt.collector.ingest.handler import MAX_ANNOUNCED_UNKNOWN, StationHandler
-from ecowitt.collector.preferences import Preferences
+from ecowitt.core.preferences import Preferences
 
 from ..conftest import FIXTURE_PASSKEY, payload
 
@@ -126,7 +126,7 @@ async def test_an_unknown_station_is_offered_for_adoption() -> None:
 async def test_reports_feed_the_calibration_checks_in_canonical_units() -> None:
     """The monitor sees hPa whatever units the operator stores in."""
     from ecowitt.collector.admin.calibration import CalibrationMonitor
-    from ecowitt.collector.units import Units
+    from ecowitt.core.units import Units
 
     monitor = CalibrationMonitor()
     inhg = StationConfig(

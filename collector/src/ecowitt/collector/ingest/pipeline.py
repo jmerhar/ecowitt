@@ -10,8 +10,8 @@ from ecowitt.collector.ingest.derive import derive
 from ecowitt.collector.ingest.parse import parse
 from ecowitt.collector.ingest.points import Point, render
 from ecowitt.collector.ingest.staleness import StalenessTracker
-from ecowitt.collector.preferences import Preferences
-from ecowitt.collector.readings import Reading
+from ecowitt.core.preferences import Preferences
+from ecowitt.core.readings import Reading
 
 
 @dataclass(frozen=True)

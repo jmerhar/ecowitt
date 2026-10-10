@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from ecowitt.collector.ingest import fields
-from ecowitt.collector.units import CONVERTIBLE, Kind, to_canonical
+from ecowitt.core.units import CONVERTIBLE, Kind, to_canonical
 
 KNOWN_KEYS = [
     line.strip()

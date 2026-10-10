@@ -16,7 +16,7 @@ from ecowitt.collector.admin.stationconfig import (
     load_document,
     save_document,
 )
-from ecowitt.collector.units import Units
+from ecowitt.core.units import Units
 
 
 def entry(name: str = "Home", passkey: str = "AAAA", **kw: object) -> StationEntry:

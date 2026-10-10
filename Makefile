@@ -9,7 +9,7 @@ help: ## Show available commands
 install: ## Create the shared virtualenv and install every project with its test extras
 	python3 -m venv .venv
 	.venv/bin/pip install --quiet --upgrade pip
-	.venv/bin/pip install --quiet -e "collector[test]"
+	.venv/bin/pip install --quiet -e "core[test]" -e "collector[test]"
 	@echo "Installed. 'make test' runs the suite, 'make dev' serves locally."
 
 ##@ Development
@@ -36,6 +36,7 @@ build: ## Build the image without starting anything
 ##@ Testing
 
 test: ## Run every project's suite (ARGS pass through to pytest, e.g. ARGS="-k slash")
+	bin/test-python.sh core $(ARGS)
 	bin/test-python.sh collector $(ARGS)
 
 test-js: ## Run the page script tests with coverage (needs node)

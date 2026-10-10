@@ -16,11 +16,11 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Hashable, Iterable
 
-from ecowitt.collector import psychro
 from ecowitt.collector.ingest.staleness import StalenessTracker
-from ecowitt.collector.preferences import Preferences
-from ecowitt.collector.readings import Reading
-from ecowitt.collector.units import Kind
+from ecowitt.core import psychro
+from ecowitt.core.preferences import Preferences
+from ecowitt.core.readings import Reading
+from ecowitt.core.units import Kind
 
 #: Tables whose readings are not a sensor's measurements, and so do not count towards whether
 #: that sensor has gone quiet: a battery voltage drifts on its own, and the console's uptime

@@ -14,9 +14,11 @@ ENV PYTHONUNBUFFERED=1 \
     DATA_DIR=/data
 
 WORKDIR /app
+COPY core/pyproject.toml core/pyproject.toml
+COPY core/src core/src
 COPY collector/pyproject.toml collector/pyproject.toml
 COPY collector/src collector/src
-RUN pip install ./collector
+RUN pip install ./core ./collector
 
 # Runs as an unprivileged user so that everything written into the mounted data directory is
 # owned by a real account on the host rather than by root.

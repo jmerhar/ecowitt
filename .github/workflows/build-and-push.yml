@@ -21,6 +21,10 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # One job per Python project, each measuring only its own package.
+    strategy:
+      matrix:
+        project: [core, collector]
     steps:
       - uses: actions/checkout@v5
 
@@ -29,7 +33,7 @@ jobs:
           python-version: "3.14"
 
       - name: Install
-        run: pip install -e "collector[test]"
+        run: pip install -e "core[test]" -e "collector[test]"
 
       - name: Run tests with coverage
         env:
@@ -38,18 +42,19 @@ jobs:
           COVERAGE_CORE: sysmon
           PYTHON: python
         run: >-
-          bin/test-python.sh collector -v --cov=ecowitt.collector --junitxml=junit/collector.xml
+          bin/test-python.sh ${{ matrix.project }} -v --cov=ecowitt.${{ matrix.project }}
+          --junitxml=junit/${{ matrix.project }}.xml
           --cov-report=term-missing --cov-report=xml --cov-report=json --cov-report=html
 
       - name: Upload coverage
         uses: actions/upload-artifact@v5
         with:
-          name: coverage-collector
+          name: coverage-${{ matrix.project }}
           path: |
-            collector/coverage.xml
-            collector/coverage.json
-            collector/htmlcov
-            collector/junit
+            ${{ matrix.project }}/coverage.xml
+            ${{ matrix.project }}/coverage.json
+            ${{ matrix.project }}/htmlcov
+            ${{ matrix.project }}/junit
           if-no-files-found: error
 
   test-js:
@@ -111,7 +116,13 @@ jobs:
         with:
           python-version: "3.14"
 
-      # Restore the report to the path coverage.toml declares (collector/coverage.json).
+      # Restore each report to the path coverage.toml declares (<project>/coverage.json).
+      - name: Download core coverage
+        uses: actions/download-artifact@v6
+        with:
+          name: coverage-core
+          path: core
+
       - name: Download collector coverage
         uses: actions/download-artifact@v6
         with:
@@ -136,7 +147,7 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          junit: collector/junit/*.xml
+          junit: "*/junit/*.xml"
 
       # Fails the build if line coverage drops below the bound in coverage.toml. publish needs
       # this job, so a regression blocks the image.

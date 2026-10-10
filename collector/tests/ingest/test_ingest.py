@@ -192,7 +192,7 @@ def test_an_address_over_its_budget_gets_429_before_its_body_is_read(
     settings: Settings, state: State
 ) -> None:
     """A flood is answered cheaply, and the handler never sees it."""
-    from ecowitt.collector.ratelimit import RateLimiter
+    from ecowitt.core.ratelimit import RateLimiter
 
     handler = RecordingHandler()
     limiter = RateLimiter(rate=0.0, burst=2)

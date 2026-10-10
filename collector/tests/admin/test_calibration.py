@@ -11,9 +11,9 @@ from ecowitt.collector.admin.calibration import (
     CalibrationMonitor,
 )
 from ecowitt.collector.admin.stationconfig import Station
-from ecowitt.collector.preferences import Preferences
-from ecowitt.collector.readings import Reading
-from ecowitt.collector.units import Kind
+from ecowitt.core.preferences import Preferences
+from ecowitt.core.readings import Reading
+from ecowitt.core.units import Kind
 
 
 def station(altitude: float | None = 180.0, dismissed: dict[str, float] | None = None) -> Station:
