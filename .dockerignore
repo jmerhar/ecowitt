@@ -1,9 +1,12 @@
 # Only each project's pyproject.toml and src/ are copied into the images. Everything else stays
-# out of the build context, which matters most for data/: config.yaml holds PASSKEYs and
-# secret.key signs the admin forms, and the context is sent to the Docker daemon in full.
+# out of the build context, which matters most for data/: config.yaml holds PASSKEYs,
+# dashboard.yaml a database token, and secret.key signs the admin forms, and the context is
+# sent to the Docker daemon in full.
 *
 !core/pyproject.toml
 !core/src/
 !collector/pyproject.toml
 !collector/src/
+!dashboard/api/pyproject.toml
+!dashboard/api/src/
 **/__pycache__
