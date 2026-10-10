@@ -28,7 +28,7 @@ from pydantic import ValidationError
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, RedirectResponse, Response
 
-from ecowitt.collector.admin import auth, lookups
+from ecowitt.collector.admin import auth, lookups, timezones
 from ecowitt.collector.admin.calibration import CalibrationMonitor
 from ecowitt.collector.admin.configstore import ConfigStore
 from ecowitt.collector.admin.stationconfig import AdminLogin, ConfigDocument, StationEntry
@@ -552,7 +552,8 @@ def _setup_view(
         latest = context.handler.latest.get(entry.name) if context.handler else None
         seen = [str(s["sensor"]) for s in _summarise(latest.points)] if latest else []
         sensor_ids = sorted(set(seen) | set(entry.sensors), key=_natural)
-        stations.append({"entry": entry, "sensor_ids": sensor_ids})
+        derived = timezones.zone_at(entry.latitude, entry.longitude)
+        stations.append({"entry": entry, "sensor_ids": sensor_ids, "derived_zone": derived})
     return {
         "document": document,
         "stations": stations,
@@ -562,6 +563,7 @@ def _setup_view(
         "message": message,
         "draft": draft,
         "units": Units(),
+        "zones": timezones.all_zones(),
     }
 
 
@@ -652,6 +654,7 @@ async def _station_action(
             altitude_m=altitude,
             latitude=latitude,
             longitude=longitude,
+            timezone=form.get("timezone", "").strip() or None,
             sensors=sensors,
             dismissed=existing.dismissed if existing else {},
         )

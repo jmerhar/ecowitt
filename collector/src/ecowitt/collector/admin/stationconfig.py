@@ -33,8 +33,16 @@ from pathlib import Path
 from typing import Self
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
+from ecowitt.collector.admin import timezones
 from ecowitt.core.preferences import Preferences
 from ecowitt.core.units import Units
 
@@ -58,10 +66,20 @@ class StationEntry(BaseModel):
     altitude_m: float | None = Field(default=None, ge=-500, le=9000)
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
+    #: An IANA zone name. Left out, it is taken from the coordinates when there are some.
+    timezone: str | None = None
     sensors: dict[str, str] = Field(default_factory=dict)
     #: Calibration warnings the operator has acknowledged, by kind, with the error at the time.
     #: A warning stays hidden only while the error stays close to that value.
     dismissed: dict[str, float] = Field(default_factory=dict)
+
+    @field_validator("timezone")
+    @classmethod
+    def _known_zone(cls, value: str | None) -> str | None:
+        """Refuse a zone name this system does not know, rather than store a typo."""
+        if value is not None and not timezones.is_zone(value):
+            raise ValueError(f"{value!r} is not a time zone name, such as Europe/Lisbon")
+        return value
 
 
 class AdminLogin(BaseModel):
@@ -109,6 +127,8 @@ class Station:
     _passkey: str
     latitude: float | None = None
     longitude: float | None = None
+    #: The configured zone, or the one the coordinates fall in, or None.
+    timezone: str | None = None
     dismissed: dict[str, float] = field(default_factory=dict)
 
     def matches(self, passkey: str) -> bool:
@@ -201,6 +221,7 @@ def build(document: ConfigDocument) -> StationConfig:
                 _passkey=entry.passkey,
                 latitude=entry.latitude,
                 longitude=entry.longitude,
+                timezone=entry.timezone or timezones.zone_at(entry.latitude, entry.longitude),
                 dismissed=dict(entry.dismissed),
             )
             for entry in document.stations

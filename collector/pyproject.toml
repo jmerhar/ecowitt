@@ -18,6 +18,8 @@ dependencies = [
     # Templates for the status and setup pages; escapes HTML by default, which matters because
     # station names and console metadata end up on them.
     "jinja2>=3.1",
+    # Offline time zone of a pair of coordinates, for the station metadata the dashboard reads.
+    "tzfpy>=1.0",
 ]
 
 [project.optional-dependencies]

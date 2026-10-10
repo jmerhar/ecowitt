@@ -287,6 +287,7 @@ class TestStations:
             ({"sensor_BAD": "x"}, "look like"),
             ({"name": ""}, "name"),
             ({"altitude_m": "1e308"}, "altitude"),
+            ({"timezone": "Europe/Atlantis"}, "not a time zone name"),
             ({"altitude_m": "nan"}, "must be numbers"),
             ({"latitude": "inf"}, "must be numbers"),
         ],
@@ -301,6 +302,26 @@ class TestStations:
         assert response.status_code == 400
         assert message in response.text
         assert rig.store.document.stations[0].name == "Home"
+
+    def test_a_time_zone_is_saved_and_cleared(self, rig: Rig) -> None:
+        rig.post("/setup/station", {"name": "Home", "passkey": "A"})
+
+        rig.post("/setup/station", {"original": "Home", "name": "Home", "timezone": "UTC"})
+        assert rig.store.document.stations[0].timezone == "UTC"
+
+        rig.post("/setup/station", {"original": "Home", "name": "Home", "timezone": " "})
+        assert rig.store.document.stations[0].timezone is None
+
+    def test_the_zone_from_the_coordinates_is_offered_as_the_placeholder(self, rig: Rig) -> None:
+        rig.post(
+            "/setup/station",
+            {"name": "Home", "passkey": "A", "latitude": "38.72", "longitude": "-9.14"},
+        )
+
+        page = rig.client.get("/setup").text
+
+        assert re.search(r'name="timezone"[^>]*placeholder="Europe/Lisbon"', page, re.S)
+        assert '<option value="Europe/Lisbon">' in page
 
     def test_delete(self, rig: Rig) -> None:
         rig.post("/setup/station", {"name": "Home", "passkey": "A"})
