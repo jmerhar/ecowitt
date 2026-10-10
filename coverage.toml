@@ -1,7 +1,7 @@
 # Coverage configuration for the shared tooling in jmerhar/coverage, which renders the CI
 # summary table, enforces the gate, and publishes the HTML report.
 #
-# One suite per project, and one for the scripts the collector's admin pages load. A Python
+# One suite per Python project, and one for the scripts the collector's admin pages load. A Python
 # project's JSON summary is read
 # rather than the XML coverage.py can also emit, because the JSON totals are exact. The page
 # scripts are measured by Node's built-in coverage, whose lcov bin/lcov-to-istanbul.py turns into
@@ -24,6 +24,13 @@ label = "Collector (Python)"
 format = "coveragepy"
 report = "collector/coverage.json"
 html = "collector/htmlcov"
+gate = 98.0
+
+[suites.dashboard]
+label = "Dashboard API (Python)"
+format = "coveragepy"
+report = "dashboard/api/coverage.json"
+html = "dashboard/api/htmlcov"
 gate = 98.0
 
 [suites.pages]

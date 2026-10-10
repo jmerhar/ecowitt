@@ -21,10 +21,15 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
-    # One job per Python project, each measuring only its own package.
+    # One job per Python project, each measuring only its own package: `project` is its
+    # directory, `package` the part of the ecowitt namespace it ships, and `suite` its name in
+    # coverage.toml.
     strategy:
       matrix:
-        project: [core, collector]
+        include:
+          - { project: core, package: core, suite: core }
+          - { project: collector, package: collector, suite: collector }
+          - { project: dashboard/api, package: dashboard, suite: dashboard }
     steps:
       - uses: actions/checkout@v5
 
@@ -33,7 +38,7 @@ jobs:
           python-version: "3.14"
 
       - name: Install
-        run: pip install -e "core[test]" -e "collector[test]"
+        run: pip install -e "core[test]" -e "collector[test]" -e "dashboard/api[test]"
 
       - name: Run tests with coverage
         env:
@@ -42,14 +47,14 @@ jobs:
           COVERAGE_CORE: sysmon
           PYTHON: python
         run: >-
-          bin/test-python.sh ${{ matrix.project }} -v --cov=ecowitt.${{ matrix.project }}
-          --junitxml=junit/${{ matrix.project }}.xml
+          bin/test-python.sh ${{ matrix.project }} -v --cov=ecowitt.${{ matrix.package }}
+          --junitxml=junit/${{ matrix.suite }}.xml
           --cov-report=term-missing --cov-report=xml --cov-report=json --cov-report=html
 
       - name: Upload coverage
         uses: actions/upload-artifact@v5
         with:
-          name: coverage-${{ matrix.project }}
+          name: coverage-${{ matrix.suite }}
           path: |
             ${{ matrix.project }}/coverage.xml
             ${{ matrix.project }}/coverage.json
@@ -129,6 +134,12 @@ jobs:
           name: coverage-collector
           path: collector
 
+      - name: Download dashboard coverage
+        uses: actions/download-artifact@v6
+        with:
+          name: coverage-dashboard
+          path: dashboard/api
+
       - name: Download page script coverage
         uses: actions/download-artifact@v6
         with:
@@ -147,7 +158,7 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          junit: "*/junit/*.xml"
+          junit: "*/junit/*.xml,dashboard/api/junit/*.xml"
 
       # Fails the build if line coverage drops below the bound in coverage.toml. publish needs
       # this job, so a regression blocks the image.

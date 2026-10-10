@@ -11,10 +11,12 @@ cd "$root"
 bin/coverage-tooling.sh
 
 # One run per Python project, each measuring only its own package: core must reach its gate
-# through its own tests, not through the collector's.
-for project in core collector; do
+# through its own tests, not through the collector's. Each entry is the project's directory and
+# the package it ships.
+for entry in core:core collector:collector dashboard/api:dashboard; do
+  project="${entry%%:*}"
   bin/test-python.sh "$project" \
-    --cov="ecowitt.$project" \
+    --cov="ecowitt.${entry#*:}" \
     --cov-report=term-missing \
     --cov-report=xml \
     --cov-report=json \

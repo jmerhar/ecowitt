@@ -9,7 +9,7 @@ help: ## Show available commands
 install: ## Create the shared virtualenv and install every project with its test extras
 	python3 -m venv .venv
 	.venv/bin/pip install --quiet --upgrade pip
-	.venv/bin/pip install --quiet -e "core[test]" -e "collector[test]"
+	.venv/bin/pip install --quiet -e "core[test]" -e "collector[test]" -e "dashboard/api[test]"
 	@echo "Installed. 'make test' runs the suite, 'make dev' serves locally."
 
 ##@ Development
@@ -38,6 +38,7 @@ build: ## Build the image without starting anything
 test: ## Run every project's suite (ARGS pass through to pytest, e.g. ARGS="-k slash")
 	bin/test-python.sh core $(ARGS)
 	bin/test-python.sh collector $(ARGS)
+	bin/test-python.sh dashboard/api $(ARGS)
 
 test-js: ## Run the page script tests with coverage (needs node)
 	bin/test-js.sh
@@ -48,12 +49,14 @@ coverage: ## Run the suite with coverage and print the summary
 lint: ## ShellCheck, ruff, and the compose files
 	bin/lint.sh
 
-check: lint test coverage ## Everything (gate a commit on this; coverage runs both suites)
+check: lint test coverage ## Everything (gate a commit on this; coverage runs every suite)
 
 ##@ Housekeeping
 
 clean: ## Remove build and coverage artefacts (all regenerable)
 	rm -rf */htmlcov */coverage.xml */coverage.json */.coverage */coverage-js \
 	       */junit .ruff_cache */.pytest_cache \
+	       dashboard/api/htmlcov dashboard/api/coverage.xml dashboard/api/coverage.json \
+	       dashboard/api/.coverage dashboard/api/junit dashboard/api/.pytest_cache \
 	       coverage-upload .coverage-report.py
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +

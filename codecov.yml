@@ -20,6 +20,10 @@ flags:
     paths:
       - collector/
     carryforward: true
+  dashboard:
+    paths:
+      - dashboard/api/
+    carryforward: true
   pages:
     paths:
       - collector/src/ecowitt/collector/admin/static/
