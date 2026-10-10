@@ -2425,7 +2425,7 @@
         "x": 4,
         "y": 105,
         "w": 10,
-        "h": 15
+        "h": 16
       },
       "targets": [
         {
@@ -2552,9 +2552,9 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 105,
+        "y": 112,
         "w": 10,
-        "h": 15
+        "h": 9
       },
       "targets": [
         {
@@ -2632,7 +2632,7 @@
         "x": 0,
         "y": 112,
         "w": 4,
-        "h": 8
+        "h": 9
       },
       "targets": [
         {
@@ -2694,9 +2694,9 @@
       },
       "description": "The station's settings as the collector last published them to the database: written when it starts and whenever the setup page changes them. The time zone decides where the station's day begins, and is taken from the coordinates unless one was entered.",
       "gridPos": {
-        "x": 0,
-        "y": 120,
-        "w": 14,
+        "x": 14,
+        "y": 105,
+        "w": 10,
         "h": 7
       },
       "targets": [
