@@ -18,5 +18,5 @@ flags:
     carryforward: true
   pages:
     paths:
-      - collector/src/ecowitt/collector/static/
+      - collector/src/ecowitt/collector/admin/static/
     carryforward: true

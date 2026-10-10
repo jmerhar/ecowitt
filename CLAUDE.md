@@ -9,56 +9,59 @@ quantities the console does not send.
 ## Layout
 
 ```
-collector/src/ecowitt/collector/
+collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init__.py anywhere)
+  __main__.py     `python -m ecowitt.collector`: configure logging and serve
   config.py       environment settings; every credential also accepts a *_FILE variant
   serve.py        builds both apps and runs both listeners in one event loop
-  ingest.py       the public app -- one route, and deliberately nothing else
-  http.py         read_capped_body, shared by both
   state.py        in-process counters both listeners see
+  http.py         read_capped_body, shared by both
   healthcheck.py  module entrypoint for the container's HEALTHCHECK
-  __main__.py     `python -m ecowitt.collector`: configure logging and serve
-
-  pipeline.py     report fields -> rows: parse, derive, render   <- the data path
-  readings.py     Reading, the canonical-unit value parse produces and derive consumes
-  fields.py       the declarative table: which key is stored where, in what unit
-  parse.py        fields -> readings in canonical units (°C, hPa, mm, m/s, km); never raises
-  derive.py       moisture, ventilation, sea-level pressure, staleness
-  psychro.py      the formulas behind derive, pure and reference-tested
   units.py        conversions, and the Units preference
-  points.py       readings -> rows in the operator's units, with tags
-  lineprotocol.py rows -> InfluxDB line protocol
+  psychro.py      the formulas behind derive, pure and reference-tested
+  readings.py     Reading, the canonical-unit value parse produces and derive consumes
   preferences.py  units, sensor names, altitude
-  staleness.py    how long each sensor's values have gone unchanged
-
-  admin.py        status and setup pages, the read API, the login and form checks
-  templates/      the pages, Jinja2 with autoescaping
-  static/         scripts the pages load, as files so they can be tested (geolocate.js)
-  auth.py         scrypt password hashes, Basic login, CSRF token and origin check
-  configstore.py  the live configuration: validate, save, then apply and notify
-  pending.py      unconfigured stations offered for adoption, by fingerprint
-  calibration.py  the relative, absolute-step and absolute-reference pressure checks
-  lookups.py      elevation and model surface pressure from public services
-  reference.py    the background refresh of model surface pressure
-  handler.py      authenticate a report against the stations, process it, write it
-  stationconfig.py  /data/config.yaml: the PASSKEY allowlist and per-station preferences
-  writer.py       one write to InfluxDB 3 or 2.x, classified OK / RETRY / REJECT
-  delivery.py     write now or spool; the replay loop that drains the spool
-  spool.py        the bounded on-disk queue, one atomically written file per report
-  heartbeat.py    calls a push monitor's URL after writes, at most once per interval
   ratelimit.py    the ingest listener's per-address token bucket
-collector/tests/
+  lineprotocol.py rows -> InfluxDB line protocol
+
+  ingest/         the public listener and the data path
+    app.py        the public app -- one route, and deliberately nothing else
+    handler.py    authenticate a report against the stations, process it, write it
+    pending.py    unconfigured stations offered for adoption, by fingerprint
+    pipeline.py   report fields -> rows: parse, derive, render   <- the data path
+    fields.py     the declarative table: which key is stored where, in what unit
+    parse.py      fields -> readings in canonical units (°C, hPa, mm, m/s, km); never raises
+    derive.py     moisture, ventilation, sea-level pressure, staleness
+    points.py     readings -> rows in the operator's units, with tags
+    staleness.py  how long each sensor's values have gone unchanged
+
+  admin/          the admin listener
+    app.py        status and setup pages, the read API, the login and form checks
+    templates/    the pages, Jinja2 with autoescaping
+    static/       scripts the pages load, as files so they can be tested (geolocate.js)
+    auth.py       scrypt password hashes, Basic login, CSRF token and origin check
+    configstore.py  the live configuration: validate, save, then apply and notify
+    stationconfig.py  /data/config.yaml: the PASSKEY allowlist and per-station preferences
+    calibration.py  the relative, absolute-step and absolute-reference pressure checks
+    lookups.py    elevation and model surface pressure from public services
+    reference.py  the background refresh of model surface pressure
+
+  delivery/       getting rows into the database
+    writer.py     one write to InfluxDB 3 or 2.x, classified OK / RETRY / REJECT
+    delivery.py   write now or spool; the replay loop that drains the spool
+    spool.py      the bounded on-disk queue, one atomically written file per report
+    heartbeat.py  calls a push monitor's URL after writes, at most once per interval
+collector/tests/  one folder per subpackage (ingest/, admin/, delivery/), plus
+  server/         wiring: the two listeners, settings, the health probe
+  common/         the top-level shared modules
+  grafana/        the dashboard and alert rules checked against the golden output
+                  (grafana_sql.py holds the checks both share)
+  tooling/        the scripts in bin/ that have logic of their own
+  js/             node:test suites for admin/static/, against stand-in DOM and browser APIs
   conftest.py     settings/state fixtures and the recorded console payloads
+  stubs.py        a stand-in InfluxDB: a real HTTP server that records what it gets
   fixtures/       recorded payloads, the golden line protocol, the known-keys list
-  test_infra/     wiring: the two listeners, config resolution, the health probe
-  test_data/      the data path, module by module, and the golden end-to-end test
-  test_store/     configuration, rate limiting, the handler, and the writer against a real
-                  HTTP server standing in for InfluxDB
-  js/             node:test suites for static/, against stand-in DOM and browser APIs
-  test_tooling/   the scripts in bin/ that have logic of their own
-  test_data/grafana_sql.py  the table and field checks the Grafana tests share
-grafana/          weather.json, the dashboard, and alerts.json, the alert rules; test_dashboard and
-                  test_alerts check their queries against the golden output, so a renamed table or
-                  field fails there rather than blanking a panel or silencing an alert
+grafana/          weather.json, the dashboard, and alerts.json, the alert rules; a renamed table or
+                  field fails tests/grafana rather than blanking a panel or silencing an alert
 TODO/             one note per planned feature; delete a note when its feature ships
 bin/              every script the Makefile and CI run; its Python is linted with the shared
                   ruff.toml (bin/ci-ruff.sh)
@@ -166,10 +169,10 @@ bin/              every script the Makefile and CI run; its Python is linted wit
 ```bash
 make install      # virtualenv + test extras
 make dev          # serve from the working copy (ingest :2551, admin :2552)
-make test ARGS="tests/test_infra/test_ingest.py -k slash"
+make test ARGS="tests/ingest/test_ingest.py -k slash"
 make test-js      # the page scripts' tests, with coverage (needs node)
 make check        # lint + both suites with coverage
-UPDATE_GOLDEN=1 bin/test-python.sh collector tests/test_data/test_pipeline.py   # after an intended output change
+UPDATE_GOLDEN=1 bin/test-python.sh collector tests/ingest/test_pipeline.py   # after an intended output change
 ```
 
 ## Testing conventions

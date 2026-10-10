@@ -4,7 +4,7 @@
 # Called by `make test`, by bin/coverage.sh and by CI, so all three execute the same thing. The
 # first argument names the project (its directory: core, collector, dashboard/api); the rest
 # pass through to pytest, which is how a single test is run:
-#   bin/test-python.sh collector tests/test_infra/test_ingest.py -k slash
+#   bin/test-python.sh collector tests/ingest/test_ingest.py -k slash
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 project="${1:?usage: bin/test-python.sh <project> [pytest arguments]}"

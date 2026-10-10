@@ -16,20 +16,22 @@ from collections.abc import Awaitable, Callable, Iterable, Iterator
 import httpx2
 import uvicorn
 
-from . import admin, auth, ingest
-from .admin import AdminContext
-from .calibration import CalibrationMonitor
-from .config import Settings, get_settings
-from .configstore import ConfigStore
-from .delivery import Delivery
-from .handler import StationHandler
-from .heartbeat import Heartbeat
-from .ingest import ReportHandler
-from .pending import PendingStations
-from .reference import ReferenceUpdater
-from .spool import Spool
-from .state import State
-from .writer import InfluxWriter
+from ecowitt.collector.admin import app as admin
+from ecowitt.collector.admin import auth
+from ecowitt.collector.admin.app import AdminContext
+from ecowitt.collector.admin.calibration import CalibrationMonitor
+from ecowitt.collector.admin.configstore import ConfigStore
+from ecowitt.collector.admin.reference import ReferenceUpdater
+from ecowitt.collector.config import Settings, get_settings
+from ecowitt.collector.delivery.delivery import Delivery
+from ecowitt.collector.delivery.heartbeat import Heartbeat
+from ecowitt.collector.delivery.spool import Spool
+from ecowitt.collector.delivery.writer import InfluxWriter
+from ecowitt.collector.ingest import app as ingest
+from ecowitt.collector.ingest.app import ReportHandler
+from ecowitt.collector.ingest.handler import StationHandler
+from ecowitt.collector.ingest.pending import PendingStations
+from ecowitt.collector.state import State
 
 logger = logging.getLogger(__name__)
 

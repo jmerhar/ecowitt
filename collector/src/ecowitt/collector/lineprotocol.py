@@ -9,8 +9,8 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable
 
-from .points import Point
-from .readings import Value
+from ecowitt.collector.ingest.points import Point
+from ecowitt.collector.readings import Value
 
 
 def encode(points: Iterable[Point]) -> str:
