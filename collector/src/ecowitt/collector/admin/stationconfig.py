@@ -44,6 +44,7 @@ from pydantic import (
 
 from ecowitt.collector.admin import timezones
 from ecowitt.core.preferences import Preferences
+from ecowitt.core.store import settings
 from ecowitt.core.units import Units
 
 logger = logging.getLogger(__name__)
@@ -82,6 +83,31 @@ class StationEntry(BaseModel):
         return value
 
 
+class StoreEntry(BaseModel):
+    """The database readings are written to: a kind and that kind's declared settings.
+
+    The settings sit beside `kind` in the file -- `url`, `database`, `token` for InfluxDB 3 --
+    and are checked against the kind's declarations in `ecowitt.core.store.settings`.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    kind: str
+
+    @model_validator(mode="after")
+    def _declared(self) -> Self:
+        """Refuse settings the kind does not declare, or that it would not accept."""
+        found = settings.problems(self.kind, self.connection)
+        if found:
+            raise ValueError("; ".join(found))
+        return self
+
+    @property
+    def connection(self) -> dict[str, str]:
+        """The settings beside `kind`, as text."""
+        return {k: str(v) for k, v in (self.model_extra or {}).items()}
+
+
 class AdminLogin(BaseModel):
     """The optional login guarding the admin interface. Only a hash of the password is kept."""
 
@@ -97,6 +123,7 @@ class ConfigDocument(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     units: Units = Field(default_factory=Units)
+    store: StoreEntry | None = None
     stations: list[StationEntry] = Field(default_factory=list)
     admin: AdminLogin | None = None
 
@@ -188,7 +215,8 @@ def load_document(path: Path) -> ConfigDocument:
 def save_document(path: Path, document: ConfigDocument) -> None:
     """Write the configuration file atomically, readable by its owner only.
 
-    Owner-only because it holds every station's PASSKEY and the admin password's hash.
+    Owner-only because it holds every station's PASSKEY, the database token and the admin
+    password's hash.
     Written to a temporary file and renamed into place, so a crash mid-save leaves the old
     file intact rather than a truncated one that would stop the server starting.
     """
@@ -196,9 +224,10 @@ def save_document(path: Path, document: ConfigDocument) -> None:
     for station in data.get("stations", []):
         for empty in [k for k in ("sensors", "dismissed") if not station.get(k)]:
             station.pop(empty, None)
-    text = "# Ecowitt Server configuration. Holds PASSKEYs: keep it private.\n" + yaml.safe_dump(
-        data, sort_keys=False, allow_unicode=True
+    header = (
+        "# Ecowitt Server configuration. Holds PASSKEYs and a database token: keep it private.\n"
     )
+    text = header + yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.tmp")
     descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)

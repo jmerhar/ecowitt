@@ -1,13 +1,14 @@
 """The interface every database implements, and the rows that pass through it.
 
-Rows go in as `Row`s and leave as a payload of text in the database's own wire format, which is
-what the collector's spool keeps while the database is unreachable. Encoding first and writing
-later keeps the spool independent of the database: it stores whatever `encode` produced and
-hands it back to `write`.
+Rows go to `Store.write` as `Row`s; each store encodes them in its own wire format at that
+moment. While a write cannot happen the collector's spool keeps rows in the neutral text form
+`dump_rows` produces, so a backlog survives the database being configured, replaced or changed
+to another kind before it drains.
 """
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Protocol
@@ -34,7 +35,7 @@ class Outcome(Enum):
     #: refusing this client for a reason someone can fix.
     RETRY = "retry"
     #: Not stored, and never will be: the database refused the data itself. Retrying would
-    #: block every payload queued behind this one.
+    #: block every write queued behind this one.
     REJECT = "reject"
 
 
@@ -48,11 +49,38 @@ class Store(Protocol):
     def configured(self) -> bool:
         """Whether there is anywhere to write to."""
 
-    def encode(self, rows: list[Row]) -> str:
-        """Rows as this database's payload; empty when there is nothing to write."""
+    async def write(self, rows: list[Row]) -> Outcome:
+        """Write rows once, returning what became of them. Never raises for a failed write."""
 
-    async def write(self, payload: str) -> Outcome:
-        """Write one payload, returning what became of it. Never raises for a failed write."""
+    async def check(self) -> str | None:
+        """Whether this store would accept a write, without writing: None, or the reason not."""
 
     async def aclose(self) -> None:
         """Release connections."""
+
+
+def dump_rows(rows: list[Row]) -> str:
+    """Rows as text any store can be given later: one JSON array, field types preserved.
+
+    Every number is a float already (the collector writes no integers), and JSON keeps the
+    distinction between `60.0` and `true`, so nothing changes type on the way through.
+    """
+    return json.dumps(
+        [[row.table, [list(tag) for tag in row.tags], row.timestamp, row.fields] for row in rows],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+
+
+def load_rows(text: str) -> list[Row]:
+    """Rows from `dump_rows`' text. Raises ValueError for anything else."""
+    try:
+        data = json.loads(text)
+        if not isinstance(data, list):
+            raise TypeError(f"a {type(data).__name__}, not a list")
+        return [
+            Row(table, tuple((k, v) for k, v in tags), timestamp, dict(fields))
+            for table, tags, timestamp, fields in data
+        ]
+    except (json.JSONDecodeError, TypeError, ValueError) as exc:
+        raise ValueError(f"not a list of rows: {exc}") from exc

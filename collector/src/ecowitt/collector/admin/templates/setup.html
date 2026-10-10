@@ -14,6 +14,44 @@
   <div class="notice error">This process was started without a configuration file, so nothing here can be saved.</div>
 {% endif %}
 
+<section>
+  <h2>Database</h2>
+  {% if database.configured %}
+    <p>Writing to <strong>{{ database.label }}</strong>{% if database.url %} at <code>{{ database.url }}</code>{% endif %}.
+      {% if database.last_error %}<span class="bad">Last write failed: {{ database.last_error }}</span>{% endif %}</p>
+  {% else %}
+    <p class="notice">No database is set up yet. Reports are kept on disk until one is, and written then.</p>
+  {% endif %}
+  {% for kind in kinds %}
+  <details {% if database.kind == kind.name or (not database.configured and loop.first) %}open{% endif %}>
+    <summary>{{ kind.label }}</summary>
+    <form method="post" action="/setup/database">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="kind" value="{{ kind.name }}">
+      <div class="row">
+      {% for setting in kind.settings %}
+        <div><label for="db-{{ kind.name }}-{{ setting.name }}">{{ setting.label }}{% if not setting.required %} (optional){% endif %}</label>
+        {% if setting.secret %}
+          <input id="db-{{ kind.name }}-{{ setting.name }}" name="{{ setting.name }}" type="password" autocomplete="off"
+                 placeholder="{{ 'set; leave empty to keep it' if database.kind == kind.name and database[setting.name ~ '_set'] else setting.help }}">
+        {% else %}
+          <input id="db-{{ kind.name }}-{{ setting.name }}" name="{{ setting.name }}"
+                 value="{{ database[setting.name] if database.kind == kind.name and database[setting.name] else setting.default }}"
+                 placeholder="{{ setting.help }}" {% if setting.required and not setting.default %}required{% endif %}>
+        {% endif %}
+        </div>
+      {% endfor %}
+      </div>
+      <button type="submit" name="action" value="save">Save</button>
+      <button class="secondary" type="submit" name="action" value="test">Test connection</button>
+      {% if database.kind == kind.name %}
+      <button class="danger" type="submit" name="action" value="clear" formnovalidate>Remove</button>
+      {% endif %}
+    </form>
+  </details>
+  {% endfor %}
+</section>
+
 {% if pending %}
 <section>
   <h2>Stations reporting, not configured</h2>

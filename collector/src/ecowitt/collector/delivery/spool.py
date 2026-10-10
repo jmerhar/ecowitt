@@ -31,7 +31,10 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-SUFFIX = ".lp"
+SUFFIX = ".json"
+#: Line protocol an older version spooled. Still listed, so such files reach delivery, which
+#: cannot read them as rows and sets them aside rather than leaving them unseen.
+LEGACY_SUFFIX = ".lp"
 #: Reports refused by InfluxDB that are kept for inspection; older ones are deleted.
 MAX_REJECTED = 1000
 
@@ -70,7 +73,7 @@ class Spool:
         # A temporary file left by a crash mid-write is incomplete by definition.
         for leftover in self.pending_dir.glob(".*.tmp"):
             leftover.unlink(missing_ok=True)
-        self._pending: deque[Path] = deque(sorted(self.pending_dir.glob("*" + SUFFIX)))
+        self._pending: deque[Path] = deque(_listed(self.pending_dir))
         # Sizes are remembered rather than re-read on removal: a file deleted from outside
         # can no longer be measured, and subtracting zero would leave the total too high for
         # good -- eventually dropping new reports the spool had room for.
@@ -142,7 +145,7 @@ class Spool:
 
     def rejected_count(self) -> int:
         """How many refused reports are kept for inspection."""
-        return sum(1 for _ in self.rejected_dir.glob("*" + SUFFIX))
+        return len(_listed(self.rejected_dir))
 
     def _name(self) -> str:
         """A file name that sorts after every earlier one from this process.
@@ -171,9 +174,19 @@ class Spool:
 
     def _trim_rejected(self) -> None:
         """Delete the oldest rejected reports beyond the cap."""
-        kept = sorted(self.rejected_dir.glob("*" + SUFFIX))
+        kept = _listed(self.rejected_dir)
         for path in kept[: max(0, len(kept) - self._max_rejected)]:
             path.unlink(missing_ok=True)
+
+
+def _listed(directory: Path) -> list[Path]:
+    """The spool files in a directory, oldest first.
+
+    Names begin with the time they were written, so sorting by name sorts by age whatever
+    the suffix.
+    """
+    files = [*directory.glob("*" + SUFFIX), *directory.glob("*" + LEGACY_SUFFIX)]
+    return sorted(files, key=lambda path: path.name)
 
 
 def _write_atomically(directory: Path, name: str, body: str) -> Path:

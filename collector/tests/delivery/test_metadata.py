@@ -11,6 +11,7 @@ import pytest
 from ecowitt.collector.admin.stationconfig import ConfigDocument, StationEntry, build
 from ecowitt.collector.delivery.metadata import MetadataPublisher, info_for
 from ecowitt.core.stationinfo import StationInfo
+from ecowitt.core.store.base import Row
 from ecowitt.core.store.lineprotocol import encode
 from ecowitt.core.units import Units
 
@@ -20,10 +21,10 @@ class Recorder:
         self.bodies: list[str] = []
         self.fail = False
 
-    async def submit(self, body: str) -> None:
+    async def submit(self, rows: list[Row]) -> None:
         if self.fail:
             raise RuntimeError("delivery is broken")
-        self.bodies.append(body)
+        self.bodies.append(encode(rows))
 
 
 def config(*entries: StationEntry, units: Units | None = None):  # noqa: ANN201
@@ -42,7 +43,7 @@ COTTAGE = StationEntry(name="Cottage", passkey="B")
 
 
 def publisher(sink: Recorder) -> MetadataPublisher:
-    return MetadataPublisher(sink, encode=encode, clock=lambda: 1791500484.7)
+    return MetadataPublisher(sink, clock=lambda: 1791500484.7)
 
 
 def test_a_station_publishes_its_settings_and_its_zone_from_the_coordinates() -> None:

@@ -20,7 +20,6 @@ from ecowitt.collector.admin.stationconfig import Station, StationConfig
 from ecowitt.collector.ingest.handler import Sink
 from ecowitt.core.readings import Value
 from ecowitt.core.stationinfo import StationInfo
-from ecowitt.core.store.base import Row
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +45,9 @@ class MetadataPublisher:
         self,
         sink: Sink,
         *,
-        encode: Callable[[list[Row]], str],
         clock: Callable[[], float] = time.time,
     ) -> None:
         self._sink = sink
-        self._encode = encode
         self._clock = clock
         self._published: dict[str, dict[str, Value]] = {}
         self._config = StationConfig()
@@ -70,7 +67,7 @@ class MetadataPublisher:
             if self._published.get(station.name) != row.fields:
                 changed[station.name] = row
         if changed:
-            await self._sink.submit(self._encode(list(changed.values())))
+            await self._sink.submit(list(changed.values()))
             self._published.update({name: row.fields for name, row in changed.items()})
             logger.info("published settings of %s", ", ".join(changed))
         return len(changed)

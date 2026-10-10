@@ -1,9 +1,9 @@
 """Settings that describe the installation rather than its sensors.
 
-Infrastructure lives here, in the environment: where to listen, where InfluxDB is, how much
-to log. Everything describing a particular station -- channel names, unit preferences, the
-PASSKEY allowlist, the site location -- belongs to the station configuration file read by
-`stationconfig`, because none of it is pleasant to express as environment variables.
+Infrastructure lives here, in the environment: where to listen, how much to log. Everything else
+-- the database connection, channel names, unit preferences, the PASSKEY allowlist, the site
+location -- belongs to the configuration file `stationconfig` reads and the setup page edits,
+so an install needs nothing in its compose file.
 
 Every credential also accepts a `*_FILE` variant naming a file to read it from, which is what
 makes a Docker secret usable without putting the value in a compose file.
@@ -13,8 +13,7 @@ from __future__ import annotations
 
 import functools
 from pathlib import Path
-from typing import Literal, Self
-from urllib.parse import urlsplit
+from typing import Self
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -61,7 +60,7 @@ class Settings(BaseSettings):
     ingest_rate: float = 2.0
     ingest_burst: int = 20
 
-    #: Most the spool may hold while InfluxDB is unreachable; beyond it the oldest reports are
+    #: Most the spool may hold while the database is unreachable; beyond it the oldest reports are
     #: dropped. A report is a few kilobytes, so the default keeps days of them.
     spool_max_bytes: int = 100 * 1024 * 1024
 
@@ -78,15 +77,6 @@ class Settings(BaseSettings):
     #: spellings are served, so either value works here.
     ingest_path: str = "/data/report/"
 
-    influx_url: str = ""
-    influx_database: str = "weather"
-    influx_token: str = ""
-    influx_token_file: Path | None = None
-    #: InfluxDB 3 writes line protocol to /api/v3/write_lp; 2.x to /api/v2/write.
-    influx_api: Literal["v3", "v2"] = "v3"
-    #: Required by InfluxDB 2.x only, which scopes a bucket to an organisation.
-    influx_org: str = ""
-
     #: Called after readings are written, for a push monitor to alert when the calls stop. Push
     #: URLs carry their monitor's token, so this is a credential and has a file form too.
     heartbeat_url: str = ""
@@ -96,7 +86,7 @@ class Settings(BaseSettings):
 
     log_level: str = "INFO"
 
-    @field_validator("influx_token_file", "heartbeat_url_file", mode="before")
+    @field_validator("heartbeat_url_file", mode="before")
     @classmethod
     def _blank_is_unset(cls, value: object) -> object:
         """Treat an empty value as absent rather than as a path.
@@ -115,32 +105,11 @@ class Settings(BaseSettings):
         """Load any credential given as a file, and reject one that cannot be read.
 
         Naming a file excludes the alternatives, so an unreadable one is an error rather than
-        a fall back to the empty default -- which would otherwise surface much later as an
-        authentication failure against InfluxDB.
+        a fall back to the empty default -- which would otherwise surface much later as a
+        monitor that is never called.
         """
-        if self.influx_token_file is not None:
-            self.influx_token = self.influx_token_file.read_text(encoding="utf-8").strip()
         if self.heartbeat_url_file is not None:
             self.heartbeat_url = self.heartbeat_url_file.read_text(encoding="utf-8").strip()
-        return self
-
-    @model_validator(mode="after")
-    def _check_influx(self) -> Self:
-        """Refuse an InfluxDB configuration that could never be written to.
-
-        Better a container that will not start, with the reason, than one that accepts every
-        report and spools it until the spool's cap starts discarding them.
-        """
-        if self.influx_url:
-            try:
-                parts = urlsplit(self.influx_url)
-                parts.port  # noqa: B018 -- raises on a malformed port
-            except ValueError as exc:
-                raise ValueError(f"INFLUX_URL is not a valid URL: {exc}") from None
-            if parts.scheme not in {"http", "https"} or not parts.hostname:
-                raise ValueError("INFLUX_URL must be an http:// or https:// URL with a host")
-        if self.influx_api == "v2" and not self.influx_org:
-            raise ValueError("INFLUX_API=v2 needs INFLUX_ORG: InfluxDB 2.x scopes a bucket to one")
         return self
 
     @model_validator(mode="after")
@@ -180,7 +149,7 @@ class Settings(BaseSettings):
 
     @property
     def spool_dir(self) -> Path:
-        """Where writes wait when InfluxDB is unreachable."""
+        """Where writes wait when the database is unreachable."""
         return self.data_dir / "spool"
 
 

@@ -31,7 +31,8 @@ core/tests/       its own tests, which alone count towards its coverage
 collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init__.py anywhere;
                                     tests/server/test_namespace.py and core's own copy guard it)
   __main__.py     `python -m ecowitt.collector`: configure logging and serve
-  config.py       environment settings; every credential also accepts a *_FILE variant
+  config.py       environment settings: ports, limits, logging (the database is configured on the
+                  setup page); a credential also accepts a *_FILE variant
   serve.py        builds both apps and runs both listeners in one event loop
   state.py        in-process counters both listeners see
   http.py         read_capped_body, shared by both
@@ -53,14 +54,17 @@ collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init_
     templates/    the pages, Jinja2 with autoescaping
     static/       scripts the pages load, as files so they can be tested (geolocate.js)
     auth.py       scrypt password hashes, Basic login, CSRF token and origin check
-    configstore.py  the live configuration: validate, save, then apply and notify
-    stationconfig.py  /data/config.yaml: the PASSKEY allowlist and per-station preferences
+    configstore.py  the live configuration: validate, save, then apply and notify (the database
+                    connection included, so a save takes effect without a restart)
+    stationconfig.py  /data/config.yaml: the database connection, the PASSKEY allowlist and
+                      per-station preferences
     calibration.py  the relative, absolute-step and absolute-reference pressure checks
     lookups.py    elevation and model surface pressure from public services
     reference.py  the background refresh of model surface pressure
     timezones.py  a station's time zone from its coordinates (offline, tzfpy), and validation
 
   delivery/       getting rows into the database (through a core Store)
+    database.py   ConfiguredStore: the store config.yaml names, swapped in place on a save
     delivery.py   write now or spool; the replay loop that drains the spool
     spool.py      the bounded on-disk queue, one atomically written file per report
     heartbeat.py  calls a push monitor's URL after writes, at most once per interval
@@ -173,6 +177,10 @@ bin/              every script the Makefile and CI run; its Python is linted wit
 - **The spool keeps its queue and file sizes in memory** after one listing at startup. That is
   sound only because one process owns the directory. Sizes are remembered rather than re-read,
   because a file deleted from outside can no longer be measured and the total would drift up.
+- **The spool holds rows, not any database's wire format.** `dump_rows` writes them as JSON
+  (`.json` files) and each store encodes at write time, so a backlog survives the database
+  being set up, replaced or changed to another kind. A spooled file that is not rows -- an
+  older version's `.lp` line protocol -- is set aside in `spool/rejected/`, not dropped.
 - **While anything is spooled, new reports queue behind it** instead of being written live, so
   an outage costs one attempt per backoff pause rather than one per report.
 - **Retention is set once, at database creation, and InfluxDB 3 cannot change it afterwards.**

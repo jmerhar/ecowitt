@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 {% block head %}<meta http-equiv="refresh" content="60">{% endblock %}
 {% block content %}
+{% if not status.database.configured %}
+  <div class="notice error">No database is set up, so reports are kept on disk and written once
+    one is. <a href="/setup">Set one up</a>.</div>
+{% elif status.database.last_error %}
+  <div class="notice error">The last write to {{ status.database.label }} failed:
+    {{ status.database.last_error }}</div>
+{% endif %}
 {% macro reading(r, digits=1) %}{% if r %}{{ "%.*f"|format(digits, r.value) }} {{ {"c": "°C", "f": "°F", "pct": "%"}.get(r.unit, r.unit) }}{% else %}<span class="muted">–</span>{% endif %}{% endmacro %}
 
 {% if not stations %}
