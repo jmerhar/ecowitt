@@ -13,7 +13,8 @@ from urllib.parse import urlsplit
 import httpx2
 
 from ecowitt.core.store.base import Store
-from ecowitt.core.store.factory import store_for
+from ecowitt.core.store.factory import READABLE, reader_for, store_for
+from ecowitt.core.store.query import Reader
 
 
 @dataclass(frozen=True)
@@ -38,6 +39,11 @@ class Kind:
     name: str
     label: str
     settings: tuple[Setting, ...]
+
+    @property
+    def readable(self) -> bool:
+        """Whether stored readings can be read back from this kind, as a dashboard needs."""
+        return self.name in READABLE
 
 
 _URL = Setting(
@@ -97,8 +103,20 @@ def store_from(
     kind: str, values: Mapping[str, str], *, client: httpx2.AsyncClient | None = None
 ) -> Store:
     """The store a validated connection describes. Raises ValueError if it has problems."""
+    return store_for(kind, client=client, **_clean(kind, values))
+
+
+def reader_from(
+    kind: str, values: Mapping[str, str], *, client: httpx2.AsyncClient | None = None
+) -> Reader:
+    """The reader a validated connection describes. Raises ValueError if it has problems or the
+    kind cannot be read from."""
+    return reader_for(kind, client=client, **_clean(kind, values))
+
+
+def _clean(kind: str, values: Mapping[str, str]) -> dict[str, str]:
+    """A connection's settings with defaults filled in. Raises ValueError if it has problems."""
     found = problems(kind, values)
     if found:
         raise ValueError("; ".join(found))
-    clean = {s.name: values.get(s.name, "").strip() or s.default for s in KINDS[kind].settings}
-    return store_for(kind, client=client, **clean)
+    return {s.name: values.get(s.name, "").strip() or s.default for s in KINDS[kind].settings}

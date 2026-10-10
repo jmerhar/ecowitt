@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 from urllib.parse import parse_qsl, urlsplit
 
@@ -26,12 +26,16 @@ class Received:
 
 @dataclass
 class StubInflux:
-    """Answers every request with `status` and `reply`, and keeps each request."""
+    """Answers every request with `status` and `reply`, and keeps each request.
+
+    `respond`, when set, chooses the answer per request instead, as a status and a body.
+    """
 
     url: str = ""
     status: int = 204
     reply: str = ""
     requests: list[Received] = field(default_factory=list)
+    respond: Callable[[Received], tuple[int, str]] | None = None
 
 
 @contextlib.asynccontextmanager
@@ -46,11 +50,12 @@ async def serving(stub: StubInflux, port: int = 0) -> AsyncIterator[StubInflux]:
         body = await reader.readexactly(int(headers.get("content-length", "0")))
         parts = urlsplit(target)
         query = dict(parse_qsl(parts.query))
-        stub.requests.append(
-            Received(method, parts.path, query, headers, body.decode(), stub.status)
-        )
-        payload = stub.reply.encode()
-        response = f"HTTP/1.1 {stub.status} X\r\nContent-Length: {len(payload)}\r\n"
+        received = Received(method, parts.path, query, headers, body.decode(), stub.status)
+        status, reply = stub.respond(received) if stub.respond else (stub.status, stub.reply)
+        received.status = status
+        stub.requests.append(received)
+        payload = reply.encode()
+        response = f"HTTP/1.1 {status} X\r\nContent-Length: {len(payload)}\r\n"
         writer.write(response.encode() + b"Connection: close\r\n\r\n" + payload)
         await writer.drain()
         writer.close()
