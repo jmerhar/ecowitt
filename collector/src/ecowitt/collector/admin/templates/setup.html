@@ -43,7 +43,7 @@
       {% for setting in kind.settings %}
         {% set key = kind.name ~ "." ~ setting.name %}
         {% set typed = db_draft["values"].get(setting.name) if db_draft and db_draft.kind == kind.name else none %}
-        <div><label for="db-{{ kind.name }}-{{ setting.name }}">{{ setting.label }}{% if not setting.required %} (optional){% endif %}</label>
+        <div><label for="db-{{ kind.name }}-{{ setting.name }}">{{ setting.label }}{% if not setting.required %} ({{ setting.optional }}){% endif %}</label>
         {% if setting.secret %}
           <input id="db-{{ kind.name }}-{{ setting.name }}" name="{{ key }}" type="password" autocomplete="off"
                  value="{{ typed or '' }}"

@@ -53,3 +53,11 @@ def test_an_influx2_store_gets_its_organisation() -> None:
 def test_a_connection_with_problems_builds_nothing() -> None:
     with pytest.raises(ValueError, match="URL is required"):
         store_from("influx3", {})
+
+
+def test_a_token_is_needed_only_by_a_database_with_authentication() -> None:
+    for kind in KINDS.values():
+        token = next(s for s in kind.settings if s.name == "token")
+        assert (token.required, token.optional) == (False, "if the database needs one")
+        url = next(s for s in kind.settings if s.name == "url")
+        assert url.optional == "optional"
