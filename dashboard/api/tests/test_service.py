@@ -77,7 +77,7 @@ async def test_rooms_come_with_airing_advice_and_current_names(board: Dashboard)
     assert [(r.sensor, r.name) for r in rooms] == [("indoor", "Lounge"), ("ch1", "Bathroom")]
     lounge, bathroom = rooms
     assert (lounge.temperature, lounge.humidity, lounge.dew_point) == (21.0, 55.0, 11.9)
-    assert lounge.airing is not None and lounge.airing.advice == "keep_closed"
+    assert lounge.airing is not None and lounge.airing.advice == "no_need"
     assert bathroom.airing is not None
     assert bathroom.airing.advice == "open"
     assert (bathroom.airing.humidity_after, bathroom.airing.dew_point_difference) == (49.0, 2.9)
