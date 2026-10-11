@@ -30,6 +30,9 @@ describe("App", () => {
 
   it("shows the station at a glance, its history and records", async () => {
     const api = fakeApi();
+    // index.html's tag, which names the page on an iOS home screen.
+    const title = Object.assign(document.createElement("meta"), { name: "apple-mobile-web-app-title", content: "Weather" });
+    document.head.append(title);
     render(App, { api, storage: memory() });
     expect(await screen.findByText("18.0 °C")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Test weather" })).toBeInTheDocument();
@@ -40,6 +43,8 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "Highs and lows" })).toBeInTheDocument();
     expect(screen.getByText(/1 needs attention/)).toBeInTheDocument();
     expect(document.title).toBe("Home · Test weather");
+    expect(title).toHaveAttribute("content", "Test weather");
+    title.remove();
     expect(api.now).toHaveBeenCalledWith("Home", {});
   });
 

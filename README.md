@@ -339,6 +339,11 @@ draw the model's values dashed beside the station's (*Model*, beside the range).
 Open-Meteo, as its data's licence asks, and lists the licences of what it bundles at
 `/licenses.md`.
 
+Served over HTTPS, the page can be added to a phone's or tablet's home screen (*Add to Home
+screen* or *Install app* in Chrome, *Share → Add to Home Screen* on an iPhone or iPad), where it
+opens as an app of its own, named for the site's title. Its icon is drawn in
+`dashboard/web/icons/app-icon.svg`; `make app-icons` renders the PNGs after a change.
+
 **Setting it up**
 
 1. Create a token that can only read the database:

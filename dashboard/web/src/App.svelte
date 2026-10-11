@@ -54,7 +54,11 @@
   });
 
   $effect(() => {
-    if (meta) document.title = station ? `${station.id} · ${meta.title}` : meta.title;
+    if (!meta) return;
+    document.title = station ? `${station.id} · ${meta.title}` : meta.title;
+    // The name iOS gives the page when it is added to the home screen: the site's, like the
+    // manifest's, rather than the station's.
+    document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute("content", meta.title);
   });
 
   async function start(): Promise<void> {

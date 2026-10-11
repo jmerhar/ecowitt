@@ -86,7 +86,8 @@ collector/tests/  one folder per subpackage (ingest/, admin/, delivery/), plus
   conftest.py     settings/state fixtures and the recorded console payloads
   fixtures/       recorded payloads, the golden line protocol, the known-keys list
 dashboard/api/src/ecowitt/dashboard/   the public dashboard's read-only API
-  app.py          /api/v1 routes behind one `access` dependency, /healthz, first-run /setup
+  app.py          /api/v1 routes behind one `access` dependency, /healthz, first-run /setup,
+                  /manifest.webmanifest (the home-screen app, named for the site)
   service.py      answers built from a Reader: now (with the weather model's sky), series (with
                   its series when asked), extremes; cached in stored units
   catalogue.py    the metrics served: table, base field, kind, aggregates, which sensors, and
@@ -104,6 +105,7 @@ dashboard/web/    the dashboard's page: Svelte 5, Vite, TypeScript, uPlot; a thi
                   model's dashed lines), prefs.ts, sky.ts (WMO code -> Meteocons icon)
   src/components/ one per card or section; Chart.svelte is the only one that touches uPlot
   src/testing.ts  API answers for the tests, and a fake Api
+  icons/          app-icon.svg, the home-screen icon; bin/app-icons.sh renders public/icons/*.png
 dashboard/Dockerfile  builds the page in a Node stage and serves it from the API's image
 grafana/          weather.json, the dashboard, and alerts.json, the alert rules; a renamed table or
                   field fails tests/grafana rather than blanking a panel or silencing an alert

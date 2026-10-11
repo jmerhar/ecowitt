@@ -1,4 +1,4 @@
-.PHONY: help install web-install lockfile dev web-dev up down logs shell build test test-js test-web coverage lint check clean
+.PHONY: help install web-install lockfile app-icons dev web-dev up down logs shell build test test-js test-web coverage lint check clean
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*##|^##@' $(MAKEFILE_LIST) | \
@@ -17,6 +17,9 @@ web-install: ## Install the dashboard pages' node_modules from the lockfile (nee
 
 lockfile: ## Regenerate the pages' package-lock.json (Linux binaries, public registry URLs)
 	bin/lockfile.sh
+
+app-icons: ## Render the dashboard's home-screen icons from dashboard/web/icons/app-icon.svg
+	bin/app-icons.sh
 
 ##@ Development
 

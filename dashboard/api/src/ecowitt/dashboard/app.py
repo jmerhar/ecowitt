@@ -176,6 +176,18 @@ def build_app(
 
     index_page = settings.web_dir / "index.html"
 
+    @app.get("/manifest.webmanifest", include_in_schema=False)
+    async def manifest() -> Response:
+        """What a phone or tablet needs to add the page to its home screen as an app, named for
+        the site. Served once set up, since until then the page is the setup form."""
+        if site.dashboard is None:
+            raise HTTPException(404)
+        return JSONResponse(
+            _manifest(site.dashboard.title),
+            media_type="application/manifest+json",
+            headers={"Cache-Control": "public, max-age=3600"},
+        )
+
     @app.get("/", include_in_schema=False)
     async def index() -> Response:
         """The pages once set up and built; otherwise setup, or the API's documentation."""
@@ -264,6 +276,47 @@ def build_app(
         # After every route, so it serves only what nothing else answers: /assets and the icon.
         app.mount("/", StaticFiles(directory=settings.web_dir), name="web")
     return app
+
+
+#: The home-screen app's colours: the page's dark background, which its icon is drawn on, so the
+#: splash screen a phone shows while it opens matches the icon.
+APP_BACKGROUND = "#16181a"
+
+
+def _manifest(title: str) -> dict[str, object]:
+    """The web app manifest for a site of this title."""
+    icon = "/icons/icon-{size}.png"
+    return {
+        "name": title,
+        "short_name": title,
+        "description": "Current conditions and history from the weather station",
+        "start_url": "/",
+        "scope": "/",
+        "display": "standalone",
+        "background_color": APP_BACKGROUND,
+        "theme_color": APP_BACKGROUND,
+        "icons": [
+            {
+                "src": icon.format(size=192),
+                "sizes": "192x192",
+                "type": "image/png",
+                "purpose": "any",
+            },
+            {
+                "src": icon.format(size=512),
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "any",
+            },
+            # The same drawing: it keeps to the centre, so a launcher's crop leaves it whole.
+            {
+                "src": icon.format(size=512),
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "maskable",
+            },
+        ],
+    }
 
 
 async def _setup_action(request: Request, site: Site, form: Form) -> Response:
