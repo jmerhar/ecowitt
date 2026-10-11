@@ -41,9 +41,9 @@
           <th>Room</th>
           <th class="num"><button class="link" onclick={() => onselect("rooms-temperature")}>Temperature</button></th>
           <th class="num"><button class="link" onclick={() => onselect("rooms-humidity")}>Humidity</button></th>
-          <th class="num">Dew point</th>
+          <th class="num wide-only">Dew point</th>
           <th class="num" title="The humidity each room would settle at once its air had been replaced by outdoor air">If aired</th>
-          {#if advised}<th>Airing</th>{/if}
+          {#if advised}<th class="wide-only">Airing</th>{/if}
         </tr>
       </thead>
       <tbody>
@@ -53,9 +53,9 @@
             <td>{room.name}</td>
             <td class="num">{quantity(room.temperature, units.temperature, symbols)}</td>
             <td class="num">{quantity(room.humidity, "pct", symbols)}</td>
-            <td class="num">{quantity(room.dew_point, units.temperature, symbols)}</td>
+            <td class="num wide-only">{quantity(room.dew_point, units.temperature, symbols)}</td>
             <td class="num {effect(room)}">{quantity(room.airing?.humidity_after, "pct", symbols)}</td>
-            {#if advised}<td>
+            {#if advised}<td class="wide-only">
               {#if advice?.text}
                 <span class="badge {room.airing?.advice}" title={advice.hint}>{advice.text}</span>
               {/if}
@@ -68,6 +68,13 @@
 </section>
 
 <style>
+  /* A phone has room for what each room is and what airing would do to it, coloured; the dew
+     point and the advice in words wait for a wider screen. */
+  @media (max-width: 30rem) {
+    .wide-only {
+      display: none;
+    }
+  }
   .badge {
     border-radius: 1rem;
     padding: 0.05rem 0.55rem;
