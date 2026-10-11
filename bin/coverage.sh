@@ -25,6 +25,7 @@ for entry in core:core collector:collector dashboard/api:dashboard; do
 done
 
 bin/test-js.sh
+bin/test-web.sh
 
 echo
 python3 .coverage-report.py "$@"

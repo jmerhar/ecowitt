@@ -81,6 +81,29 @@ jobs:
           path: collector/coverage-js
           if-no-files-found: error
 
+  test-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+        working-directory: dashboard/web
+
+      - name: Type-check and test with coverage
+        run: bin/test-web.sh
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-web
+          path: dashboard/web/coverage
+          if-no-files-found: error
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -92,6 +115,9 @@ jobs:
 
       - name: Shell scripts
         run: shellcheck bin/*.sh
+
+      - name: Lockfile resolves only to the public registry
+        run: bin/check-lockfile.sh
 
       - name: Install ruff
         run: pip install ruff
@@ -108,7 +134,7 @@ jobs:
           docker compose -f docker-compose.yml -f docker-compose.dev.yml config -q
 
   coverage:
-    needs: [test, test-js]
+    needs: [test, test-js, test-web]
     runs-on: ubuntu-latest
     # contents: read for checkout; statuses: write to link the coverage report from the commit.
     permissions:
@@ -139,6 +165,12 @@ jobs:
         with:
           name: coverage-dashboard
           path: dashboard/api
+
+      - name: Download dashboard pages coverage
+        uses: actions/download-artifact@v6
+        with:
+          name: coverage-web
+          path: dashboard/web/coverage
 
       - name: Download page script coverage
         uses: actions/download-artifact@v6
