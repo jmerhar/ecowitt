@@ -1,0 +1,161 @@
+/* Colours, type and the shared pieces every card uses. Light and dark follow the system. */
+:root {
+  --bg: #fbfaf7;
+  --fg: #1d1f21;
+  --muted: #6b6f75;
+  --line: #e3e0d8;
+  --card: #ffffff;
+  --accent: #2f6f5e;
+  --good: #2f6f5e;
+  --warn: #a8761c;
+  --bad: #a33a2b;
+  --gutter: 1rem;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16181a;
+    --fg: #e6e4df;
+    --muted: #9a9ea4;
+    --line: #2c2f33;
+    --card: #1e2124;
+    --accent: #7cc4ad;
+    --good: #7cc4ad;
+    --warn: #e3b04b;
+    --bad: #e0806f;
+  }
+}
+@media (min-width: 48rem) {
+  :root {
+    --gutter: 1.5rem;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+h2 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+.card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  padding: 1rem 1.15rem;
+  min-width: 0;
+}
+button.card {
+  cursor: pointer;
+}
+button.card:hover,
+button.card:focus-visible {
+  border-color: var(--accent);
+}
+.wide {
+  margin-top: 1rem;
+}
+.big {
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.muted {
+  color: var(--muted);
+}
+.bad {
+  color: var(--bad);
+}
+dl {
+  margin: 0.75rem 0 0;
+  display: grid;
+  gap: 0.2rem;
+}
+dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+dt {
+  color: var(--muted);
+}
+dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.table-wrap {
+  overflow-x: auto;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+th,
+td {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+.num {
+  text-align: right;
+}
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+.tabs button,
+button.link {
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.3rem;
+  padding: 0.15rem 0.55rem;
+  cursor: pointer;
+}
+button.link {
+  padding: 0;
+  font-size: inherit;
+}
+.tabs button[aria-selected="true"] {
+  color: var(--fg);
+  border-color: var(--line);
+  background: var(--bg);
+}
+select {
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 0.3rem;
+  padding: 0.15rem 0.4rem;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}

@@ -1,4 +1,4 @@
-.PHONY: help install dev up down logs shell build test test-js coverage lint check clean
+.PHONY: help install web-install lockfile dev web-dev up down logs shell build test test-js test-web coverage lint check clean
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*##|^##@' $(MAKEFILE_LIST) | \
@@ -12,10 +12,19 @@ install: ## Create the shared virtualenv and install every project with its test
 	.venv/bin/pip install --quiet -e "core[test]" -e "collector[test]" -e "dashboard/api[test]"
 	@echo "Installed. 'make test' runs the suite, 'make dev' serves locally."
 
+web-install: ## Install the dashboard pages' node_modules from the lockfile (needs node)
+	cd dashboard/web && npm ci --no-audit --no-fund --registry="$$(cd / && npm config get registry)"
+
+lockfile: ## Regenerate the pages' package-lock.json (Linux binaries, public registry URLs)
+	bin/lockfile.sh
+
 ##@ Development
 
 dev: ## Serve from the working copy with debug logging (ingest :2551, admin :2552)
 	DATA_DIR=data LOG_LEVEL=DEBUG .venv/bin/python -m ecowitt.collector
+
+web-dev: ## Serve the dashboard pages with hot reload; /api goes to a dashboard API on :2553
+	cd dashboard/web && npm run dev
 
 up: ## Build and start the stack
 	docker compose -f docker-compose.yml -f docker-compose.build.yml up --build -d
@@ -43,6 +52,9 @@ test: ## Run every project's suite (ARGS pass through to pytest, e.g. ARGS="-k s
 test-js: ## Run the page script tests with coverage (needs node)
 	bin/test-js.sh
 
+test-web: ## Type-check and test the dashboard pages with coverage (after make web-install)
+	bin/test-web.sh
+
 coverage: ## Run the suite with coverage and print the summary
 	bin/coverage.sh --format md
 
@@ -55,6 +67,7 @@ check: lint test coverage ## Everything (gate a commit on this; coverage runs ev
 
 clean: ## Remove build and coverage artefacts (all regenerable)
 	rm -rf */htmlcov */coverage.xml */coverage.json */.coverage */coverage-js \
+	       dashboard/web/coverage dashboard/web/dist \
 	       */junit .ruff_cache */.pytest_cache \
 	       dashboard/api/htmlcov dashboard/api/coverage.xml dashboard/api/coverage.json \
 	       dashboard/api/.coverage dashboard/api/junit dashboard/api/.pytest_cache \
