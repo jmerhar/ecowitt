@@ -2164,7 +2164,7 @@
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "green"
+                  "fixedColor": "blue"
                 }
               },
               {
@@ -2179,7 +2179,7 @@
               },
               {
                 "id": "custom.lineWidth",
-                "value": 1
+                "value": 2
               }
             ]
           }
@@ -2196,7 +2196,7 @@
           "sort": "desc"
         }
       },
-      "description": "Wind speed, and the strongest gust in each interval. Dashed: the weather model's value for the location (see the README's Weather model), for comparison."
+      "description": "Wind speed, and the strongest gust in each interval. Dashed blue: the weather model's speed for the location (see the README's Weather model), for comparison."
     },
     {
       "id": 27,
@@ -3072,9 +3072,9 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 120,
+        "y": 121,
         "w": 10,
-        "h": 9
+        "h": 8
       },
       "targets": [
         {
@@ -3217,7 +3217,7 @@
         "x": 14,
         "y": 113,
         "w": 10,
-        "h": 7
+        "h": 8
       },
       "targets": [
         {
@@ -3229,7 +3229,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH latest AS (SELECT * FROM station_info WHERE station = '${station}' ORDER BY time DESC LIMIT 1)\nSELECT 1 AS \"Order\", 'Time zone' AS \"Setting\", timezone AS \"Value\" FROM latest\nUNION ALL SELECT 2, 'Latitude', CAST(latitude_deg AS VARCHAR) FROM latest\nUNION ALL SELECT 3, 'Longitude', CAST(longitude_deg AS VARCHAR) FROM latest\nUNION ALL SELECT 4, 'Altitude', CAST(altitude_m AS VARCHAR) || ' m' FROM latest\nUNION ALL SELECT 5, 'Stored units', units_temperature || ', ' || units_pressure || ', ' || units_rain\n  || ', ' || units_wind || ', ' || units_distance FROM latest\nUNION ALL SELECT 6, 'Settings changed', CAST(time AS VARCHAR) || ' UTC' FROM latest\nORDER BY 1",
+          "rawSql": "WITH latest AS (SELECT * FROM station_info WHERE station = '${station}' ORDER BY time DESC LIMIT 1)\nSELECT 1 AS \"Order\", 'Time zone' AS \"Setting\", timezone AS \"Value\" FROM latest\nUNION ALL SELECT 2, 'Latitude', CAST(latitude_deg AS VARCHAR) FROM latest\nUNION ALL SELECT 3, 'Longitude', CAST(longitude_deg AS VARCHAR) FROM latest\nUNION ALL SELECT 4, 'Altitude', CAST(altitude_m AS VARCHAR) || ' m' FROM latest\nUNION ALL SELECT 5, 'Stored units', units_temperature || ', ' || units_pressure || ', ' || units_rain\n  || ', ' || units_wind || ', ' || units_distance FROM latest\nUNION ALL SELECT 6, 'Weather model', coalesce(weather_model, 'off') FROM latest\nUNION ALL SELECT 7, 'Settings changed', CAST(time AS VARCHAR) || ' UTC' FROM latest\nORDER BY 1",
           "refId": "A"
         }
       ],

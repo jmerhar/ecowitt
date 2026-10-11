@@ -30,6 +30,7 @@ FUNCTIONS = {
     "interval",
     "date_part",
     "initcap",
+    "coalesce",
     # A direction's mean is taken around the circle: the angle of the summed unit vectors.
     "sin",
     "cos",
