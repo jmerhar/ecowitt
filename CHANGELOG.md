@@ -5,6 +5,26 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 [Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
 says what under *Upgrading*.
 
+## 2.1.0 — 2026-10-11
+
+### Added
+
+- **Public dashboard**, a second image (`ghcr.io/jmerhar/ecowitt-dashboard`): a read-only JSON API
+  (`/api/v1`) over what the collector stores and a page built on it, showing a station at a glance,
+  its rooms with airing advice, charts from a day to a year, and highs and lows. It is set up on a
+  first-run page that writes `/data/dashboard.yaml`, and reads stations from what the collector
+  publishes.
+- A *Close the windows* alert, sent when airing would not dry the house.
+- Alerts about several rooms state their headline once and list the rooms; *Damp room* and *Good
+  time to air* are sent at most daily.
+- The console's fixed sensors are named (Barometer, Rain gauge, Wind sensor) wherever no name was
+  given.
+
+### Fixed
+
+- Alert values no longer show −99 for a room that has stopped meeting the condition.
+- The rain gauge and light sensor are no longer flagged as not updating through a dry night.
+
 ## 2.0.0 — 2026-10-10
 
 ### Added
