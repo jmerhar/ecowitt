@@ -257,7 +257,10 @@ export class Api {
     for (const [key, value] of Object.entries(query)) {
       if (value) params.set(key, value);
     }
-    const url = this.base + path + (params.size ? `?${params}` : "");
+    // The query's text, not URLSearchParams.size: Safari before 17 has no size, and would send
+    // every request without its parameters.
+    const search = params.toString();
+    const url = this.base + path + (search ? `?${search}` : "");
     let response: Response;
     try {
       response = await this.fetcher(url, { headers: { Accept: "application/json" } });

@@ -27,6 +27,18 @@ describe("Api", () => {
     ]);
   });
 
+  it("sends the query where URLSearchParams has no size, as in Safari before 17", async () => {
+    const size = Object.getOwnPropertyDescriptor(URLSearchParams.prototype, "size");
+    Object.defineProperty(URLSearchParams.prototype, "size", { get: () => undefined, configurable: true });
+    try {
+      const fetcher = answering(200, {});
+      await new Api("/api/v1", fetcher as unknown as typeof fetch).series("Home", ["a.b"], "24h");
+      expect(fetcher.mock.calls[0][0]).toBe("/api/v1/stations/Home/series?metrics=a.b&range=24h");
+    } finally {
+      Object.defineProperty(URLSearchParams.prototype, "size", size!);
+    }
+  });
+
   it("passes on the API's own explanation of a refusal", async () => {
     const api = new Api("/api/v1", answering(404, { detail: "no station named x" }) as never);
     await expect(api.now("x")).rejects.toEqual(new ApiError(404, "no station named x"));

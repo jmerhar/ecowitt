@@ -15,7 +15,9 @@ export default defineConfig({
   },
   // The licences of everything bundled into the page, which theirs ask to travel with it, at
   // /licenses.md beside it.
-  build: { target: "es2022", license: { fileName: "licenses.md" } },
+  // Safari 16 as well: iPadOS 16 is still on tablets that cannot update, and es2022 alone would
+  // leave in syntax it lacks, such as class static blocks.
+  build: { target: ["es2022", "safari16"], license: { fileName: "licenses.md" } },
   test: {
     environment: "jsdom",
     setupFiles: ["src/test-setup.ts"],
