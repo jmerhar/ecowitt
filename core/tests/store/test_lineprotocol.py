@@ -21,6 +21,11 @@ def test_whole_numbers_are_still_written_as_floats() -> None:
     assert encode_point(point({"humidity_pct": 60.0})).endswith("humidity_pct=60.0 1791500484")
 
 
+def test_a_code_is_written_as_an_integer() -> None:
+    """A weather code is a category, never fractional, so it keeps the type it has."""
+    assert encode_point(point({"weather_code": 61})).endswith("weather_code=61i 1791500484")
+
+
 def test_booleans_and_strings() -> None:
     line = encode_point(point({"low": False, "model": 'HP "Pro" \\ 2'}))
 

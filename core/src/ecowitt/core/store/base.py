@@ -62,8 +62,8 @@ class Store(Protocol):
 def dump_rows(rows: list[Row]) -> str:
     """Rows as text any store can be given later: one JSON array, field types preserved.
 
-    Every number is a float already (the collector writes no integers), and JSON keeps the
-    distinction between `60.0` and `true`, so nothing changes type on the way through.
+    JSON keeps the distinctions between `60.0`, `60` and `true`, so nothing changes type on the
+    way through: a measurement stays a float and a code an integer.
     """
     return json.dumps(
         [[row.table, [list(tag) for tag in row.tags], row.timestamp, row.fields] for row in rows],

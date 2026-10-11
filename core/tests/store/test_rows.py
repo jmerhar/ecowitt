@@ -9,6 +9,7 @@ from ecowitt.core.store.base import Row, dump_rows, load_rows
 ROWS = [
     Row("indoor", (("name", "Spare room"), ("station", "home")), 1791500484, {"temp_c": 21.0}),
     Row("battery", (("station", "home"),), 1791500484, {"low": False, "model": "WH65 é"}),
+    Row("model", (("station", "home"),), 1791500484, {"weather_code": 3, "temp_c": 3.0}),
 ]
 
 
@@ -19,6 +20,8 @@ def test_rows_survive_the_round_trip_with_their_types() -> None:
     assert back == ROWS
     assert isinstance(back[0].fields["temp_c"], float)
     assert back[1].fields["low"] is False
+    assert type(back[2].fields["weather_code"]) is int
+    assert type(back[2].fields["temp_c"]) is float
 
 
 def test_no_rows_survive_too() -> None:

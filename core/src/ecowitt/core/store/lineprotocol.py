@@ -38,12 +38,14 @@ def encode_point(point: Row) -> str:
 def _value(value: Value) -> str | None:
     """Encode a field value, or None for one line protocol cannot represent.
 
-    Every number is written as a float, never an integer, even when it has no fraction:
-    InfluxDB fixes a field's type on its first write, so a humidity first seen as `60` would
-    otherwise reject every later `60.5`.
+    A measurement is a float even when it has no fraction: InfluxDB fixes a field's type on its
+    first write, so a humidity first seen as `60` would otherwise reject every later `60.5`. An
+    int is a code (`Kind.CODE`), which is never fractional, and is written as one.
     """
     if isinstance(value, bool):
         return "true" if value else "false"
+    if isinstance(value, int):
+        return f"{value}i"
     if isinstance(value, float):
         return repr(value) if math.isfinite(value) else None
     escaped = _flatten(value).replace("\\", "\\\\").replace('"', '\\"')

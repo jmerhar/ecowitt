@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 from ecowitt.core.units import Kind
 
-Value = float | bool | str
+Value = float | int | bool | str
 
 
 @dataclass(frozen=True)

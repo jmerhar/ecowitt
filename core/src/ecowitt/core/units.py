@@ -60,6 +60,8 @@ class Kind(Enum):
     # No unit at all.
     COUNT = "count"
     LEVEL = "level"
+    #: A category given by number, such as a WMO weather code: stored as an integer, as given.
+    CODE = "code"
     FLAG = "flag"
     TEXT = "text"
 
