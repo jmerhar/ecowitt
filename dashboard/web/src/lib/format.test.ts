@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ago, clock, duration, moment, number, quantity, uvRisk } from "./format";
+import { ago, axisLabels, clock, duration, moment, number, quantity, uvRisk } from "./format";
 import { SYMBOLS } from "../testing";
 
 describe("number", () => {
@@ -54,6 +54,19 @@ describe("times", () => {
     expect(duration(41100)).toBe("11 h 25 min");
     expect(duration(1500)).toBe("25 min");
     expect(duration(null)).toBe("–");
+  });
+});
+
+describe("axisLabels", () => {
+  const midnight = Date.UTC(2026, 9, 9, 23) / 1000; // 00:00 on 10 Oct in Lisbon
+  it("gives times, with the date on the first label and at midnight", () => {
+    expect(axisLabels([midnight - 7200, midnight, midnight + 7200], 7200, "Europe/Lisbon")).toEqual([
+      "22:00\n9 Oct", "00:00\n10 Oct", "02:00",
+    ]);
+  });
+
+  it("gives dates alone for steps of a day or more", () => {
+    expect(axisLabels([midnight, midnight + 86400], 86400, "Europe/Lisbon")).toEqual(["10 Oct", "11 Oct"]);
   });
 });
 

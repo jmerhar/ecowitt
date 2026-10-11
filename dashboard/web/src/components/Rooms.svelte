@@ -19,6 +19,9 @@
     },
     no_need: { text: "", hint: "" },
   } as const;
+
+  /** The airing column, only while some room has advice to give. */
+  const advised = $derived(rooms.some((r) => r.airing && r.airing.advice !== "no_need"));
 </script>
 
 <section class="card wide">
@@ -31,7 +34,7 @@
           <th class="num"><button class="link" onclick={() => onselect("rooms-temperature")}>Temperature</button></th>
           <th class="num"><button class="link" onclick={() => onselect("rooms-humidity")}>Humidity</button></th>
           <th class="num">Dew point</th>
-          <th>Airing</th>
+          {#if advised}<th>Airing</th>{/if}
         </tr>
       </thead>
       <tbody>
@@ -42,14 +45,14 @@
             <td class="num">{quantity(room.temperature, units.temperature, symbols)}</td>
             <td class="num">{quantity(room.humidity, "pct", symbols)}</td>
             <td class="num">{quantity(room.dew_point, units.temperature, symbols)}</td>
-            <td>
+            {#if advised}<td>
               {#if advice?.text}
                 <span class="badge {room.airing?.advice}" title={advice.hint}>{advice.text}</span>
                 {#if room.airing?.humidity_after !== null && room.airing?.advice === "open"}
                   <span class="muted">→ {quantity(room.airing?.humidity_after, "pct", symbols)}</span>
                 {/if}
               {/if}
-            </td>
+            </td>{/if}
           </tr>
         {/each}
       </tbody>

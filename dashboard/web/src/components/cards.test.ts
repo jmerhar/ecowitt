@@ -18,9 +18,11 @@ describe("NowCard", () => {
     render(NowCard, { now: now(), symbols: SYMBOLS, timezone: tz, onselect });
     expect(screen.getByText("18.0 °C")).toBeInTheDocument();
     expect(screen.getByText("Feels like 16.0 °C")).toBeInTheDocument();
-    // Times are in the station's zone (UTC+1 in October), in the test environment's locale.
-    expect(screen.getByText("↓ 9.5 °C").getAttribute("title")).toMatch(/^at 0?7:00/);
-    expect(screen.getByText("↑ 21.0 °C").getAttribute("title")).toMatch(/^at (14|0?2):00/);
+    // Times are in the station's zone, UTC+1 in October.
+    expect(screen.getByText("↓ 9.5 °C")).toHaveAttribute("title", "at 07:00");
+    expect(screen.getByText("↑ 21.0 °C")).toHaveAttribute("title", "at 14:00");
+    expect(screen.getByText("Gentle breeze from the SE.")).toBeInTheDocument();
+    expect(screen.queryByText(/^18 °C\./)).not.toBeInTheDocument();
     await fireEvent.click(screen.getByRole("button"));
     expect(onselect).toHaveBeenCalledWith("temperature");
   });
@@ -33,6 +35,11 @@ describe("NowCard", () => {
     });
     expect(screen.queryByText(/Feels like/)).not.toBeInTheDocument();
     expect(screen.queryByText("Today")).not.toBeInTheDocument();
+  });
+
+  it("shows no summary when it said only the temperature", () => {
+    render(NowCard, { now: now({ summary: "18 °C." }), symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
+    expect(document.querySelector(".summary")).toBeNull();
   });
 
   it("shows only the summary without an outdoor sensor", () => {
@@ -49,7 +56,7 @@ describe("WindCard", () => {
     expect(screen.getByRole("img", { name: "From the SE" })).toBeInTheDocument();
     expect(container.querySelector("g")).toHaveAttribute("transform", "rotate(135)");
     expect(screen.getByText("Gentle breeze from the SE")).toBeInTheDocument();
-    expect(screen.getByText(/^52\.0 km\/h at 11:00/)).toBeInTheDocument();
+    expect(screen.getByText("52.0 km/h at 11:00")).toBeInTheDocument();
     await fireEvent.click(screen.getByRole("button"));
     expect(onselect).toHaveBeenCalledWith("wind");
   });
@@ -109,7 +116,7 @@ describe("SunCard", () => {
   it("gives today's sunrise, sunset and daylight, and the UV risk", async () => {
     const onselect = vi.fn();
     render(SunCard, { sun: now().sun!, symbols: SYMBOLS, timezone: tz, onselect });
-    expect(screen.getByText(/^↑ 0?7:42.*↓ (19|0?7):07/)).toBeInTheDocument();
+    expect(screen.getByText("↑ 07:42 ↓ 19:07")).toBeInTheDocument();
     expect(screen.getByText("11 h 25 min of daylight")).toBeInTheDocument();
     expect(screen.getByText("4 Moderate")).toBeInTheDocument();
     await fireEvent.click(screen.getByRole("button"));
@@ -151,9 +158,13 @@ describe("Rooms", () => {
     expect(onselect).toHaveBeenCalledWith("rooms-humidity");
   });
 
-  it("shows a room without a comparison without advice", () => {
-    render(Rooms, { rooms: [{ ...now().rooms[0], airing: null }], units: UNITS, symbols: SYMBOLS, onselect: vi.fn() });
-    expect(screen.queryByText("Air it")).not.toBeInTheDocument();
+  it("has no airing column while no room has advice", () => {
+    render(Rooms, {
+      rooms: [{ ...now().rooms[0], airing: null }, { ...now().rooms[0], sensor: "ch9" }],
+      units: UNITS, symbols: SYMBOLS, onselect: vi.fn(),
+    });
+    expect(screen.queryByRole("columnheader", { name: "Airing" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("cell")).toHaveLength(8);
   });
 });
 

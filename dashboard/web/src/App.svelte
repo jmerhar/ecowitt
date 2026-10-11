@@ -201,10 +201,22 @@
     margin: 0 auto;
     padding: 1rem var(--gutter) 3rem;
   }
+  /* Five cards, the first twice as wide: three columns by two rows on a wide screen, two by
+     three on a narrower one, one column on a phone -- always a full grid. */
   .glance {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    grid-template-columns: 1fr;
     gap: 1rem;
+  }
+  @media (min-width: 36rem) {
+    .glance {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (min-width: 60rem) {
+    .glance {
+      grid-template-columns: repeat(3, 1fr);
+    }
   }
   .banner {
     border: 1px solid var(--bad);

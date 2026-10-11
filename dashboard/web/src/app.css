@@ -59,6 +59,10 @@ h2 {
 }
 button.card {
   cursor: pointer;
+  /* A button centres its content vertically; a card reads from the top. */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
 }
 button.card:hover,
 button.card:focus-visible {
@@ -110,6 +114,12 @@ td {
   padding: 0.4rem 0.6rem;
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
+}
+@media (max-width: 30rem) {
+  th,
+  td {
+    padding: 0.35rem 0.3rem;
+  }
 }
 th {
   color: var(--muted);

@@ -174,6 +174,8 @@ export type PlotSpec = {
     style: Style;
     unit: string;
     fill?: string;
+    /** A band's edge, drawn only as the band's fill. */
+    edge?: boolean;
   }[];
   bands: { series: [number, number]; fill: string }[];
   axes: { scale: "left" | "right"; unit: string }[];
@@ -189,7 +191,14 @@ export function spec(view: View, chart: ChartData): PlotSpec {
     const stroke = colour(view, line);
     if (!axes.has(line.axis)) axes.set(line.axis, { scale: line.axis, unit: line.unit });
     if (line.low && line.high) {
-      const base = { scale: line.axis, stroke, width: 0, style: "line" as Style, unit: line.unit };
+      const base = {
+        scale: line.axis,
+        stroke,
+        width: 0,
+        style: "line" as Style,
+        unit: line.unit,
+        edge: true,
+      };
       data.push(line.high);
       series.push({ ...base, label: `${line.label} high` });
       data.push(line.low);

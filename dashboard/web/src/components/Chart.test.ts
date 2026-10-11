@@ -55,6 +55,9 @@ describe("Chart", () => {
     expect(options.series[3].value(null, 12.5)).toBe("12.5 °C");
     expect(options.series[3].value(null, null)).toBe("–");
     expect(options.tzDate(60)).toEqual({ d: new Date(60_000), tz: "Europe/Lisbon" });
+    expect(options.series[0].value(null, 1791633600)).toBe("10 Oct, 13:00");
+    expect(options.series[0].value(null, null)).toBe("–");
+    expect(options.axes[0].values(null, [1791633600], 0, 0, 3600)).toEqual(["13:00\n10 Oct"]);
     resize();
     expect(made[0].sizes).toHaveLength(1);
   });

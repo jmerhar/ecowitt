@@ -23,6 +23,16 @@ describe("History", () => {
     expect(screen.getByRole("tab", { name: "Pressure" })).toHaveAttribute("aria-selected", "true");
   });
 
+  it("shows a chart only for the view its answer was for, not 'nothing' while loading", async () => {
+    const api = fakeApi();
+    render(History, { ...base, api, view: "temperature", range: "24h" });
+    await screen.findByText("Temperature", { selector: "li" });
+    api.series.mockImplementation(() => new Promise(() => {}));
+    await fireEvent.click(screen.getByRole("tab", { name: "Wind" }));
+    expect(screen.getByText("Loading…")).toBeInTheDocument();
+    expect(screen.queryByText(/Nothing recorded/)).not.toBeInTheDocument();
+  });
+
   it("says when the range holds nothing to draw", async () => {
     const api = fakeApi();
     api.series.mockResolvedValue(series({ series: [] }));
@@ -62,16 +72,43 @@ describe("History", () => {
 });
 
 describe("Records", () => {
-  it("lists each record with when it was set, leaving out rain records of nothing", async () => {
+  it("shows each outdoor record with when it was set, leaving out records of nothing", async () => {
     const api = fakeApi();
     render(Records, { ...base, api, period: "today" });
     expect(screen.getByText("Loading…")).toBeInTheDocument();
-    expect(await screen.findByText("Temperature")).toBeInTheDocument();
-    expect(screen.getByText("Bathroom · temperature")).toBeInTheDocument();
-    expect(screen.getAllByText(/10.*Oct|Oct.*10/).length).toBeGreaterThan(0);
-    expect(screen.getByText(/11:00/)).toBeInTheDocument();
+    const temperature = (await screen.findByText("Temperature", { selector: ".label" })).closest(".tile")!;
+    expect(temperature).toHaveTextContent("Low 9.5 °C at 07:00");
+    expect(temperature).toHaveTextContent("High 21.0 °C at 14:00");
+    const gust = screen.getByText("Wind gust", { selector: ".label" }).closest(".tile")!;
+    expect(gust).toHaveTextContent("High 52.0 km/h at 11:00");
+    expect(gust).not.toHaveTextContent("Low");
     expect(screen.queryByText("Rain today")).not.toBeInTheDocument();
-    expect(screen.getByText("Wind gust")).toBeInTheDocument();
+  });
+
+  it("folds the rooms into a table of ranges, with when on hover", async () => {
+    const api = fakeApi();
+    api.extremes.mockResolvedValue(extremes({
+      extremes: [
+        ...extremes().extremes,
+        { metric: "rooms.humidity", sensor: "ch1", name: "Bathroom", unit: "pct",
+          min: { value: 60, time: "2026-10-10T05:00:00Z" }, max: { value: 75, time: "2026-10-10T12:00:00Z" } },
+        { metric: "rooms.humidity", sensor: "ch2", name: null, unit: "pct", min: null, max: null },
+        { metric: "rooms.dew_point", sensor: "ch1", name: "Bathroom", unit: "c",
+          min: { value: 9, time: "2026-10-10T05:00:00Z" }, max: { value: 10, time: "2026-10-10T12:00:00Z" } },
+        { metric: "rooms.temperature", sensor: null, name: null, unit: "c", min: null, max: null },
+      ],
+    }));
+    render(Records, { ...base, api, period: "month" });
+    const bathroom = (await screen.findByText("Bathroom")).closest("tr")!;
+    expect(bathroom).toHaveTextContent("17.2–22.0 °C");
+    expect(bathroom).toHaveTextContent("60–75%");
+    expect(bathroom.querySelector("td[title]")).toHaveAttribute(
+      "title", "Lowest at 10 Oct, 06:00, highest at 10 Oct, 13:00",
+    );
+    expect(screen.getByText("ch2").closest("tr")).toHaveTextContent("ch2––");
+    expect(screen.getByText("Temperature", { selector: ".label" }).closest(".tile")).toHaveTextContent(
+      "Low 9.5 °C at 10 Oct, 07:00",
+    );
   });
 
   it("asks for another period when it is chosen", async () => {
@@ -88,6 +125,7 @@ describe("Records", () => {
     }));
     render(Records, { ...base, api, period: "today" });
     expect(await screen.findByText("x.y")).toBeInTheDocument();
+    expect(screen.queryByText("Rooms")).not.toBeInTheDocument();
   });
 
   it("explains a failure", async () => {

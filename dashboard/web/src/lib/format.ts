@@ -1,13 +1,18 @@
 /**
  * Values and times as a visitor reads them. Times are shown in the station's time zone, since
  * "today's high at 14:10" means the station's afternoon wherever the visitor is.
+ *
+ * The page is in English with dates day first and a 24-hour clock ("9 Oct, 14:05") whatever the
+ * browser's locale: a month-first short date is ambiguous to most of the world.
  */
+
+export const LOCALE = "en-GB";
 
 /** Decimal places worth showing per unit, as the API rounds them; anything else gets one. */
 const DECIMALS: Record<string, number> = { inhg: 2, in: 2, in_h: 2, pct: 0, deg: 0, wm2: 0, "": 0 };
 
 /** A number to the precision its unit is worth, or an en dash when there is none. */
-export function number(value: number | null | undefined, unit = "", locale?: string): string {
+export function number(value: number | null | undefined, unit = "", locale = LOCALE): string {
   if (value === null || value === undefined || Number.isNaN(value)) return "–";
   const digits = DECIMALS[unit] ?? 1;
   return value.toLocaleString(locale, {
@@ -21,7 +26,7 @@ export function quantity(
   value: number | null | undefined,
   unit: string,
   symbols: Record<string, string>,
-  locale?: string,
+  locale = LOCALE,
 ): string {
   const text = number(value, unit, locale);
   const symbol = symbols[unit] ?? "";
@@ -31,7 +36,7 @@ export function quantity(
 }
 
 /** The time of day at the station: "14:05". */
-export function clock(iso: string | null | undefined, timezone: string, locale?: string): string {
+export function clock(iso: string | null | undefined, timezone: string, locale = LOCALE): string {
   if (!iso) return "–";
   return new Intl.DateTimeFormat(locale, {
     hour: "2-digit",
@@ -41,7 +46,7 @@ export function clock(iso: string | null | undefined, timezone: string, locale?:
 }
 
 /** A date and time at the station: "9 Oct, 14:05" -- day first, as most of the world reads it. */
-export function moment(iso: string | null | undefined, timezone: string, locale?: string): string {
+export function moment(iso: string | null | undefined, timezone: string, locale = LOCALE): string {
   if (!iso) return "–";
   return new Intl.DateTimeFormat(locale, {
     day: "numeric",
@@ -62,6 +67,21 @@ export function ago(iso: string | null | undefined, now: Date = new Date()): str
   const hours = Math.round(minutes / 60);
   if (hours < 36) return `${hours} h ago`;
   return `${Math.round(hours / 24)} days ago`;
+}
+
+/**
+ * A chart's time labels: the time of day for steps under a day, with the date beneath at
+ * midnight and on the first label; the date alone for longer steps.
+ */
+export function axisLabels(ticks: number[], stepSeconds: number, timezone: string): string[] {
+  const day = new Intl.DateTimeFormat(LOCALE, { day: "numeric", month: "short", timeZone: timezone });
+  const time = new Intl.DateTimeFormat(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: timezone });
+  return ticks.map((t, i) => {
+    const at = new Date(t * 1000);
+    if (stepSeconds >= 86400) return day.format(at);
+    const hhmm = time.format(at);
+    return i === 0 || hhmm === "00:00" ? `${hhmm}\n${day.format(at)}` : hhmm;
+  });
 }
 
 /** A duration in hours and minutes: "11 h 22 min". */
