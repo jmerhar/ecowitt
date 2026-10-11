@@ -94,6 +94,21 @@ async def test_sensor_health(board: Dashboard) -> None:
     assert sensors["outdoor"].name == "Garden"
 
 
+async def test_a_dry_night_does_not_flag_the_rain_gauge_or_light_sensor(
+    reader: MemoryReader,
+) -> None:
+    for sensor in ("rain", "solar", "wind"):
+        reader.rows.append(
+            row("derived", LAST, {"unchanged_s": 20000.0}, sensor=sensor, name=sensor)
+        )
+    sensors = {
+        s.sensor: s for s in (await Dashboard(reader, clock=lambda: NOW).now("example")).sensors
+    }
+    assert [sensors[s].updating for s in ("rain", "solar", "wind")] == [True, True, True]
+    assert sensors["rain"].unchanged_s == 20000.0
+    assert sensors["ch1"].updating is False, "a room still is"
+
+
 async def test_the_summary_says_it_in_one_line(board: Dashboard) -> None:
     summary = (await board.now("example")).summary
     assert summary == "18 °C. Gentle breeze from the SE. Raining, 2.4 mm/h. Pressure falling."
