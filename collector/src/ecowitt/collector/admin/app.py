@@ -51,6 +51,31 @@ from ecowitt.core.units import Units
 logger = logging.getLogger(__name__)
 
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+
+def duration(seconds: float | None) -> str:
+    """An age or a length of time in the largest unit that reads well: 42 s, 5 min, 3 h 10 min."""
+    if seconds is None:
+        return "never"
+    seconds = max(0, round(seconds))
+    if seconds < 90:
+        return f"{seconds} s"
+    minutes = round(seconds / 60)
+    if minutes < 90:
+        return f"{minutes} min"
+    hours, rest = divmod(minutes, 60)
+    if hours < 48:
+        return f"{hours} h {rest} min" if rest else f"{hours} h"
+    return f"{round(hours / 24)} days"
+
+
+def ago(seconds: float | None) -> str:
+    """When something last happened: "5 min ago", or "never"."""
+    return "never" if seconds is None else f"{duration(seconds)} ago"
+
+
+TEMPLATES.env.filters["duration"] = duration
+TEMPLATES.env.filters["ago"] = ago
 #: Scripts the pages load. Served as files rather than inlined so they can be tested on their own.
 STATIC_DIR = Path(__file__).parent / "static"
 #: Largest form this listener will read.
@@ -86,9 +111,31 @@ WEATHER_FIELDS: dict[str, dict[str, str]] = {
     },
     "solar": {"radiation": "Radiation", "illuminance": "Illuminance", "uv_index": "UV index"},
 }
+#: Fields a weather group leaves out. A rain gauge's running totals all follow from the rate and
+#: today's total, which are enough to see that the gauge works.
+WEATHER_HIDDEN: dict[str, frozenset[str]] = {
+    "rain": frozenset({"event", "hourly", "last24h", "weekly", "monthly", "yearly", "total"}),
+}
+#: A station is overdue once its last report is older than this many upload intervals...
+OVERDUE_INTERVALS = 3
+#: ...or than this, whichever is longer.
+OVERDUE_AT_LEAST_SECONDS = 300
+#: Reports waiting in the spool longer than this mean the database has been away a while.
+SPOOL_STALE_SECONDS = 300
+#: The console's own report fields shown about it.
+CONSOLE_FIELDS = ("model", "stationtype", "interval_s", "clock_skew_s", "freq")
 #: Tables the status page shows in its own sections, so they are not repeated as other sensors.
 SHOWN_ELSEWHERE = frozenset(
-    {*SUMMARY_TABLES, *WEATHER_FIELDS, "derived", "ventilation", "battery", "station", "pressure"}
+    {
+        *SUMMARY_TABLES,
+        *WEATHER_FIELDS,
+        "derived",
+        "ventilation",
+        "battery",
+        "station",
+        "pressure",
+        "unmapped",
+    }
 )
 #: Unit suffixes as they appear in field names, with how each is written for people and how many
 #: decimals it deserves. Matched as a whole suffix after an underscore, so `rate_mm_h` can only be
@@ -250,6 +297,7 @@ def build_app(context: AdminContext) -> FastAPI:
             {
                 "stations": [_station_view(context, name) for name in context.station_names],
                 "status": _status(context),
+                "spool_stale_seconds": SPOOL_STALE_SECONDS,
             },
         )
 
@@ -374,6 +422,15 @@ def _status(context: AdminContext) -> dict[str, object]:
         },
         "spool": _spool_status(state, context.spool),
         "database": _database_status(context),
+        "heartbeat": {
+            "configured": state.heartbeat_configured,
+            "seconds_since_last_ok": _rounded(state.seconds_since_last_heartbeat),
+            "failures": state.heartbeat_failures,
+        },
+        "settings": {
+            "published": state.settings_published,
+            "seconds_since_last": _rounded(state.seconds_since_last_settings),
+        },
     }
 
 
@@ -434,17 +491,41 @@ def _station_view(context: AdminContext, name: str) -> dict[str, object]:
         "batteries": _loose_batteries(latest.points) if latest else [],
         "pressure": _pressure(latest.points) if latest else {},
         "warnings": [w.__dict__ for w in warnings],
+        "console": _console(latest.points) if latest else {},
+        "unmapped": sorted(k for p in latest.points if p.table == "unmapped" for k in p.fields)
+        if latest
+        else [],
         "rows": [
             {"table": p.table, "tags": dict(p.tags), "fields": p.fields} for p in latest.points
         ]
         if latest
         else [],
     }
+    view["overdue"] = _overdue(view)
     return view
 
 
+def _console(points: list[Any]) -> dict[str, object]:
+    """What the console says about itself: model, firmware, upload interval, clock offset."""
+    for point in points:
+        if point.table == "station":
+            return {k: point.fields[k] for k in CONSOLE_FIELDS if k in point.fields}
+    return {}
+
+
+def _overdue(view: dict[str, object]) -> bool:
+    """Whether a station's last report is older than a few of its upload intervals."""
+    age = view["age_seconds"]
+    if not isinstance(age, int | float):
+        return False
+    console = view["console"]
+    interval = console.get("interval_s") if isinstance(console, dict) else None
+    grace = max(OVERDUE_INTERVALS * float(interval or 0), OVERDUE_AT_LEAST_SECONDS)
+    return age > grace
+
+
 def _summarise(points: list[Any]) -> list[dict[str, object]]:
-    """Per-sensor climate and airing summary, in the order a person reads a house."""
+    """Per-sensor climate, staleness and battery, in the order a person reads a house."""
     sensors: dict[str, dict[str, object]] = {}
     for point in points:
         tags = dict(point.tags)
@@ -459,9 +540,6 @@ def _summarise(points: list[Any]) -> list[dict[str, object]]:
         elif point.table == "derived":
             entry["dewpoint"] = _field(point.fields, "dewpoint_")
             entry["unchanged"] = point.fields.get("unchanged_s")
-        elif point.table == "ventilation":
-            entry["airing_delta"] = _field(point.fields, "dewpoint_delta_")
-            entry["airing_humidity"] = point.fields.get("predicted_humidity_pct")
         elif point.table == "battery":
             entry["battery_low"] = point.fields.get("low")
     shown = [s for s in sensors.values() if "temp" in s]
@@ -488,8 +566,13 @@ def _weather(points: list[Any]) -> list[dict[str, object]]:
                 continue
             gauge = dict(point.tags).get("gauge")
             title = table.capitalize() + (" (piezo)" if gauge == "piezo" else "")
+            hidden = WEATHER_HIDDEN.get(table, frozenset())
             items = sorted(
-                (_item(key, value) for key, value in point.fields.items()),
+                (
+                    item
+                    for item in (_item(key, value) for key, value in point.fields.items())
+                    if item["field"] not in hidden
+                ),
                 key=lambda item: _order(labels, str(item["field"])),
             )
             for item in items:

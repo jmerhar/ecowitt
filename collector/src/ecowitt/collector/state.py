@@ -40,6 +40,17 @@ class State:
     #: Reports put in the spool because they could not be written when they arrived.
     reports_spooled: int = 0
 
+    #: The push monitor's calls: whether one is configured, its last accepted call and how many
+    #: were refused or failed.
+    heartbeat_configured: bool = False
+    last_heartbeat_ok_at: float | None = None
+    heartbeat_failures: int = 0
+
+    #: Station settings rows handed to delivery (written, or spooled until they can be), and the
+    #: last time any were.
+    settings_published: int = 0
+    last_settings_at: float | None = None
+
     @property
     def uptime_seconds(self) -> float:
         """How long this process has been running."""
@@ -84,6 +95,28 @@ class State:
             return None
         return time.monotonic() - self.last_write_ok_at
 
+    def record_heartbeat(self, ok: bool) -> None:
+        """Note the outcome of one call to the push monitor."""
+        if ok:
+            self.last_heartbeat_ok_at = time.monotonic()
+        else:
+            self.heartbeat_failures += 1
+
+    def record_settings(self, count: int) -> None:
+        """Note station settings rows handed to delivery."""
+        self.settings_published += count
+        self.last_settings_at = time.monotonic()
+
+    @property
+    def seconds_since_last_heartbeat(self) -> float | None:
+        """Age of the push monitor's last accepted call, or None if there has been none."""
+        return _age(self.last_heartbeat_ok_at)
+
+    @property
+    def seconds_since_last_settings(self) -> float | None:
+        """Age of the last settings publication, or None if there has been none."""
+        return _age(self.last_settings_at)
+
     def record_rejected(self) -> None:
         """Note a report that was discarded.
 
@@ -91,3 +124,8 @@ class State:
         quiet" signal, and an unknown caller must not be able to reset it.
         """
         self.reports_rejected += 1
+
+
+def _age(moment: float | None) -> float | None:
+    """Seconds since a monotonic moment, or None for one that has not happened."""
+    return None if moment is None else time.monotonic() - moment

@@ -18,6 +18,8 @@ from urllib.parse import urlsplit
 
 import httpx2
 
+from ecowitt.collector.state import State
+
 logger = logging.getLogger(__name__)
 
 TIMEOUT_SECONDS = 10.0
@@ -33,8 +35,12 @@ class Heartbeat:
         *,
         interval_seconds: float,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+        state: State | None = None,
     ) -> None:
         self._client = client
+        self._state = state
+        if state is not None:
+            state.heartbeat_configured = True
         self._url = url
         self._interval = interval_seconds
         self._sleep = sleep
@@ -85,4 +91,6 @@ class Heartbeat:
         elif ok and self._failing:
             logger.info("heartbeat to %s is getting through again", self.host)
         self._failing = not ok
+        if self._state is not None:
+            self._state.record_heartbeat(ok)
         return ok

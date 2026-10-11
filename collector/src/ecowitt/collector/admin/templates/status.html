@@ -8,6 +8,49 @@
   <div class="notice error">The last write to {{ status.database.label }} failed:
     {{ status.database.last_error }}</div>
 {% endif %}
+{% set spool = status.spool %}
+{% if spool and spool.waiting and (spool.oldest_seconds or 0) > spool_stale_seconds %}
+  <div class="notice error">{{ spool.waiting }} report{{ "s are" if spool.waiting > 1 else " is" }}
+    waiting for the database, the oldest for {{ spool.oldest_seconds|duration }}.</div>
+{% endif %}
+{% if spool and spool.dropped %}
+  <div class="notice error">{{ spool.dropped }} report{{ "s were" if spool.dropped > 1 else " was" }}
+    dropped since this server started: the spool was full.</div>
+{% endif %}
+{% for station in stations if station.overdue %}
+  <div class="notice error">{{ station.name }} has not reported for {{ station.age_seconds|duration }}.</div>
+{% endfor %}
+
+<section>
+  <h2>Health</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><td class="muted">Reports</td>
+      <td>{{ status.reports_accepted }} accepted, {{ status.reports_rejected }} rejected,
+        {{ status.reports_rate_limited }} rate limited; the last {{ status.seconds_since_last_report|ago }}
+        {%- if status.pending_stations %}; <a href="/setup">{{ status.pending_stations }} waiting to be adopted</a>{% endif %}</td></tr>
+    <tr><td class="muted">Database</td>
+      <td>{% if status.database.configured %}{{ status.database.label }} at {{ status.database.url }}:
+        last write {{ status.writes.seconds_since_last_success|ago }}, {{ status.writes.succeeded }} written,
+        {{ status.writes.failed }} failed attempts, {{ status.writes.rejected }} refused
+        {%- else %}<span class="bad">not set up</span>{% endif %}</td></tr>
+    {% if spool %}
+    <tr><td class="muted">Spool</td>
+      <td>{% if spool.waiting %}<span class="bad">{{ spool.waiting }} waiting</span>, the oldest for {{ spool.oldest_seconds|duration }}
+        {%- else %}empty{% endif %}; {{ spool.spooled_total }} spooled since start, {{ spool.dropped }} dropped,
+        {{ spool.rejected_kept }} set aside as refused</td></tr>
+    {% endif %}
+    <tr><td class="muted">Heartbeat</td>
+      <td>{% if status.heartbeat.configured %}last accepted {{ status.heartbeat.seconds_since_last_ok|ago }}
+        {%- if status.heartbeat.failures %}, <span class="bad">{{ status.heartbeat.failures }} failed</span>{% endif %}
+        {%- else %}<span class="muted">not configured</span>{% endif %}</td></tr>
+    <tr><td class="muted">Station settings</td>
+      <td>{% if status.settings.published %}last sent to the database {{ status.settings.seconds_since_last|ago }}
+        {%- else %}<span class="muted">not sent since this server started</span>{% endif %}</td></tr>
+    <tr><td class="muted">Uptime</td><td>{{ status.uptime_seconds|duration }}</td></tr>
+  </table>
+  </div>
+</section>
 {% macro reading(r, digits=1) %}{% if r %}{{ "%.*f"|format(digits, r.value) }} {{ {"c": "°C", "f": "°F", "pct": "%"}.get(r.unit, r.unit) }}{% else %}<span class="muted">–</span>{% endif %}{% endmacro %}
 
 {% if not stations %}
@@ -27,9 +70,21 @@
 <section>
   <h2>{{ station.name }}</h2>
   <p class="muted">
-    {% if station.timestamp %}Last report {{ station.age_seconds|round|int }} s ago.
+    {% if station.timestamp %}Last report {{ station.age_seconds|ago }}.
     {% else %}No report since this server started.{% endif %}
+    {% set c = station.console %}
+    {% if c %}{{ c.model }}{% if c.stationtype %}, {{ c.stationtype }}{% endif %}
+      {%- if c.interval_s is defined %}; reports every {{ c.interval_s|int }} s{% endif %}
+      {%- if c.clock_skew_s is defined %}; clock {{ c.clock_skew_s|abs|duration }} off{% endif %}
+      {%- if c.freq %}; {{ c.freq }}{% endif %}.{% endif %}
   </p>
+  {% if station.unmapped %}
+  <div class="warning">
+    <strong>{{ station.unmapped|length }} unrecognised key{{ "s" if station.unmapped|length > 1 }}</strong>
+    <div>Stored under <code>unmapped</code>, not converted or named: {{ station.unmapped|join(", ") }}.
+      New hardware needs entries in the field table.</div>
+  </div>
+  {% endif %}
 
   {% for w in station.warnings %}
   <div class="warning">
@@ -50,7 +105,6 @@
   <table>
     <thead><tr>
       <th>Sensor</th><th class="num">Temperature</th><th class="num">Humidity</th><th class="num">Dew point</th>
-      <th title="What airing would do: the dew-point difference from outdoors, and the humidity the room would settle at">Airing</th>
       <th class="num" title="How long the readings have been identical">Unchanged</th><th>Battery</th>
     </tr></thead>
     <tbody>
@@ -60,11 +114,7 @@
         <td class="num">{{ reading(s.temp) }}</td>
         <td class="num">{{ reading(s.humidity, 0) }}</td>
         <td class="num">{{ reading(s.dewpoint) }}</td>
-        <td>{% if s.airing_delta %}
-              {% if s.airing_delta.value > 0 %}<span class="good">drier outside</span>{% else %}<span class="bad">damper outside</span>{% endif %}
-              → {{ "%.0f"|format(s.airing_humidity) }} %
-            {% else %}<span class="muted">–</span>{% endif %}</td>
-        <td class="num">{% if s.unchanged is not none %}{{ s.unchanged|int }} s{% endif %}</td>
+        <td class="num">{% if s.unchanged is not none %}{{ s.unchanged|duration }}{% endif %}</td>
         <td>{% if s.battery_low %}<span class="bad">low</span>{% elif s.battery_low is false %}ok{% endif %}</td>
       </tr>
     {% endfor %}
@@ -103,13 +153,30 @@
   {% endfor %}
   <p>Pressure: {{ parts|join(", ") }}</p>
   {% endif %}
+
+  {% if station.rows %}
+  <details>
+    <summary class="muted">Every value in the latest report, as stored</summary>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Table</th><th>Tags</th><th>Fields</th></tr></thead>
+      <tbody>
+      {% for row in station.rows %}
+        <tr>
+          <td>{{ row.table }}</td>
+          <td class="muted">{% for k, v in row.tags.items() if k != "station" %}{{ k }}={{ v }}{{ " " if not loop.last }}{% endfor %}</td>
+          <td style="white-space: normal">{% for k, v in row.fields.items() %}{{ k }}={{ v }}{{ ", " if not loop.last }}{% endfor %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </details>
+  {% endif %}
 </section>
 {% endfor %}
 
 <footer>
-  {{ status.writes.succeeded }} writes, {{ status.writes.failed }} failed attempts{% if status.spool %},
-  {{ status.spool.waiting }} waiting for InfluxDB{% endif %}.
-  Up {{ (status.uptime_seconds / 3600)|round(1) }} h.
   <a href="/api/status">status</a> · <a href="/api/readings">readings</a> (JSON)
 </footer>
 {% endblock %}

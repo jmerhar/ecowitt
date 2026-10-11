@@ -86,10 +86,13 @@ ever being shown. From then on its reports are stored; there is nothing to resta
 On the same page: the altitude (looked up from coordinates if you give them — or from the
 location of the device you are using, when you are at the station), the time zone (taken from the
 coordinates offline unless you enter one), what each sensor is called, the units you keep, and an
-optional login for these pages. The status page at
-<http://127.0.0.1:2552/> shows each room's latest readings and whether airing it would help, the
-wind, rain and sun, every other sensor reporting, battery states, and anything wrong with the
-console's pressure calibration.
+optional login for these pages. The status page at <http://127.0.0.1:2552/> is for checking
+that everything works: reports arriving, writes reaching the database, anything waiting in the
+spool, the heartbeat, and the station settings sent for the dashboard — with a banner when a
+station stops reporting or a backlog builds. Per station it shows the console's model, firmware,
+interval and clock, each sensor's latest readings, how long they have been unchanged and its
+battery, the wind, rain and sun, keys the server does not recognise, every value of the latest
+report as stored, and anything wrong with the console's pressure calibration.
 
 Everything the setup page writes goes to `data/config.yaml`, which can also be written by hand.
 It holds the PASSKEYs and the database token, so it is readable by its owner only:

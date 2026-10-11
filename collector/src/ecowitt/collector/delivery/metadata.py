@@ -18,6 +18,7 @@ from collections.abc import Callable
 
 from ecowitt.collector.admin.stationconfig import Station, StationConfig
 from ecowitt.collector.ingest.handler import Sink
+from ecowitt.collector.state import State
 from ecowitt.core.readings import Value
 from ecowitt.core.stationinfo import StationInfo
 
@@ -46,8 +47,10 @@ class MetadataPublisher:
         sink: Sink,
         *,
         clock: Callable[[], float] = time.time,
+        state: State | None = None,
     ) -> None:
         self._sink = sink
+        self._state = state
         self._clock = clock
         self._published: dict[str, dict[str, Value]] = {}
         self._config = StationConfig()
@@ -69,6 +72,8 @@ class MetadataPublisher:
         if changed:
             await self._sink.submit(list(changed.values()))
             self._published.update({name: row.fields for name, row in changed.items()})
+            if self._state is not None:
+                self._state.record_settings(len(changed))
             logger.info("published settings of %s", ", ".join(changed))
         return len(changed)
 

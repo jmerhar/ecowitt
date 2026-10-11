@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import dataclasses
 import http.server
 import json
 import re
@@ -11,6 +12,7 @@ import threading
 import urllib.parse
 from collections.abc import Iterator
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -595,8 +597,10 @@ class TestStatus:
         assert isinstance(pressure["sea"], float) and pressure["sea"] > 29.796
         assert isinstance(pressure["rel_error"], float) and pressure["rel_error"] < 0
 
-    async def test_the_airing_column_answers_whether_to_open_the_windows(self, rig: Rig) -> None:
-        """With an outdoor sensor, each room shows which way airing would go."""
+    async def test_the_climate_table_shows_readings_and_health_not_airing_advice(
+        self, rig: Rig
+    ) -> None:
+        """Whether to air a room is the dashboard's to say; this page shows what arrived."""
         rig.store.replace(
             ConfigDocument(
                 stations=[StationEntry(name="Home", passkey="K", sensors={"ch1": "Bathroom"})]
@@ -620,28 +624,12 @@ class TestStatus:
         }
         page = rig.client.get("/").text
 
-        assert sensors["indoor"]["airing_delta"]["value"] > 0
-        assert sensors["ch1"]["airing_humidity"] < 40
-        assert "drier outside" in page
-        assert "outdoor" in sensors and "airing_delta" not in sensors["outdoor"]
+        assert sensors["ch1"]["temp"] == {"value": 25.0, "unit": "c"}
+        assert "dewpoint" in sensors["ch1"] and "unchanged" in sensors["ch1"]
+        assert not any("airing" in key for s in sensors.values() for key in s)
+        assert "Airing" not in page and "drier outside" not in page
         # A sensor without temperature (the soil probe) is not a row in the climate table.
         assert "soil1" not in sensors
-
-    async def test_a_humid_afternoon_says_damper_outside(self, rig: Rig) -> None:
-        rig.store.replace(ConfigDocument(stations=[StationEntry(name="Home", passkey="K")]))
-        await rig.handler.handle(
-            {
-                "PASSKEY": "K",
-                "dateutc": "now",
-                "tempinf": "75",
-                "humidityin": "50",
-                "tempf": "86",
-                "humidity": "85",
-            },
-            "192.0.2.9",
-        )
-
-        assert "damper outside" in rig.client.get("/").text
 
     async def test_a_report_without_pressure_shows_no_pressure_line(self, rig: Rig) -> None:
         rig.store.replace(ConfigDocument(stations=[StationEntry(name="Home", passkey="K")]))
@@ -710,8 +698,8 @@ class TestStatus:
             "Direction": "125° SE",
             "Direction, 10-minute average": "137° SE",
         }
-        assert groups["Rain"]["Today"] == "0.8 mm" and groups["Rain"]["Rate"] == "0.0 mm/h"
-        assert list(groups["Rain"])[:3] == ["Rate", "This event", "Past hour"]
+        # The running totals all follow from these two.
+        assert groups["Rain"] == {"Rate": "0.0 mm/h", "Today": "0.8 mm"}
         assert groups["Solar"] == {"Radiation": "615 W/m²", "UV index": "5"}
         page = rig.client.get("/").text
         assert "Strongest gust today" in page and "125° SE" in page
@@ -773,8 +761,9 @@ class TestStatus:
         batteries = {b["name"]: (b["state"], b["low"]) for b in station["batteries"]}
 
         assert others["Soil · Herbs"] == {"moisture": "31%", "moisture raw": "212"}
-        # A key this server does not know is shown too, text and numbers alike.
-        assert others["Unmapped"] == {"newsensor mode text": "eco", "newsensor level": "3"}
+        # A key this server does not know is named in a notice of its own.
+        assert "Unmapped" not in others
+        assert station["unmapped"] == ["newsensor_level", "newsensor_mode_text"]
         assert weather["Rain (piezo)"] == {"Raining": "yes", "Today": "3.0 mm"}
         assert batteries == {
             "wh40": ("1.38 V", False),
@@ -786,6 +775,113 @@ class TestStatus:
         page = rig.client.get("/").text
         assert "Soil · Herbs" in page
         assert '<span class="bad">low</span>' in page and '<span class="bad">1/5</span>' in page
+        assert "2 unrecognised keys" in page and "newsensor_level, newsensor_mode_text" in page
+
+    async def test_the_health_summary_covers_every_stage(self, rig: Rig) -> None:
+        await rig.report()
+        adopt(rig)
+        await rig.report()
+        state = rig.context.state
+        state.record_accepted()
+        state.record_write(True)
+        state.heartbeat_configured = True
+        state.record_heartbeat(False)
+        state.record_settings(1)
+
+        page = rig.client.get("/").text
+        status = rig.client.get("/api/status").json()
+
+        assert "<h2>Health</h2>" in page
+        assert "1 accepted" in page and "the last 0 s ago" in page
+        assert "Database</td>" in page and "not set up" in page
+        assert "last accepted never, " in page and "1 failed" in page
+        assert "last sent to the database 0 s ago" in page
+        assert status["heartbeat"] == {
+            "configured": True,
+            "seconds_since_last_ok": None,
+            "failures": 1,
+        }
+        assert status["settings"]["published"] == 1
+
+    async def test_a_quiet_heartbeat_and_settings_say_so(self, rig: Rig) -> None:
+        rig.store.replace(ConfigDocument(stations=[StationEntry(name="Home", passkey="K")]))
+
+        page = rig.client.get("/").text
+
+        assert "not configured" in page and "not sent since this server started" in page
+
+    async def test_the_console_describes_itself(self, rig: Rig) -> None:
+        await rig.report()
+        adopt(rig)
+        await rig.report()
+
+        station = rig.client.get("/api/readings").json()["stations"][0]
+        page = rig.client.get("/").text
+
+        assert station["console"]["model"] == "HP2551AE_Pro_V2.1.4"
+        # The recorded report's own clock is days behind the moment the test replays it.
+        assert "HP2551AE_Pro_V2.1.4, EasyWeatherPro_V5.2.7; reports every 10 s; clock " in page
+        assert re.search(r"clock \d+ days off; 868M\.", page)
+        assert station["overdue"] is False
+
+    async def test_every_stored_value_is_listed_under_the_summary(self, rig: Rig) -> None:
+        await rig.report()
+        adopt(rig)
+        await rig.report()
+
+        page = rig.client.get("/").text
+
+        assert "Every value in the latest report, as stored" in page
+        assert "interval_s=10.0" in page and "sensor=ch1" in page
+
+    async def test_a_station_that_stopped_reporting_is_called_out(self, rig: Rig) -> None:
+        await rig.report()
+        adopt(rig)
+        await rig.report()
+        latest = rig.handler.latest["Home"]
+        rig.handler.latest["Home"] = dataclasses.replace(
+            latest, received_at=latest.received_at - timedelta(minutes=6)
+        )
+
+        page = rig.client.get("/").text
+
+        assert "Home has not reported for 6 min." in page
+
+    def test_a_backlog_and_dropped_reports_are_called_out(self, rig: Rig) -> None:
+        class Spool:
+            dropped = 2
+
+            def stats(self) -> object:
+                return type("Stats", (), {"files": 3, "bytes": 1, "oldest_seconds": 400.0})()
+
+            def rejected_count(self) -> int:
+                return 0
+
+        rig.context.spool = Spool()  # type: ignore[assignment]
+        rig.store.replace(ConfigDocument(stations=[StationEntry(name="Home", passkey="K")]))
+
+        page = " ".join(rig.client.get("/").text.split())
+
+        assert "3 reports are waiting for the database, the oldest for 7 min." in page
+        assert "2 reports were dropped since this server started" in page
+        assert '<span class="bad">3 waiting</span>' in page
+
+    def test_a_short_backlog_is_not_alarming(self, rig: Rig) -> None:
+        class Spool:
+            dropped = 0
+
+            def stats(self) -> object:
+                return type("Stats", (), {"files": 1, "bytes": 1, "oldest_seconds": 30.0})()
+
+            def rejected_count(self) -> int:
+                return 0
+
+        rig.context.spool = Spool()  # type: ignore[assignment]
+        rig.store.replace(ConfigDocument(stations=[StationEntry(name="Home", passkey="K")]))
+
+        page = rig.client.get("/").text
+
+        assert "waiting for the database" not in page and "dropped" not in page.split("Health")[0]
 
     async def test_dismissing_hides_a_warning(self, rig: Rig) -> None:
         await rig.report()
@@ -1001,3 +1097,25 @@ class TestLoginForm:
         after = rig.store.document.admin
         assert before is not None and after is not None
         assert after.username == "b" and after.password_hash == before.password_hash
+
+
+@pytest.mark.parametrize(
+    ("seconds", "words"),
+    [
+        (None, "never"),
+        (-3, "0 s"),
+        (42.4, "42 s"),
+        (95, "2 min"),
+        (89 * 60, "89 min"),
+        (90 * 60, "1 h 30 min"),
+        (3 * 3600, "3 h"),
+        (49 * 3600, "2 days"),
+    ],
+)
+def test_durations_read_as_words(seconds: float | None, words: str) -> None:
+    assert admin.duration(seconds) == words
+    assert admin.ago(seconds) == ("never" if seconds is None else f"{words} ago")
+
+
+def test_a_text_value_is_shown_as_it_is() -> None:
+    assert admin._item("mode_text", "eco") == {"field": "mode_text", "text": "eco"}

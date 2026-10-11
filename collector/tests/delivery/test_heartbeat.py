@@ -155,3 +155,18 @@ async def test_an_unexpected_error_does_not_end_the_heartbeat_loop(
 
     assert len(stub.requests) == 1
     assert "heartbeat to 127.0.0.1 failed unexpectedly" in caplog.text
+
+
+async def test_calls_are_counted_in_the_state_the_status_page_reads() -> None:
+    from ecowitt.collector.state import State
+
+    state = State()
+    async with serving(StubInflux(status=503)) as stub, httpx2.AsyncClient() as client:
+        heartbeat = Heartbeat(client, stub.url + "/p", interval_seconds=60, state=state)
+        assert state.heartbeat_configured
+        await heartbeat.call()
+        assert (state.heartbeat_failures, state.seconds_since_last_heartbeat) == (1, None)
+        stub.status = 200
+        await heartbeat.call()
+    assert state.heartbeat_failures == 1
+    assert state.seconds_since_last_heartbeat is not None

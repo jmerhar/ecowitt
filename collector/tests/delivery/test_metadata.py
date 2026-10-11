@@ -140,3 +140,19 @@ async def test_the_loop_publishes_each_update_and_survives_a_failure(
             await task
 
     assert "station=Home" in sink.bodies[0]
+
+
+async def test_publications_are_counted_in_the_state_the_status_page_reads() -> None:
+    from ecowitt.collector.state import State
+
+    state = State()
+    sink = Recorder()
+    stations = config(
+        StationEntry(name="Home", passkey="K"), StationEntry(name="Cabin", passkey="L")
+    )
+    publisher = MetadataPublisher(sink, clock=lambda: 1791500484.7, state=state)
+    assert state.seconds_since_last_settings is None
+    await publisher.publish(stations)
+    await publisher.publish(stations)
+    assert state.settings_published == 2, "the unchanged second round is not counted"
+    assert state.seconds_since_last_settings is not None

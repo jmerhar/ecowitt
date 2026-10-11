@@ -194,6 +194,7 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
                 lookup_client,
                 settings.heartbeat_url,
                 interval_seconds=settings.heartbeat_interval_seconds,
+                state=state,
             )
             logger.info("heartbeat to %s after each write", heartbeat.host)
         delivery = Delivery(
@@ -210,7 +211,7 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
         store.subscribe(lambda stations: setattr(station_handler, "config", stations))
         # Subscribing delivers the current configuration at once, so every station's settings
         # are published at startup, then again only when a change alters them.
-        metadata = MetadataPublisher(delivery)
+        metadata = MetadataPublisher(delivery, state=state)
         store.subscribe(metadata.update)
         handler = station_handler
         context = AdminContext(
