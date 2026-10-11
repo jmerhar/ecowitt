@@ -92,11 +92,18 @@ dashboard/api/src/ecowitt/dashboard/   the public dashboard's read-only API
   models.py       the answers, as the OpenAPI document publishes them
   healthcheck.py  module entrypoint for the image's HEALTHCHECK (dashboard/Dockerfile)
 dashboard/api/tests/  against an in-memory Reader (memory.py) that answers as the SQL does
+dashboard/web/    the dashboard's page: Svelte 5, Vite, TypeScript, uPlot; a thin client of /api/v1
+  src/lib/        api.ts (types mirroring the OpenAPI models, the client), format.ts (values and
+                  station-time times), chart.ts (chart tabs, aligning series for uPlot), prefs.ts
+  src/components/ one per card or section; Chart.svelte is the only one that touches uPlot
+  src/testing.ts  API answers for the tests, and a fake Api
+dashboard/Dockerfile  builds the page in a Node stage and serves it from the API's image
 grafana/          weather.json, the dashboard, and alerts.json, the alert rules; a renamed table or
                   field fails tests/grafana rather than blanking a panel or silencing an alert
 TODO/             one note per planned feature; delete a note when its feature ships
 bin/              every script the Makefile and CI run; its Python is linted with the shared
-                  ruff.toml (bin/ci-ruff.sh)
+                  ruff.toml (bin/ci-ruff.sh). lockfile.sh / check-lockfile.sh write and guard
+                  the page's package-lock.json; test-web.sh type-checks and tests the page
 ```
 
 ## Things worth knowing before changing anything
@@ -200,13 +207,28 @@ bin/              every script the Makefile and CI run; its Python is linted wit
 - **Retention is set once, at database creation, and InfluxDB 3 cannot change it afterwards.**
   The `weather` database is created without any, deliberately.
 
+- **The dashboard's setup page is unprotected by design.** Until `dashboard.yaml` exists, whoever
+  reaches `/setup` configures the site; once it is written the setup routes are absent (404) for
+  the life of the file. Its test connection reports only success or failure, with a short
+  timeout, since an anonymous caller chooses the address it connects to.
+- **The dashboard's page formats times itself, day first with a 24-hour clock** (`format.ts`
+  `LOCALE`), in the station's time zone, rather than following the browser's locale: an American
+  locale writes `10/11` and `12:56 AM`.
+- **`dashboard/web/package-lock.json` must resolve only to registry.npmjs.org.** A development
+  machine may reach npm only through a proxy, and a plain `npm install` writes the proxy's host
+  into every entry -- breaking CI and publishing it. Regenerate it with `bin/lockfile.sh` only;
+  `bin/check-lockfile.sh` (lint and CI) asserts the public registry rather than naming any host.
+
 ## Commands
 
 ```bash
 make install      # one virtualenv at the root, every project installed editable
 make dev          # serve from the working copy (ingest :2551, admin :2552)
 make test ARGS="tests/ingest/test_ingest.py -k slash"
-make test-js      # the page scripts' tests, with coverage (needs node)
+make test-js      # the admin page scripts' tests, with coverage (needs node)
+make web-install  # the dashboard page's node_modules, from the lockfile, via this machine's registry
+make test-web     # the dashboard page: svelte-check and Vitest with coverage
+make lockfile     # regenerate dashboard/web/package-lock.json (the only way to)
 make check        # lint + every suite with coverage
 UPDATE_GOLDEN=1 bin/test-python.sh collector tests/ingest/test_pipeline.py   # after an intended output change
 ```

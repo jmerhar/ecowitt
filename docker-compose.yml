@@ -1,11 +1,11 @@
-# The stack, as one service.
+# The stack: the server, and an optional public dashboard.
 #
 # Self-contained on purpose: this file is all anyone needs to run the server, so it pulls the
 # published image rather than naming a build context. Building from source is
 # docker-compose.build.yml, which `make up` adds.
 #
-# Everything mutable lives in ./data, including the station configuration. Back that directory
-# up and there is nothing else to keep.
+# Everything mutable lives in ./data, including the station configuration, and the dashboard's
+# settings in ./data-dashboard. Back those up and there is nothing else to keep.
 services:
   ecowitt:
     image: ghcr.io/jmerhar/ecowitt:latest
@@ -56,3 +56,30 @@ services:
       - "${ECOWITT_ADMIN_BIND:-127.0.0.1}:${ECOWITT_ADMIN_PORT:-2552}:${ECOWITT_ADMIN_PORT:-2552}"
     volumes:
       - ./data:/data
+
+  # The public dashboard: a page and a read-only API over the readings in InfluxDB. Optional,
+  # and started only with `docker compose --profile dashboard up -d`. Until data-dashboard/
+  # holds dashboard.yaml it serves an unprotected setup page, so finish setup before the port
+  # is reachable by anyone else.
+  dashboard:
+    image: ghcr.io/jmerhar/ecowitt-dashboard:latest
+    container_name: ecowitt-dashboard
+    profiles: [dashboard]
+    restart: unless-stopped
+    user: "${ECOWITT_UID:-1000}:${ECOWITT_GID:-1000}"
+    mem_limit: 256m
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      TZ: ${TZ:-UTC}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # Addresses of the reverse proxy in front of it, whose X-Forwarded-For is believed.
+      FORWARDED_ALLOW_IPS: ${DASHBOARD_FORWARDED_ALLOW_IPS:-127.0.0.1}
+    ports:
+      # Loopback, for a reverse proxy to publish; the dashboard is meant to be public, the
+      # setup page it shows first is not.
+      - "${DASHBOARD_BIND:-127.0.0.1}:${DASHBOARD_PORT:-2553}:2553"
+    volumes:
+      - ./data-dashboard:/data
