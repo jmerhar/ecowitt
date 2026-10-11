@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     #: Holds dashboard.yaml.
     data_dir: Path = Path("/data")
 
+    #: The built pages (dashboard/web's dist/), served at /; without them / leads to the API's
+    #: documentation instead.
+    web_dir: Path = Path("/app/web")
+
     # Every interface, because the shipped artefact is a container, where a loopback bind is
     # unreachable even through a published port.
     host: str = "0.0.0.0"  # noqa: S104

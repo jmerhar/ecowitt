@@ -18,7 +18,14 @@ from urllib.parse import parse_qsl
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
 from fastapi import Path as PathParam
-from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
+from fastapi.responses import (
+    FileResponse,
+    JSONResponse,
+    PlainTextResponse,
+    RedirectResponse,
+    Response,
+)
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from ecowitt.core.ratelimit import RateLimiter
@@ -39,6 +46,8 @@ API = "/api/v1"
 MAX_FORM_BYTES = 16 * 1024
 #: Setting help that differs from the shared declarations, which are worded for the collector.
 HELP = {"token": "One allowed to read"}
+#: Where the built pages keep their scripts and styles, named by content hash.
+ASSETS = "/assets/"
 #: Most metrics one /series request may ask for.
 MAX_METRICS = 12
 
@@ -134,13 +143,22 @@ def build_app(
     async def rate_limit(
         request: Request, call_next: Callable[..., Awaitable[Response]]
     ) -> Response:
-        """Hold each address to its budget; the health probe is exempt."""
+        """Hold each address to its budget; the health probe and the pages' files are exempt.
+
+        The files are static and named by their content, so they are cheap to serve and cached
+        for good; counting them would spend a visitor's budget on loading the page.
+        """
         client = request.client.host if request.client else "unknown"
-        if request.url.path != "/healthz" and not limiter.allow(client):
+        path = request.url.path
+        exempt = path == "/healthz" or path.startswith(ASSETS)
+        if not exempt and not limiter.allow(client):
             return JSONResponse(
                 {"detail": "too many requests"}, status_code=429, headers={"Retry-After": "1"}
             )
-        return await call_next(request)
+        response = await call_next(request)
+        if path.startswith(ASSETS) and response.status_code == 200:
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
 
     @app.exception_handler(UnknownStation)
     async def unknown_station(_: Request, exc: UnknownStation) -> Response:
@@ -156,9 +174,17 @@ def build_app(
         """Whether this process is serving, and whether setup is done."""
         return {"status": "ok" if site.dashboard else "unconfigured"}
 
+    index_page = settings.web_dir / "index.html"
+
     @app.get("/", include_in_schema=False)
     async def index() -> Response:
-        return RedirectResponse(f"{API}/docs" if site.dashboard else "/setup", status_code=303)
+        """The pages once set up and built; otherwise setup, or the API's documentation."""
+        if site.dashboard is None:
+            return RedirectResponse("/setup", status_code=303)
+        if index_page.is_file():
+            # The page names its scripts by content hash, so it is fetched fresh each time.
+            return FileResponse(index_page, headers={"Cache-Control": "no-cache"})
+        return RedirectResponse(f"{API}/docs", status_code=303)
 
     @app.get("/setup", include_in_schema=False)
     async def setup_page(request: Request) -> Response:
@@ -231,6 +257,9 @@ def build_app(
         return await board.extremes(station, period, choice)
 
     app.include_router(router)
+    if index_page.is_file():
+        # After every route, so it serves only what nothing else answers: /assets and the icon.
+        app.mount("/", StaticFiles(directory=settings.web_dir), name="web")
     return app
 
 
