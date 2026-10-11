@@ -20,12 +20,14 @@
   const RANGES: Record<string, string> = { "24h": "Day", "7d": "Week", "30d": "Month", "1y": "Year" };
 
   let answer = $state<SeriesOut | null>(null);
+  /** The view the answer was fetched for: another view's answer holds none of this one's. */
+  let answered = $state("");
   let error = $state("");
   let loading = $state(false);
 
   const current = $derived(viewFor(view));
   const labels = $derived(Object.fromEntries(meta.metrics.map((m) => [m.id, m.label])));
-  const data = $derived(answer ? align(current, answer, labels) : null);
+  const data = $derived(answer && answered === current.id ? align(current, answer, labels) : null);
 
   $effect(() => {
     const wanted = { station, view: current, range, units: $state.snapshot(units) };
@@ -36,6 +38,7 @@
       .then((found) => {
         if (stale) return;
         answer = found;
+        answered = wanted.view.id;
         error = "";
       })
       .catch((exc: unknown) => {

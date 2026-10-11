@@ -5,6 +5,7 @@
   import "uplot/dist/uPlot.min.css";
   import type { ChartData, View } from "../lib/chart";
   import { spec } from "../lib/chart";
+  import { axisLabels, LOCALE, moment } from "../lib/format";
 
   type Props = {
     view: View;
@@ -35,7 +36,7 @@
       grid: { stroke: grid, show: side === 3 },
       ticks: { stroke: grid },
       values: (_: uPlot, ticks: number[]) =>
-        ticks.map((v) => `${v.toLocaleString()}${symbols[unit] ? ` ${symbols[unit]}` : ""}`),
+        ticks.map((v) => `${v.toLocaleString(LOCALE)}${symbols[unit] ? ` ${symbols[unit]}` : ""}`),
       size: 70,
     });
     const options: uPlot.Options = {
@@ -44,11 +45,18 @@
       tzDate: (ts) => uPlot.tzDate(new Date(ts * 1000), timezone),
       scales: { x: { time: true } },
       axes: [
-        { stroke: ink, grid: { stroke: grid }, ticks: { stroke: grid } },
+        {
+          stroke: ink,
+          grid: { stroke: grid },
+          ticks: { stroke: grid },
+          values: (_: uPlot, ticks: number[], _axis: number, _space: number, step: number) =>
+            axisLabels(ticks, step, timezone),
+        },
         ...built.axes.map((a) => axis(a.scale, a.unit, a.scale === "left" ? 3 : 1)),
       ],
       series: [
-        {},
+        // The legend's time row, day first with a 24-hour clock like the axis.
+        { value: (_: uPlot, ts: number | null) => (ts === null ? "–" : moment(new Date(ts * 1000).toISOString(), timezone)) },
         ...built.series.map((s) => ({
           label: s.label,
           scale: s.scale,
@@ -64,7 +72,7 @@
                 : undefined,
           points: { show: s.style === "points", size: 4, fill: s.stroke },
           value: (_: uPlot, v: number | null) =>
-            v === null ? "–" : `${v.toLocaleString()}${symbols[s.unit] ? ` ${symbols[s.unit]}` : ""}`,
+            v === null ? "–" : `${v.toLocaleString(LOCALE)}${symbols[s.unit] ? ` ${symbols[s.unit]}` : ""}`,
         })),
       ],
       bands: built.bands,
@@ -72,6 +80,11 @@
       cursor: { drag: { x: false, y: false } },
     };
     plot = new uPlot(options, built.data as uPlot.AlignedData, element);
+    // A band's edges are drawn only as its fill; their legend rows would read "high: –".
+    const rows = element.querySelectorAll<HTMLElement>(".u-legend .u-series");
+    built.series.forEach((s, i) => {
+      if (s.edge && rows[i + 1]) rows[i + 1].style.display = "none";
+    });
   }
 
   $effect(() => {

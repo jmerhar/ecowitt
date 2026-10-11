@@ -13,6 +13,8 @@
 
   const t = $derived(now.units.temperature);
   const outdoor = $derived(now.outdoor);
+  /** The summary leads with the temperature and feels-like, which the card shows already. */
+  const summary = $derived(outdoor ? now.summary.split(". ").slice(1).join(". ") : now.summary);
 </script>
 
 <button class="card hero" onclick={() => onselect("temperature")}>
@@ -22,7 +24,7 @@
       <div class="feels">Feels like {quantity(outdoor.feels_like, t, symbols)}</div>
     {/if}
   {/if}
-  <p class="summary">{now.summary}</p>
+  {#if summary}<p class="summary">{summary}</p>{/if}
   {#if outdoor}
     <dl>
       <div><dt>Humidity</dt><dd>{quantity(outdoor.humidity, "pct", symbols)}</dd></div>
@@ -41,12 +43,9 @@
 </button>
 
 <style>
-  .hero {
-    grid-column: span 2;
-  }
-  @media (max-width: 34rem) {
+  @media (min-width: 36rem) {
     .hero {
-      grid-column: auto;
+      grid-column: span 2;
     }
   }
   .temperature {
