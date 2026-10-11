@@ -238,11 +238,13 @@ export class Api {
     metrics: string[],
     range: string,
     units: UnitChoice = {},
+    model = false,
   ): Promise<SeriesOut> {
     return this.get(`/stations/${encodeURIComponent(station)}/series`, {
       ...units,
       metrics: metrics.join(","),
       range,
+      model: model ? "true" : undefined,
     });
   }
 

@@ -100,7 +100,8 @@ dashboard/api/src/ecowitt/dashboard/   the public dashboard's read-only API
 dashboard/api/tests/  against an in-memory Reader (memory.py) that answers as the SQL does
 dashboard/web/    the dashboard's page: Svelte 5, Vite, TypeScript, uPlot; a thin client of /api/v1
   src/lib/        api.ts (types mirroring the OpenAPI models, the client), format.ts (values and
-                  station-time times), chart.ts (chart tabs, aligning series for uPlot), prefs.ts
+                  station-time times), chart.ts (chart tabs, aligning series for uPlot, the
+                  model's dashed lines), prefs.ts, sky.ts (WMO code -> Meteocons icon)
   src/components/ one per card or section; Chart.svelte is the only one that touches uPlot
   src/testing.ts  API answers for the tests, and a fake Api
 dashboard/Dockerfile  builds the page in a Node stage and serves it from the API's image

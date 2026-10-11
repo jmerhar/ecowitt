@@ -13,9 +13,9 @@ export const UNITS = { temperature: "c", pressure: "hpa", rain: "mm", wind: "kmh
 export const META: Meta = {
   title: "Test weather",
   metrics: [
-    { id: "outdoor.temperature", label: "Temperature", quantity: "temperature", unit: null, aggregates: ["mean", "min", "max"], extremes: "both", per_sensor: false, model: false },
-    { id: "outdoor.dew_point", label: "Dew point", quantity: "temperature", unit: null, aggregates: ["mean", "min", "max"], extremes: "both", per_sensor: false, model: false },
-    { id: "wind.gust", label: "Wind gust", quantity: "wind", unit: null, aggregates: ["max"], extremes: "max", per_sensor: false, model: false },
+    { id: "outdoor.temperature", label: "Temperature", quantity: "temperature", unit: null, aggregates: ["mean", "min", "max"], extremes: "both", per_sensor: false, model: true },
+    { id: "outdoor.dew_point", label: "Dew point", quantity: "temperature", unit: null, aggregates: ["mean", "min", "max"], extremes: "both", per_sensor: false, model: true },
+    { id: "wind.gust", label: "Wind gust", quantity: "wind", unit: null, aggregates: ["max"], extremes: "max", per_sensor: false, model: true },
     { id: "rain.daily", label: "Rain today", quantity: "rain", unit: null, aggregates: ["max"], extremes: "max", per_sensor: false, model: false },
     { id: "rooms.temperature", label: "Temperature", quantity: "temperature", unit: null, aggregates: ["mean", "min", "max"], extremes: "both", per_sensor: true, model: false },
   ],

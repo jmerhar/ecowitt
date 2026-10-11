@@ -12,6 +12,8 @@ export type Prefs = {
   view: string;
   range: string;
   period: string;
+  /** Whether the charts show the weather model's lines beside the station's. */
+  model: boolean;
 };
 
 export const DEFAULTS: Prefs = {
@@ -20,6 +22,7 @@ export const DEFAULTS: Prefs = {
   view: "temperature",
   range: "24h",
   period: "today",
+  model: false,
 };
 
 const KEY = "ecowitt-dashboard";
@@ -35,6 +38,7 @@ export function load(storage: Storage | undefined = globalThis.localStorage): Pr
       view: typeof saved.view === "string" ? saved.view : DEFAULTS.view,
       range: typeof saved.range === "string" ? saved.range : DEFAULTS.range,
       period: typeof saved.period === "string" ? saved.period : DEFAULTS.period,
+      model: typeof saved.model === "boolean" ? saved.model : DEFAULTS.model,
     };
   } catch {
     return { ...DEFAULTS };

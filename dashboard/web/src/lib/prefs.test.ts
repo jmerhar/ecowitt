@@ -18,7 +18,7 @@ function memory(initial: Record<string, string> = {}): Storage {
 describe("prefs", () => {
   it("round-trip through storage", () => {
     const storage = memory();
-    const prefs = { ...DEFAULTS, station: "Home", units: { wind: "mph" }, range: "7d" };
+    const prefs = { ...DEFAULTS, station: "Home", units: { wind: "mph" }, range: "7d", model: true };
     save(prefs, storage);
     expect(load(storage)).toEqual(prefs);
   });
@@ -27,7 +27,7 @@ describe("prefs", () => {
     expect(load(memory())).toEqual(DEFAULTS);
     expect(load(memory({ "ecowitt-dashboard": "not json" }))).toEqual(DEFAULTS);
     expect(load(memory({ "ecowitt-dashboard": "null" }))).toEqual(DEFAULTS);
-    expect(load(memory({ "ecowitt-dashboard": JSON.stringify({ station: 3, units: "x", view: 1 }) })))
+    expect(load(memory({ "ecowitt-dashboard": JSON.stringify({ station: 3, units: "x", view: 1, model: "yes" }) })))
       .toEqual(DEFAULTS);
     expect(load(undefined)).toEqual(DEFAULTS);
   });

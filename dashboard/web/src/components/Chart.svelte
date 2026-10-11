@@ -63,14 +63,20 @@
           stroke: s.width ? s.stroke : s.style === "points" ? s.stroke : "transparent",
           width: s.width,
           fill: s.fill,
-          spanGaps: false,
+          dash: s.dash,
+          // The model has a value every 15 minutes, so shorter buckets leave gaps between that
+          // are not silences.
+          spanGaps: Boolean(s.model),
           paths:
             s.style === "bars"
               ? uPlot.paths.bars!({ size: [0.6, 64] })
               : s.style === "points"
                 ? () => null
                 : undefined,
-          points: { show: s.style === "points", size: 4, fill: s.stroke },
+          // The model's points are hollow, so they stay apart from the station's in one colour.
+          points: s.model
+            ? { show: s.style === "points", size: 6, width: 1.5, stroke: s.stroke, fill: css("--card") }
+            : { show: s.style === "points", size: 4, fill: s.stroke },
           value: (_: uPlot, v: number | null) =>
             v === null ? "–" : `${v.toLocaleString(LOCALE)}${symbols[s.unit] ? ` ${symbols[s.unit]}` : ""}`,
         })),

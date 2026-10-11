@@ -15,12 +15,14 @@ describe("Api", () => {
     await api.stations();
     await api.now("My station", { temperature: "f", wind: undefined });
     await api.series("Home", ["a.b", "c.d"], "7d", { wind: "mph" });
+    await api.series("Home", ["a.b"], "24h", {}, true);
     await api.extremes("Home", "year");
     expect(fetcher.mock.calls.map((c) => c[0])).toEqual([
       "/api/v1/meta",
       "/api/v1/stations",
       "/api/v1/stations/My%20station/now?temperature=f",
       "/api/v1/stations/Home/series?wind=mph&metrics=a.b%2Cc.d&range=7d",
+      "/api/v1/stations/Home/series?metrics=a.b&range=24h&model=true",
       "/api/v1/stations/Home/extremes?period=year",
     ]);
   });

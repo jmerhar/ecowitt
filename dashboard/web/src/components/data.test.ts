@@ -17,10 +17,35 @@ describe("History", () => {
     expect(await screen.findByText("Temperature", { selector: "li" })).toBeInTheDocument();
     expect(screen.getByText("Dew point", { selector: "li" })).toBeInTheDocument();
     await fireEvent.click(screen.getByRole("tab", { name: "Week" }));
-    await waitFor(() => expect(api.series).toHaveBeenLastCalledWith("Home", ["outdoor.temperature", "outdoor.dew_point"], "7d", {}));
+    await waitFor(() => expect(api.series).toHaveBeenLastCalledWith("Home", ["outdoor.temperature", "outdoor.dew_point"], "7d", {}, false));
     await fireEvent.click(screen.getByRole("tab", { name: "Pressure" }));
-    await waitFor(() => expect(api.series).toHaveBeenLastCalledWith("Home", ["pressure.sea_level"], "7d", {}));
+    await waitFor(() => expect(api.series).toHaveBeenLastCalledWith("Home", ["pressure.sea_level"], "7d", {}, false));
     expect(screen.getByRole("tab", { name: "Pressure" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("offers the weather model where the station has one and the chart has a metric it covers", async () => {
+    const api = fakeApi();
+    const weatherModel = { id: "best_match", label: "Best for this location" };
+    render(History, { ...base, api, view: "temperature", range: "24h", weatherModel });
+    const toggle = await screen.findByRole("button", { name: "Model" });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(toggle.getAttribute("title")).toContain("Best for this location");
+    await fireEvent.click(toggle);
+    await waitFor(() =>
+      expect(api.series).toHaveBeenLastCalledWith("Home", ["outdoor.temperature", "outdoor.dew_point"], "24h", {}, true));
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    // The rooms have nothing the model covers, so the chart neither offers nor asks for it.
+    await fireEvent.click(screen.getByRole("tab", { name: "Rooms °" }));
+    await waitFor(() => expect(api.series).toHaveBeenLastCalledWith("Home", ["rooms.temperature"], "24h", {}, false));
+    expect(screen.queryByRole("button", { name: "Model" })).not.toBeInTheDocument();
+  });
+
+  it("does not offer a model the station does not have", async () => {
+    const api = fakeApi();
+    render(History, { ...base, api, view: "temperature", range: "24h", model: true });
+    await screen.findByText("Temperature", { selector: "li" });
+    expect(screen.queryByRole("button", { name: "Model" })).not.toBeInTheDocument();
+    expect(api.series).toHaveBeenLastCalledWith("Home", ["outdoor.temperature", "outdoor.dew_point"], "24h", {}, false);
   });
 
   it("shows a chart only for the view its answer was for, not 'nothing' while loading", async () => {

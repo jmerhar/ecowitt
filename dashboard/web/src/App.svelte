@@ -167,6 +167,8 @@
       {tick}
       bind:view={prefs.view}
       bind:range={prefs.range}
+      weatherModel={station.weather_model}
+      bind:model={prefs.model}
     />
 
     <Records {api} {meta} station={station.id} units={prefs.units} {timezone} {tick} bind:period={prefs.period} />
@@ -174,6 +176,14 @@
     {#if now.sensors.length}<Sensors sensors={now.sensors} notice={now.notices.sensors} />{/if}
   {/if}
 </main>
+
+<footer>
+  {#if station?.weather_model}
+    Weather model data by <a href="https://open-meteo.com/">Open-Meteo.com</a>
+    (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>) ·
+  {/if}
+  Icons by Meteocons and Lucide · <a href="/licenses.md">Licences</a>
+</footer>
 
 <style>
   header {
@@ -248,5 +258,15 @@
   }
   .empty {
     color: var(--muted);
+  }
+  footer {
+    max-width: 80rem;
+    margin: 0 auto;
+    padding: 0 var(--gutter) 2rem;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+  footer a {
+    color: inherit;
   }
 </style>

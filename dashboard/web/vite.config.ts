@@ -13,7 +13,9 @@ export default defineConfig({
   server: {
     proxy: { "/api": api, "/setup": api, "/healthz": api },
   },
-  build: { target: "es2022" },
+  // The licences of everything bundled into the page, which theirs ask to travel with it, at
+  // /licenses.md beside it.
+  build: { target: "es2022", license: { fileName: "licenses.md" } },
   test: {
     environment: "jsdom",
     setupFiles: ["src/test-setup.ts"],

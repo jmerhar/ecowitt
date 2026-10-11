@@ -49,7 +49,7 @@ describe("App", () => {
     render(App, { api, storage });
     await fireEvent.click(await screen.findByRole("button", { name: /Wind/ }));
     await waitFor(() =>
-      expect(api.series).toHaveBeenLastCalledWith("Home", ["wind.speed", "wind.gust", "wind.direction"], "24h", {}),
+      expect(api.series).toHaveBeenLastCalledWith("Home", ["wind.speed", "wind.gust", "wind.direction"], "24h", {}, false),
     );
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
     expect(JSON.parse(storage.getItem("ecowitt-dashboard")!).view).toBe("wind");
@@ -132,5 +132,20 @@ describe("App", () => {
     expect(await screen.findByText("18.0 °C")).toBeInTheDocument();
     const header = screen.getByRole("banner");
     expect(within(header).getByText(/Updated/)).toBeInTheDocument();
+  });
+
+  it("credits the weather model's data where it is shown, and links the licences", async () => {
+    const api = fakeApi();
+    api.stations.mockResolvedValue([{ ...STATION, weather_model: { id: "best_match", label: "Best for this location" } }]);
+    const first = render(App, { api });
+    const footer = await screen.findByRole("contentinfo");
+    await waitFor(() => expect(within(footer).getByRole("link", { name: "Open-Meteo.com" })).toBeInTheDocument());
+    expect(within(footer).getByRole("link", { name: "Licences" })).toHaveAttribute("href", "/licenses.md");
+    first.unmount();
+    render(App, { api: fakeApi() });
+    const plain = await screen.findByRole("contentinfo");
+    await screen.findByText("18.0 °C");
+    expect(within(plain).queryByText(/Open-Meteo/)).not.toBeInTheDocument();
+    expect(within(plain).getByRole("link", { name: "Licences" })).toBeInTheDocument();
   });
 });

@@ -333,6 +333,12 @@ pressure falling fast, very high UV, a room that is cold, hot, damp or dry, whet
 house, a sensor that needs attention — the thresholds of the [Grafana alerts](#grafana-alerts)
 where there is one. Visitors choose their own units; times are in the station's time zone.
 
+For a station with a [weather model](#weather-model), the page shows the sky it gives — clear,
+overcast, rain, fog — with an icon from [Meteocons](https://meteocons.com), and the charts can
+draw the model's values dashed beside the station's (*Model*, beside the range). The page credits
+Open-Meteo, as its data's licence asks, and lists the licences of what it bundles at
+`/licenses.md`.
+
 **Setting it up**
 
 1. Create a token that can only read the database:

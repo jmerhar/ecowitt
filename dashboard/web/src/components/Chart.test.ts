@@ -83,6 +83,23 @@ describe("Chart", () => {
     expect(made[1].options.series[1].value(null, 2)).toBe("2");
   });
 
+  it("draws the model dashed across its gaps, and its points hollow", () => {
+    const wind = viewFor("wind");
+    const data = align(wind, series({
+      series: [
+        { metric: "wind.speed", sensor: null, name: null, unit: "kmh", source: "station", t: [1, 2], values: { mean: [5, 6] } },
+        { metric: "wind.speed", sensor: null, name: null, unit: "kmh", source: "model", t: [1], values: { mean: [9] } },
+        { metric: "wind.direction", sensor: null, name: null, unit: "deg", source: "model", t: [1], values: { circular: [350] } },
+      ],
+    }), {});
+    render(Chart, { view: wind, data, symbols: SYMBOLS, timezone: "UTC" });
+    const [, station, speed, direction] = made[0].options.series;
+    expect(station).toMatchObject({ spanGaps: false, dash: undefined });
+    expect(speed).toMatchObject({ spanGaps: true, dash: [6, 4], width: 1.5 });
+    expect(direction.points).toMatchObject({ show: true, size: 6, width: 1.5 });
+    expect(direction.points.fill).not.toBe(direction.points.stroke);
+  });
+
   it("redraws when its data changes, and cleans up when it goes", async () => {
     const view = viewFor("temperature");
     const first = align(view, series(), {});

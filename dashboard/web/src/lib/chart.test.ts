@@ -60,6 +60,51 @@ describe("align", () => {
   });
 });
 
+describe("the weather model's lines", () => {
+  const answer = series({
+    series: [
+      ...series().series,
+      { metric: "outdoor.temperature", sensor: null, name: null, unit: "c", source: "model", t: [100, 1000],
+        values: { mean: [9, 13], min: [9, 13], max: [9, 13] } },
+    ],
+  });
+
+  it("follow the station's, as plain lines named for the model, in the metric's colour", () => {
+    const view = viewFor("temperature");
+    const chart = align(view, answer, LABELS);
+    expect(chart.times).toEqual([100, 400, 700, 1000]);
+    expect(chart.lines.map((l) => [l.label, l.style, l.model ?? false])).toEqual([
+      ["Temperature", "band", false],
+      ["Dew point", "line", false],
+      ["Temperature (model)", "line", true],
+    ]);
+    expect(chart.lines[2].values).toEqual([9, null, null, 13]);
+    expect(chart.lines[2].low).toBeUndefined();
+    expect(colour(view, chart.lines[2])).toBe(colour(view, chart.lines[0]));
+  });
+
+  it("are dashed, thinner, and no band", () => {
+    const view = viewFor("temperature");
+    const built = spec(view, align(view, answer, LABELS));
+    expect(built.series.at(-1)).toMatchObject({
+      label: "Temperature (model)", width: 1.5, dash: [6, 4], model: true, stroke: PALETTE[0],
+    });
+    expect(built.bands).toHaveLength(1);
+  });
+
+  it("stay points for a direction, without a dash", () => {
+    const wind = viewFor("wind");
+    const built = spec(wind, align(wind, series({
+      series: [
+        { metric: "wind.direction", sensor: null, name: null, unit: "deg", source: "station", t: [1], values: { circular: [170] } },
+        { metric: "wind.direction", sensor: null, name: null, unit: "deg", source: "model", t: [1], values: { circular: [350] } },
+      ],
+    }), { "wind.direction": "Wind direction" }));
+    expect(built.series.map((s) => s.label)).toEqual(["Wind direction", "Wind direction (model)"]);
+    expect(built.series[1]).toMatchObject({ style: "points", width: 0, dash: undefined, model: true });
+  });
+});
+
 describe("spec", () => {
   it("draws a band's edges as a filled band behind its line", () => {
     const view = viewFor("temperature");

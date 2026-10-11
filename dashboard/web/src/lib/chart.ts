@@ -86,6 +86,8 @@ export type Line = {
   axis: "left" | "right";
   /** Which line it is within its metric, for picking a colour. */
   index: number;
+  /** The weather model's line for the metric, drawn dashed in the metric's colour. */
+  model?: boolean;
   values: (number | null)[];
   /** The band's edges, for a band. */
   low?: (number | null)[];
@@ -105,6 +107,8 @@ function main(series: Series): string {
 /**
  * Align a view's series on one time column. Buckets a series lacks become gaps (null), so a
  * sensor that stopped reporting shows as a break rather than a line drawn across the silence.
+ * The weather model's series, when the answer has them, become lines of their own after the
+ * station's, plain lines however the metric is drawn.
  */
 export function align(view: View, answer: SeriesOut, labels: Record<string, string>): ChartData {
   const wanted = new Map(view.metrics.map((m) => [m.id, m]));
@@ -120,10 +124,11 @@ export function align(view: View, answer: SeriesOut, labels: Record<string, stri
     return out;
   };
   const counts = new Map<string, number>();
+  const measured = chosen.filter((s) => s.source !== "model");
   const several = new Set(
-    chosen.map((s) => s.metric).filter((m, i, all) => all.indexOf(m) !== i),
+    measured.map((s) => s.metric).filter((m, i, all) => all.indexOf(m) !== i),
   );
-  const lines = chosen.map((series) => {
+  const lines = measured.map((series) => {
     const how = wanted.get(series.metric)!;
     const index = counts.get(series.metric) ?? 0;
     counts.set(series.metric, index + 1);
@@ -148,6 +153,19 @@ export function align(view: View, answer: SeriesOut, labels: Record<string, stri
     }
     return line;
   });
+  for (const series of chosen.filter((s) => s.source === "model")) {
+    const how = wanted.get(series.metric)!;
+    lines.push({
+      metric: series.metric,
+      label: `${labels[series.metric] ?? series.metric} (model)`,
+      unit: series.unit,
+      style: how.style === "points" ? "points" : "line",
+      axis: how.axis,
+      index: 0,
+      model: true,
+      values: column(series, main(series)),
+    });
+  }
   return { times, lines };
 }
 
@@ -176,6 +194,9 @@ export type PlotSpec = {
     fill?: string;
     /** A band's edge, drawn only as the band's fill. */
     edge?: boolean;
+    /** The weather model's line: dashed, or hollow points, and drawn across its gaps. */
+    model?: boolean;
+    dash?: number[];
   }[];
   bands: { series: [number, number]; fill: string }[];
   axes: { scale: "left" | "right"; unit: string }[];
@@ -206,6 +227,19 @@ export function spec(view: View, chart: ChartData): PlotSpec {
       bands.push({ series: [series.length - 1, series.length], fill: `${stroke}33` });
     }
     data.push(line.values);
+    if (line.model) {
+      series.push({
+        label: line.label,
+        scale: line.axis,
+        stroke,
+        width: line.style === "points" ? 0 : 1.5,
+        style: line.style,
+        unit: line.unit,
+        model: true,
+        dash: line.style === "points" ? undefined : [6, 4],
+      });
+      continue;
+    }
     series.push({
       label: line.label,
       scale: line.axis,

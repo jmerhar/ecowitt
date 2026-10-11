@@ -1,10 +1,14 @@
 <script lang="ts">
-  /** The charts: a tab per subject, a range from a day to a year, fetched as either changes. */
+  /**
+   * The charts: a tab per subject, a range from a day to a year, fetched as either changes; and,
+   * for a station with a weather model, the model's lines beside its own on request.
+   */
   import type { Api, Meta, SeriesOut, UnitChoice } from "../lib/api";
   import { ApiError } from "../lib/api";
   import { align, VIEWS, viewFor } from "../lib/chart";
   import Chart from "./Chart.svelte";
   import { viewIcon } from "../lib/icons";
+  import type { WeatherModel } from "../lib/api";
 
   type Props = {
     api: Api;
@@ -16,6 +20,10 @@
     tick?: number;
     view: string;
     range: string;
+    /** The station's weather model, or null when it has none. */
+    weatherModel?: WeatherModel | null;
+    /** Whether the model's lines are shown, where the chart has any. */
+    model?: boolean;
   };
   let {
     api,
@@ -26,6 +34,8 @@
     tick = 0,
     view = $bindable(),
     range = $bindable(),
+    weatherModel = null,
+    model = $bindable(false),
   }: Props = $props();
 
   const RANGES: Record<string, string> = { "24h": "Day", "7d": "Week", "30d": "Month", "1y": "Year" };
@@ -38,14 +48,23 @@
 
   const current = $derived(viewFor(view));
   const labels = $derived(Object.fromEntries(meta.metrics.map((m) => [m.id, m.label])));
+  const modelled = $derived(new Set(meta.metrics.filter((m) => m.model).map((m) => m.id)));
+  /** Whether this chart can show the model: the station has one, and it has one of the metrics. */
+  const offersModel = $derived(
+    weatherModel !== null && current.metrics.some((m) => modelled.has(m.id)),
+  );
   const data = $derived(answer && answered === current.id ? align(current, answer, labels) : null);
 
   $effect(() => {
-    const wanted = { tick, station, view: current, range, units: $state.snapshot(units) };
+    const wanted = {
+      tick, station, view: current, range, units: $state.snapshot(units), model: model && offersModel,
+    };
     loading = true;
     let stale = false;
     api
-      .series(wanted.station, wanted.view.metrics.map((m) => m.id), wanted.range, wanted.units)
+      .series(
+        wanted.station, wanted.view.metrics.map((m) => m.id), wanted.range, wanted.units, wanted.model,
+      )
       .then((found) => {
         if (stale) return;
         answer = found;
@@ -74,10 +93,19 @@
           <Icon size={14} aria-hidden="true" /> {v.label}</button>
       {/each}
     </div>
-    <div class="tabs" role="tablist" aria-label="Range">
-      {#each meta.ranges as r (r)}
-        <button role="tab" aria-selected={r === range} onclick={() => (range = r)}>{RANGES[r] ?? r}</button>
-      {/each}
+    <div class="controls">
+      {#if offersModel && weatherModel}
+        <button
+          class="toggle"
+          aria-pressed={model}
+          title="The weather model's values for this location, dashed: {weatherModel.label}, from Open-Meteo"
+          onclick={() => (model = !model)}>Model</button>
+      {/if}
+      <div class="tabs" role="tablist" aria-label="Range">
+        {#each meta.ranges as r (r)}
+          <button role="tab" aria-selected={r === range} onclick={() => (range = r)}>{RANGES[r] ?? r}</button>
+        {/each}
+      </div>
     </div>
   </div>
   {#if error}
@@ -101,5 +129,27 @@
   }
   .loading {
     opacity: 0.6;
+  }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  /* Dashed, like the lines it adds. */
+  .toggle {
+    font: inherit;
+    font-size: 0.9rem;
+    color: var(--muted);
+    background: transparent;
+    border: 1px dashed var(--line);
+    border-radius: 0.3rem;
+    padding: 0.15rem 0.55rem;
+    cursor: pointer;
+  }
+  .toggle[aria-pressed="true"] {
+    color: var(--fg);
+    border-color: var(--muted);
+    background: var(--bg);
   }
 </style>

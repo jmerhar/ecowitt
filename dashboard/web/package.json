@@ -24,6 +24,7 @@
     "vitest": "5.0.2"
   },
   "dependencies": {
+    "@bybas/weather-icons": "2.0.0",
     "@lucide/svelte": "1.48.0",
     "uplot": "1.6.32"
   }

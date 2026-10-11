@@ -10,6 +10,7 @@ import AiringCard from "./AiringCard.svelte";
 import Sensors from "./Sensors.svelte";
 import UnitsMenu from "./UnitsMenu.svelte";
 import { META, now, SYMBOLS, UNITS } from "../testing";
+import { skyIcon } from "../lib/sky";
 
 const tz = "Europe/Lisbon";
 
@@ -41,6 +42,40 @@ describe("NowCard", () => {
   it("shows no summary when it said only the temperature", () => {
     render(NowCard, { now: now({ summary: "18 °C." }), symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
     expect(document.querySelector(".summary")).toBeNull();
+  });
+
+  it("shows the sky from the weather model, and leaves it out of the summary", () => {
+    render(NowCard, {
+      now: now({
+        sky: { code: 3, description: "Overcast", is_day: true, cloud_cover: 95, time: "2026-10-10T13:45:00Z" },
+        summary: "Overcast. 18 °C. Gentle breeze from the SE.",
+      }),
+      symbols: SYMBOLS, timezone: tz, onselect: vi.fn(),
+    });
+    const sky = screen.getByText("Overcast");
+    expect(sky.closest(".sky")).toHaveAttribute("title", "From the weather model, for 14:45");
+    expect(sky.closest(".sky")!.querySelector("img")!.getAttribute("src")).toBe(skyIcon(3, true));
+    expect(screen.getByText("Gentle breeze from the SE.")).toBeInTheDocument();
+    expect(screen.queryByText(/Overcast\. /)).not.toBeInTheDocument();
+  });
+
+  it("shows the night's sky at night, and no sky without a model", () => {
+    const night = { code: 0, description: "Clear", is_day: false, cloud_cover: 0, time: "2026-10-10T22:00:00Z" };
+    const first = render(NowCard, { now: now({ sky: night, summary: "Clear. 18 °C." }), symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
+    expect(document.querySelector(".sky img")!.getAttribute("src")).toBe(skyIcon(0, false));
+    expect(document.querySelector(".summary")).toBeNull();
+    first.unmount();
+    render(NowCard, { now: now(), symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
+    expect(document.querySelector(".sky")).toBeNull();
+  });
+
+  it("keeps the summary whole when it has no temperature to leave out", () => {
+    const base = now();
+    render(NowCard, {
+      now: now({ outdoor: { ...base.outdoor!, temperature: null }, summary: "Gentle breeze from the SE." }),
+      symbols: SYMBOLS, timezone: tz, onselect: vi.fn(),
+    });
+    expect(screen.getByText("Gentle breeze from the SE.")).toBeInTheDocument();
   });
 
   it("shows only the summary without an outdoor sensor", () => {
