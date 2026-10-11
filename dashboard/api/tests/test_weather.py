@@ -145,3 +145,6 @@ def test_the_thresholds_match_the_alert_rules() -> None:
         f"$A < {weather.CLOSING_DEWPOINT_DELTA_C:g} && $B >= {weather.AIRING_HUMIDITY_PCT:g}"
     )
     assert threshold("Sensor not updating") == weather.STALE_AFTER_S
+    silent = next(d for d in rules["Sensor not updating"]["data"] if d["refId"] == "A")
+    # The sensors the dashboard judges too (service._judged): the outdoor one and the rooms.
+    assert "d.sensor IN ('indoor', 'outdoor') OR d.sensor LIKE 'ch%'" in silent["model"]["rawSql"]

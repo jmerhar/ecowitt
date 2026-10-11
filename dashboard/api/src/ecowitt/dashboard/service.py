@@ -656,10 +656,20 @@ def _health(latest: _Latest, info: StationInfo) -> list[models.SensorHealth]:
                 name=_name(info, span.tags, span.name) or sensor,
                 battery_low=None if low is None else bool(low),
                 unchanged_s=seconds,
-                updating=seconds is None or seconds < weather.STALE_AFTER_S,
+                updating=not _judged(sensor) or seconds is None or seconds < weather.STALE_AFTER_S,
             )
         )
     return found
+
+
+def _judged(sensor: str) -> bool:
+    """Whether a sensor's unchanged readings mean it has stopped, as Sensor not updating judges.
+
+    Temperature and humidity always drift. Rain totals hold still through a dry week and light
+    through every night, and their sensors report with the outdoor one -- which is judged, so a
+    silent array still shows.
+    """
+    return sensor == "outdoor" or ROOM_SENSOR.fullmatch(sensor) is not None
 
 
 def _summary(now: models.Now, units: Units) -> str:
