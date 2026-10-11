@@ -120,10 +120,19 @@
         <input id="tz-{{ loop.index }}" name="timezone" list="zones" autocomplete="off"
                value="{{ value(entry, 'timezone') }}"
                placeholder="{{ item.derived_zone or 'from the coordinates' }}"></div>
+      {% set chosen_model = value(entry, 'weather_model') %}
+      <div><label for="model-{{ loop.index }}">Weather model</label>
+        <select id="model-{{ loop.index }}" name="weather_model">
+        {% for code, label in models.items() %}<option value="{{ code }}" {% if code == chosen_model %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        {% if chosen_model not in models and chosen_model != model_off %}<option value="{{ chosen_model }}" selected>{{ chosen_model }}</option>{% endif %}
+          <option value="{{ model_off }}" {% if chosen_model == model_off %}selected{% endif %}>Off</option>
+        </select></div>
     </div>
-    <p class="muted">Coordinates are optional. With them the altitude can be looked up, and absolute
-      pressure is checked against a weather model; both send the coordinates to a public service
-      (OpenTopoData or Open-Elevation, and Open-Meteo). The time zone, which decides where the
+    <p class="muted">Coordinates are optional. With them the altitude can be looked up, and a
+      weather model's values for the location are stored beside the station's every 15 minutes
+      (from Open-Meteo) and absolute pressure is checked against them; both send the coordinates
+      to a public service (OpenTopoData or Open-Elevation, and Open-Meteo). Turning the weather
+      model off also turns off that pressure check. The time zone, which decides where the
       station's day begins on the dashboard, is taken from the coordinates offline unless you
       enter one.</p>
     <button class="secondary" type="button" data-geolocate data-lat="lat-{{ loop.index }}"

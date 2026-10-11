@@ -214,6 +214,15 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
         metadata = MetadataPublisher(delivery, state=state)
         store.subscribe(metadata.update)
         handler = station_handler
+        model = ModelFeed(
+            lambda: store.stations,
+            delivery,
+            calibration,
+            lookup_client,
+            url=settings.open_meteo_url,
+            interval_seconds=settings.model_interval_seconds,
+            state=state,
+        )
         context = AdminContext(
             settings,
             state,
@@ -225,16 +234,7 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
             spool=spool,
             database=writer,
             http=lookup_client,
-        )
-        model = ModelFeed(
-            lambda: store.stations,
-            delivery,
-            calibration,
-            lookup_client,
-            url=settings.open_meteo_url,
-            model=settings.open_meteo_model,
-            interval_seconds=settings.model_interval_seconds,
-            state=state,
+            model=model,
         )
         store.subscribe(lambda _: model.wake())
         calibration.on_step = model.wake

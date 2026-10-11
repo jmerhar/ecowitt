@@ -64,8 +64,9 @@ collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init_
                       per-station preferences
     calibration.py  the relative, absolute-step and absolute-reference pressure checks
     lookups.py    elevation and a weather model's values from public services
-    modelfeed.py  a weather model's values for located stations, every 15 min: written to the
-                  `model` table, and the reference the absolute-pressure check reads
+    modelfeed.py  each located station's weather model (chosen on the setup page), every 15 min:
+                  written to the `model` table, kept for the status page's comparison, and the
+                  reference the absolute-pressure check reads
     timezones.py  a station's time zone from its coordinates (offline, tzfpy), and validation
 
   delivery/       getting rows into the database (through a core Store)

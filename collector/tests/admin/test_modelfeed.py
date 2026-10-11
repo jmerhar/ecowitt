@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import httpx2
@@ -86,7 +87,6 @@ def feed(
         calibration or CalibrationMonitor(),
         client,
         url=url,
-        model="best_match",
         interval_seconds=60,
         state=state,
         clock=clock or Clock(NOW),
@@ -110,9 +110,10 @@ def starts(stub: StubInflux) -> list[int]:
 async def test_rows_land_in_the_model_table_in_the_operators_units() -> None:
     sink, calibration, state = Sink(), CalibrationMonitor(), State()
     async with serving(StubInflux(status=200, reply=REPLY)) as stub, httpx2.AsyncClient() as client:
-        answered = await feed(
+        model = feed(
             stub.url, client, [HOME, CABIN], sink=sink, calibration=calibration, state=state
-        ).refresh()
+        )
+        answered = await model.refresh()
 
     # Only the located station is asked about, and the quarter ahead of the clock is not kept.
     assert answered == 1
@@ -146,6 +147,8 @@ async def test_rows_land_in_the_model_table_in_the_operators_units() -> None:
     ]
     # The pressure check gets the latest surface pressure, at the time it is valid for.
     assert calibration._tracks["Home"].reference == (NOON + 900, 1009.1)
+    # The status page compares the latest row with the readings.
+    assert model.latest == {"Home": sink.rows[-1]}
     assert state.last_model_ok_at is not None
     assert state.model_failures == 0
 
@@ -162,8 +165,9 @@ async def test_a_station_is_fetched_back_a_week_then_from_where_it_left_off() ->
     assert starts(stub) == [HISTORY_SECONDS, 0]
 
 
-async def test_new_coordinates_or_altitude_fetch_back_a_week_again() -> None:
+async def test_new_coordinates_altitude_or_model_fetch_back_a_week_again() -> None:
     moved = Station("Home", Preferences(altitude_m=200.0), "K", latitude=45.0, longitude=7.0)
+    pinned = replace(moved, weather_model="icon_seamless")
     stations = [HOME]
     async with serving(StubInflux(status=200, reply=REPLY)) as stub, httpx2.AsyncClient() as client:
         config = lambda: StationConfig(tuple(stations))  # noqa: E731
@@ -173,15 +177,39 @@ async def test_new_coordinates_or_altitude_fetch_back_a_week_again() -> None:
             CalibrationMonitor(),
             client,
             url=stub.url,
-            model="best_match",
             interval_seconds=60,
             clock=Clock(NOW),
         )
         await model.refresh()
         stations[0] = moved
         await model.refresh()
+        stations[0] = pinned
+        await model.refresh()
 
-    assert starts(stub) == [HISTORY_SECONDS, HISTORY_SECONDS]
+    assert starts(stub) == [HISTORY_SECONDS] * 3
+    assert [r.query["models"] for r in stub.requests] == ["best_match"] * 2 + ["icon_seamless"]
+    assert dict(model.latest["Home"].tags)["model"] == "icon_seamless"
+
+
+async def test_a_station_with_the_model_off_is_not_fetched_and_its_row_is_forgotten() -> None:
+    stations = [HOME]
+    async with serving(StubInflux(status=200, reply=REPLY)) as stub, httpx2.AsyncClient() as client:
+        model = ModelFeed(
+            lambda: StationConfig(tuple(stations)),
+            Sink(),
+            CalibrationMonitor(),
+            client,
+            url=stub.url,
+            interval_seconds=60,
+            clock=Clock(NOW),
+        )
+        await model.refresh()
+        assert "Home" in model.latest
+        stations[0] = replace(HOME, weather_model="off")
+        assert await model.refresh() == 0
+
+    assert len(stub.requests) == 1
+    assert model.latest == {}
 
 
 async def test_a_failed_fetch_stores_nothing_and_the_next_one_fills_the_gap() -> None:
@@ -197,6 +225,17 @@ async def test_a_failed_fetch_stores_nothing_and_the_next_one_fills_the_gap() ->
     assert state.last_model_ok_at is None
     # Nothing answered, so nothing is assumed fetched: each attempt asks for the whole week.
     assert starts(stub) == [HISTORY_SECONDS, HISTORY_SECONDS]
+
+
+async def test_an_answer_with_nothing_yet_happened_keeps_the_last_row() -> None:
+    reply = json.dumps({"minutely_15": {"time": [NOW + 900], "temperature_2m": [18.4]}})
+    sink = Sink()
+    async with serving(StubInflux(status=200, reply=reply)) as stub, httpx2.AsyncClient() as client:
+        model = feed(stub.url, client, [HOME], sink=sink)
+        assert await model.refresh() == 1
+
+    assert sink.rows == []
+    assert model.latest == {}
 
 
 async def test_an_answer_without_pressure_leaves_the_check_alone() -> None:
@@ -221,7 +260,6 @@ async def test_run_survives_an_unexpected_error_and_keeps_its_cycle(
             CalibrationMonitor(),
             client,
             url=DEAD,
-            model="best_match",
             interval_seconds=0.01,
         )
         task = asyncio.create_task(model.run())
@@ -252,7 +290,6 @@ async def test_waking_refreshes_without_waiting_out_the_interval() -> None:
             CalibrationMonitor(),
             client,
             url=DEAD,
-            model="best_match",
             interval_seconds=3600,
         )
         task = asyncio.create_task(model.run())

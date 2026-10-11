@@ -48,7 +48,7 @@
       <td>{% if status.settings.published %}last sent to the database {{ status.settings.seconds_since_last|ago }}
         {%- else %}<span class="muted">not sent since this server started</span>{% endif %}</td></tr>
     <tr><td class="muted">Weather model</td>
-      <td>{% if status.model.seconds_since_last_ok is not none or status.model.failures %}Open-Meteo ({{ status.model.name }}): last fetched {{ status.model.seconds_since_last_ok|ago }}
+      <td>{% if status.model.seconds_since_last_ok is not none or status.model.failures %}Open-Meteo: last fetched {{ status.model.seconds_since_last_ok|ago }}
         {%- if status.model.failures %}, <span class="bad">{{ status.model.failures }} failed since</span>{% endif %}
         {%- else %}<span class="muted">nothing fetched yet; stations with coordinates are</span>{% endif %}</td></tr>
     <tr><td class="muted">Uptime</td><td>{{ status.uptime_seconds|duration }}</td></tr>
@@ -156,6 +156,24 @@
     {% set _ = parts.append(label ~ " " ~ "%.*f"|format(digits, p[key]) ~ " " ~ unit) %}
   {% endfor %}
   <p>Pressure: {{ parts|join(", ") }}</p>
+  {% endif %}
+
+  {% if station.model %}
+  {% set m = station.model %}
+  <h3>Weather model</h3>
+  <p class="muted">{{ m.label }}{% if m.label != m.model %} ({{ m.model }}){% endif %}, from Open-Meteo,
+    for {{ m.age_seconds|ago }}. The last column is the station's reading minus the model's.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th></th><th class="num">Model</th><th class="num">Station − model</th></tr></thead>
+    <tbody>
+    {% for item in m["items"] %}
+      <tr><td class="muted">{{ item.label }}</td><td class="num">{{ item.text }}</td>
+        <td class="num">{% if item.difference %}{{ item.difference }}{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
   {% endif %}
 
   {% if station.rows %}

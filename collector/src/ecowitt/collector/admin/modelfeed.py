@@ -1,12 +1,14 @@
 """Store a weather model's view of every station with coordinates, and check pressure against it.
 
+Each station names its model on the setup page (`best_match` unless changed), or turns it off.
 Every cycle fetches Open-Meteo's 15-minute values since the last fetch that answered and writes
 them to the `model` table through the same delivery as readings. A station seen for the first
-time -- at startup, or once its coordinates, altitude or the model change -- is fetched back
+time -- at startup, or once its coordinates, altitude or model change -- is fetched back
 `HISTORY_SECONDS`, which gives a new installation its comparison from the start and fills any
 gap an outage left. Fetching a stretch again only rewrites the same points.
 
-The absolute-pressure check reads the latest surface pressure from the same fetch. A
+The absolute-pressure check reads the latest surface pressure from the same fetch, and the
+status page the latest row, which is kept for it. A
 configuration change wakes the cycle early, so coordinates saved on the setup page are fetched
 within moments rather than at the next cycle.
 """
@@ -30,6 +32,7 @@ from ecowitt.collector.ingest.points import render
 from ecowitt.collector.state import State
 from ecowitt.core import weathermodel
 from ecowitt.core.readings import Reading
+from ecowitt.core.store.base import Row
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +62,6 @@ class ModelFeed:
         client: httpx2.AsyncClient,
         *,
         url: str,
-        model: str,
         interval_seconds: float,
         state: State | None = None,
         clock: Callable[[], float] = time.time,
@@ -69,11 +71,12 @@ class ModelFeed:
         self._calibration = calibration
         self._client = client
         self._url = url
-        self._model = model
         self._interval = interval_seconds
         self._state = state
         self._clock = clock
         self._fetched: dict[str, _Fetched] = {}
+        #: Each station's most recent model row, in its stored units.
+        self.latest: dict[str, Row] = {}
         self._wake = asyncio.Event()
 
     def wake(self) -> None:
@@ -81,17 +84,21 @@ class ModelFeed:
         self._wake.set()
 
     async def refresh(self) -> int:
-        """Fetch once for every located station, returning how many answered."""
+        """Fetch once for every station with a model, returning how many answered."""
         answered = 0
-        for station in self._stations().stations:
-            if station.located and await self._refresh(station):
+        stations = self._stations().stations
+        with_model = {s.name for s in stations if s.model is not None}
+        for name in set(self.latest) - with_model:
+            del self.latest[name]
+        for station in stations:
+            if station.model is not None and await self._refresh(station, station.model):
                 answered += 1
         return answered
 
-    async def _refresh(self, station: Station) -> bool:
+    async def _refresh(self, station: Station, model: str) -> bool:
         """Fetch and store one station's values since its last fetch; whether it answered."""
         end = int(self._clock()) // QUARTER_SECONDS * QUARTER_SECONDS
-        place = (station.latitude, station.longitude, station.preferences.altitude_m, self._model)
+        place = (station.latitude, station.longitude, station.preferences.altitude_m, model)
         last = self._fetched.get(station.name)
         start = end - HISTORY_SECONDS
         if last is not None and last.place == place:
@@ -103,7 +110,7 @@ class ModelFeed:
             station.preferences.altitude_m,
             start=start,
             end=end,
-            model=self._model,
+            model=model,
             open_meteo_url=self._url,
         )
         if self._state is not None:
@@ -116,13 +123,15 @@ class ModelFeed:
             row
             for sample in samples
             for row in render(
-                self._readings(sample),
+                self._readings(sample, model),
                 station.preferences,
                 station=station.name,
                 timestamp=sample.timestamp,
             )
         ]
         await self._sink.submit(rows)
+        if rows:
+            self.latest[station.name] = rows[-1]
         pressures = [s for s in samples if "surface_pressure" in s.values]
         if pressures:
             latest = pressures[-1]
@@ -132,9 +141,10 @@ class ModelFeed:
         self._fetched[station.name] = _Fetched(place, end)
         return True
 
-    def _readings(self, sample: lookups.ModelSample) -> list[Reading]:
+    @staticmethod
+    def _readings(sample: lookups.ModelSample, model: str) -> list[Reading]:
         """One sample's values as readings of the `model` table."""
-        tags = (("model", self._model), ("source", weathermodel.SOURCE))
+        tags = (("model", model), ("source", weathermodel.SOURCE))
         readings = []
         for name, value in sample.values.items():
             field, kind = weathermodel.VARIABLES[name]

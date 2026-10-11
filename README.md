@@ -163,10 +163,15 @@ altitude or model; after that each fetch picks up where the last one that answer
 an outage of up to a week leaves no gap. The free service allows 10,000 calls a day for
 non-commercial use; a station costs about 140.
 
-`OPEN_METEO_MODEL` chooses the model. The default, `best_match`, takes the best Open-Meteo has
-for the location; naming one (`icon_seamless`, `ecmwf_ifs`, `meteofrance_seamless`...) keeps
-the reference from changing character when that choice does. Rows are tagged with the model, so
-changing it starts new series.
+Each station's *Weather model* on the setup page chooses the model, or turns it off (which also
+turns off the absolute-pressure check). The default, *Best for this location* (`best_match`),
+takes the best Open-Meteo has for the location; naming one keeps the reference from changing
+character when that choice does. Any other model Open-Meteo serves can be named as
+`weather_model` in `config.yaml`. Rows are tagged with the model, so changing it starts new
+series.
+
+The status page shows each station's latest model values beside its own readings, with the
+difference: a vane pointing the wrong way or a thermometer in the sun stands out there first.
 
 ## Two ports, and why it matters
 
@@ -383,7 +388,6 @@ optional:
 | `HEARTBEAT_URL` / `HEARTBEAT_URL_FILE` | — | a push monitor's URL, called after readings are written; see below |
 | `HEARTBEAT_INTERVAL_SECONDS` | `60` | the least time between two heartbeat calls |
 | `LOG_LEVEL` | `INFO` | |
-| `OPEN_METEO_MODEL` | `best_match` | the [weather model](#weather-model) stored beside each located station |
 | `MODEL_INTERVAL_SECONDS` | `900` | how often a located station's model values are fetched |
 | `OPEN_METEO_URL`, `OPENTOPODATA_URL`, `OPEN_ELEVATION_URL` | the public services | the weather model and elevation lookups, for a mirror or an air-gapped host |
 

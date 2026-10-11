@@ -10,8 +10,9 @@ environment variables. It is plain YAML so it can be written by hand:
       - name: Home
         passkey: 0123456789ABCDEF0123456789ABCDEF
         altitude_m: 180
-        latitude: 52.37        # optional; enables the absolute-pressure check
+        latitude: 52.37        # optional; enables the weather model and absolute-pressure check
         longitude: 4.90
+        weather_model: best_match   # or off, or any model Open-Meteo serves
         sensors:
           indoor: Lounge
           ch1: Bathroom
@@ -43,6 +44,7 @@ from pydantic import (
 )
 
 from ecowitt.collector.admin import timezones
+from ecowitt.core import weathermodel
 from ecowitt.core.preferences import Preferences
 from ecowitt.core.store import settings
 from ecowitt.core.units import Units
@@ -69,6 +71,8 @@ class StationEntry(BaseModel):
     longitude: float | None = Field(default=None, ge=-180, le=180)
     #: An IANA zone name. Left out, it is taken from the coordinates when there are some.
     timezone: str | None = None
+    #: The Open-Meteo model stored beside the readings while there are coordinates, or `off`.
+    weather_model: str = Field(default=weathermodel.DEFAULT_MODEL, pattern=r"^[a-z0-9_]{1,64}$")
     sensors: dict[str, str] = Field(default_factory=dict)
     #: Calibration warnings the operator has acknowledged, by kind, with the error at the time.
     #: A warning stays hidden only while the error stays close to that value.
@@ -157,6 +161,7 @@ class Station:
     #: The configured zone, or the one the coordinates fall in, or None.
     timezone: str | None = None
     dismissed: dict[str, float] = field(default_factory=dict)
+    weather_model: str = weathermodel.DEFAULT_MODEL
 
     def matches(self, passkey: str) -> bool:
         """Whether a report's PASSKEY is this station's, compared in constant time."""
@@ -166,6 +171,13 @@ class Station:
     def located(self) -> bool:
         """Whether both coordinates are known."""
         return self.latitude is not None and self.longitude is not None
+
+    @property
+    def model(self) -> str | None:
+        """The weather model fetched for this station, or None when it has none."""
+        return (
+            self.weather_model if self.located and self.weather_model != weathermodel.OFF else None
+        )
 
 
 @dataclass(frozen=True)
@@ -252,6 +264,7 @@ def build(document: ConfigDocument) -> StationConfig:
                 longitude=entry.longitude,
                 timezone=entry.timezone or timezones.zone_at(entry.latitude, entry.longitude),
                 dismissed=dict(entry.dismissed),
+                weather_model=entry.weather_model,
             )
             for entry in document.stations
         )

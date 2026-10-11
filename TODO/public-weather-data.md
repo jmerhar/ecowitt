@@ -6,8 +6,8 @@ model*). What is left is showing it.
 
 ## Decided
 
-- **Model**: Open-Meteo's `best_match`, overridable with `OPEN_METEO_MODEL` and recorded in a
-  `model` tag. Models disagree by several degrees and on the weather code at the same place, so
+- **Model**: chosen per station on the setup page, Open-Meteo's `best_match` unless changed, or
+  off; recorded in a `model` tag. The status page shows the latest values beside the station's. Models disagree by several degrees and on the weather code at the same place, so
   the comparison catches gross faults (a vane pointing the wrong way, a thermometer in the sun, a
   gauge that has stopped), and the most local model is the best reference for that.
 - **Altitude**: Open-Meteo's `elevation` parameter adjusts temperature and pressure to the

@@ -32,3 +32,15 @@ def test_stored_names_follow_the_station_tables_in_the_default_units() -> None:
         "weather_code",
         "is_day",
     }
+
+
+def test_weather_codes_read_as_words() -> None:
+    assert weathermodel.describe(3) == "Overcast"
+    assert weathermodel.describe(95) == "Thunderstorm"
+    # A code added to the WMO table later is still shown, as a number.
+    assert weathermodel.describe(42) == "Weather code 42"
+
+
+def test_the_default_model_is_one_the_setup_page_offers() -> None:
+    assert weathermodel.DEFAULT_MODEL in weathermodel.MODELS
+    assert weathermodel.OFF not in weathermodel.MODELS

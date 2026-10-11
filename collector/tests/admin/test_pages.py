@@ -9,6 +9,7 @@ import http.server
 import json
 import re
 import threading
+import time
 import urllib.parse
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -21,6 +22,7 @@ from fastapi.testclient import TestClient
 from ecowitt.collector.admin import app as admin
 from ecowitt.collector.admin.calibration import CalibrationMonitor
 from ecowitt.collector.admin.configstore import ConfigStore
+from ecowitt.collector.admin.modelfeed import ModelFeed
 from ecowitt.collector.admin.stationconfig import ConfigDocument, StationEntry, load_document
 from ecowitt.collector.config import Settings
 from ecowitt.collector.ingest.handler import StationHandler
@@ -557,6 +559,167 @@ class TestUnitsAndLogin:
         assert rig.client.get("/setup").status_code == 200
 
 
+def with_model(rig: Rig, fields: dict[str, object], *, age: int = 600) -> None:
+    """Give the status page a model feed whose latest row for Home holds `fields`."""
+    feed = ModelFeed(
+        lambda: rig.store.stations,
+        Sink(),
+        rig.calibration,
+        None,  # type: ignore[arg-type] - never fetches
+        url="",
+        interval_seconds=60,
+    )
+    station = rig.store.stations.get("Home")
+    model = station.weather_model if station else "best_match"
+    tags = (("model", model), ("source", "open_meteo"), ("station", "Home"))
+    feed.latest["Home"] = Row("model", tags, int(time.time()) - age, fields)
+    rig.context.model = feed
+
+
+def locate(rig: Rig, weather_model: str = "best_match") -> None:
+    """Give the adopted station Home coordinates, and a weather model."""
+    response = rig.post(
+        "/setup/station",
+        {
+            "original": "Home",
+            "name": "Home",
+            "latitude": "45.0",
+            "longitude": "7.0",
+            "weather_model": weather_model,
+        },
+    )
+    assert response.status_code == 303, response.text
+
+
+class TestWeatherModel:
+    async def test_the_model_is_shown_beside_the_stations_readings(self, rig: Rig) -> None:
+        await rig.report()
+        adopt(rig)
+        await rig.report()
+        locate(rig)
+        own = next(
+            p.fields["abs_hpa"] for p in rig.handler.latest["Home"].points if p.table == "pressure"
+        )
+        with_model(
+            rig,
+            {
+                "temp_c": 18.4,
+                "dewpoint_c": 10.0,
+                "abs_hpa": own - 1.25,
+                "weather_code": 3,
+                "cloud_cover_pct": 90.0,
+                "precip_15m_mm": 0.2,
+                "is_day": True,
+            },
+        )
+
+        page = rig.client.get("/").text
+        view = rig.client.get("/api/readings").json()["stations"][0]["model"]
+
+        assert "<h3>Weather model</h3>" in page
+        assert "Best for this location (best_match), from Open-Meteo,\n    for 10 min ago" in page
+        assert view["items"] == [
+            {"label": "Sky", "text": "Overcast", "difference": None},
+            # No outdoor sensor on this console, so the temperature has nothing to compare; nor
+            # has the dew point, though the indoor sensor's is stored under the same name.
+            {"label": "Temperature", "text": "18.4 °C", "difference": None},
+            {"label": "Dew point", "text": "10.0 °C", "difference": None},
+            {
+                "label": "Absolute pressure",
+                "text": f"{own - 1.25:.1f} hPa",
+                "difference": "+1.2 hPa",
+            },
+            {"label": "Cloud cover", "text": "90%", "difference": None},
+            {"label": "Precipitation, past 15 min", "text": "0.2 mm", "difference": None},
+        ]
+        assert "+1.2 hPa" in page
+
+    async def test_a_model_named_by_hand_is_shown_by_its_name(self, rig: Rig) -> None:
+        await rig.report()
+        adopt(rig)
+        locate(rig, "knmi_seamless")
+        with_model(rig, {"weather_code": 99})
+
+        page = rig.client.get("/").text
+
+        assert "knmi_seamless, from Open-Meteo" in page
+        assert "(knmi_seamless)" not in page
+        assert "Thunderstorm with heavy hail" in page
+
+    async def test_without_a_weather_code_there_is_no_sky(self, rig: Rig) -> None:
+        await rig.report()
+        adopt(rig)
+        locate(rig)
+        with_model(rig, {"temp_c": 18.4})
+
+        items = rig.client.get("/api/readings").json()["stations"][0]["model"]["items"]
+
+        assert [item["label"] for item in items] == ["Temperature"]
+
+    async def test_no_model_no_box(self, rig: Rig) -> None:
+        await rig.report()
+        adopt(rig)
+        locate(rig, "off")
+        with_model(rig, {"temp_c": 18.4})
+
+        assert "<h3>Weather model</h3>" not in rig.client.get("/").text
+        assert rig.client.get("/api/readings").json()["stations"][0]["model"] is None
+
+    def test_differences_are_signed_in_the_fields_unit(self) -> None:
+        assert admin._difference("temp_c", -0.04) == "-0.0 °C"
+        assert admin._difference("humidity_pct", 7.0) == "+7%"
+        assert admin._difference("abs_inhg", 0.031) == "+0.03 inHg"
+        assert admin._difference("uv_index", 1.25) == "+1.2"
+        # A vane reading 10° against a model's 350° is 20° clockwise of it, not 340° anticlockwise.
+        assert admin._difference("dir_deg", 10.0 - 350.0) == "+20°"
+        assert admin._difference("dir_deg", 350.0 - 10.0) == "-20°"
+
+    async def test_setup_offers_the_models_and_off(self, rig: Rig) -> None:
+        await rig.report()
+        adopt(rig)
+
+        page = rig.client.get("/setup").text
+
+        assert '<option value="best_match" selected>Best for this location</option>' in page
+        assert '<option value="ecmwf_ifs" >ECMWF IFS' in page
+        assert '<option value="off" >Off</option>' in page
+        saved = load_document(rig.context.settings.config_file).stations[0]
+        assert saved.weather_model == "best_match"
+
+    async def test_setup_saves_the_choice_and_keeps_one_named_by_hand(self, rig: Rig) -> None:
+        await rig.report()
+        adopt(rig)
+        locate(rig, "knmi_seamless")
+
+        page = rig.client.get("/setup").text
+        saved = load_document(rig.context.settings.config_file).stations[0]
+
+        assert saved.weather_model == "knmi_seamless"
+        assert '<option value="knmi_seamless" selected>knmi_seamless</option>' in page
+
+    async def test_a_save_without_the_field_keeps_the_choice(self, rig: Rig) -> None:
+        await rig.report()
+        adopt(rig)
+        locate(rig, "off")
+
+        response = rig.post("/setup/station", {"original": "Home", "name": "Home"})
+
+        assert response.status_code == 303
+        assert load_document(rig.context.settings.config_file).stations[0].weather_model == "off"
+
+    async def test_a_malformed_model_name_is_refused(self, rig: Rig) -> None:
+        await rig.report()
+        adopt(rig)
+
+        response = rig.post(
+            "/setup/station", {"original": "Home", "name": "Home", "weather_model": "Bad name!"}
+        )
+
+        assert response.status_code == 400
+        saved = load_document(rig.context.settings.config_file).stations[0]
+        assert saved.weather_model == "best_match"
+
+
 class TestStatus:
     async def test_a_station_with_readings_and_warnings(self, rig: Rig) -> None:
         await rig.report()
@@ -804,10 +967,9 @@ class TestStatus:
             "failures": 1,
         }
         assert status["settings"]["published"] == 1
-        assert "Open-Meteo (best_match): last fetched 0 s ago" in page
+        assert "Open-Meteo: last fetched 0 s ago" in page
         assert '<span class="bad">1 failed since</span>' in page
         assert status["model"] == {
-            "name": "best_match",
             "seconds_since_last_ok": 0.0,
             "failures": 1,
         }

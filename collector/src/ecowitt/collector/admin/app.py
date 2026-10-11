@@ -31,9 +31,11 @@ from starlette.responses import PlainTextResponse, RedirectResponse, Response
 from ecowitt.collector.admin import auth, lookups, timezones
 from ecowitt.collector.admin.calibration import CalibrationMonitor
 from ecowitt.collector.admin.configstore import ConfigStore
+from ecowitt.collector.admin.modelfeed import ModelFeed
 from ecowitt.collector.admin.stationconfig import (
     AdminLogin,
     ConfigDocument,
+    Station,
     StationEntry,
     StoreEntry,
 )
@@ -44,6 +46,7 @@ from ecowitt.collector.http import BodyTooLarge, read_capped_body
 from ecowitt.collector.ingest.handler import StationHandler
 from ecowitt.collector.ingest.pending import PendingStations
 from ecowitt.collector.state import State
+from ecowitt.core import weathermodel
 from ecowitt.core.ratelimit import RateLimiter
 from ecowitt.core.store import settings as store_settings
 from ecowitt.core.units import Units
@@ -162,6 +165,9 @@ SHOWN_ELSEWHERE = frozenset(
 #: `mm_h`, never `mm`, and the order of this list does not matter.
 UNITS: list[tuple[str, str, int]] = [
     ("mm_h", "mm/h", 1),
+    ("hpa", "hPa", 1),
+    ("inhg", "inHg", 2),
+    ("mmhg", "mmHg", 1),
     ("in_h", "in/h", 2),
     ("kmh", "km/h", 1),
     ("mph", "mph", 1),
@@ -219,6 +225,8 @@ class AdminContext:
     #: The database writes go to; None for processes run without one.
     database: ConfiguredStore | None = None
     http: httpx2.AsyncClient | None = None
+    #: The weather model feed, whose latest rows the status page compares with the readings.
+    model: ModelFeed | None = None
     #: Station names to report when there is no store, for processes run without one.
     stations: list[str] = field(default_factory=list)
 
@@ -452,7 +460,6 @@ def _status(context: AdminContext) -> dict[str, object]:
             "seconds_since_last": _rounded(state.seconds_since_last_settings),
         },
         "model": {
-            "name": settings.open_meteo_model,
             "seconds_since_last_ok": _rounded(state.seconds_since_last_model),
             "failures": state.model_failures,
         },
@@ -517,6 +524,7 @@ def _station_view(context: AdminContext, name: str) -> dict[str, object]:
         "pressure": _pressure(latest.points) if latest else {},
         "warnings": [w.__dict__ for w in warnings],
         "console": _console(latest.points) if latest else {},
+        "model": _model_view(context, station, latest.points if latest else []),
         "unmapped": sorted(k for p in latest.points if p.table == "unmapped" for k in p.fields)
         if latest
         else [],
@@ -528,6 +536,81 @@ def _station_view(context: AdminContext, name: str) -> dict[str, object]:
     }
     view["overdue"] = _overdue(view)
     return view
+
+
+#: What the status page compares between a station and its weather model: the model's base field,
+#: a label, and the station table (and sensor) holding the same field.
+MODEL_COMPARED: list[tuple[str, str, str, str | None]] = [
+    ("temp", "Temperature", "outdoor", "outdoor"),
+    ("humidity", "Humidity", "outdoor", "outdoor"),
+    ("dewpoint", "Dew point", "derived", "outdoor"),
+    ("speed", "Wind speed", "wind", None),
+    ("gust", "Gust", "wind", None),
+    ("dir", "Wind direction", "wind", None),
+    ("abs", "Absolute pressure", "pressure", None),
+    ("radiation", "Radiation", "solar", None),
+    ("uv_index", "UV index", "solar", None),
+]
+#: What only the model has, shown after the comparisons.
+MODEL_ONLY = {"cloud_cover": "Cloud cover", "precip_15m": "Precipitation, past 15 min"}
+
+
+def _model_view(
+    context: AdminContext, station: Station | None, points: list[Any]
+) -> dict[str, object] | None:
+    """A station's latest model values beside its own readings, or None when it has no model.
+
+    Both are stored under the same field names in the same units, so a model field is compared
+    with the field of that name in the station's row for the same quantity.
+    """
+    row = context.model.latest.get(station.name) if context.model and station else None
+    if row is None or station is None or station.model is None:
+        return None
+    items: list[dict[str, object]] = []
+    if isinstance(code := row.fields.get("weather_code"), int):
+        items.append({"label": "Sky", "text": weathermodel.describe(code), "difference": None})
+    by_base = {str(_item(key, value)["field"]): key for key, value in row.fields.items()}
+    for base, label, table, sensor in MODEL_COMPARED:
+        if base not in by_base:
+            continue
+        key = by_base[base]
+        model_value = row.fields[key]
+        own = next(
+            (
+                point.fields[key]
+                for point in points
+                if point.table == table
+                and (sensor is None or dict(point.tags).get("sensor") == sensor)
+                and key in point.fields
+            ),
+            None,
+        )
+        difference = None
+        if isinstance(own, float) and isinstance(model_value, float):
+            difference = _difference(key, own - model_value)
+        text = _item(key, model_value)["text"]
+        items.append({"label": label, "text": text, "difference": difference})
+    for base, label in MODEL_ONLY.items():
+        if base in by_base:
+            text = _item(by_base[base], row.fields[by_base[base]])["text"]
+            items.append({"label": label, "text": text, "difference": None})
+    return {
+        "model": station.model,
+        "label": weathermodel.MODELS.get(station.model, station.model),
+        "age_seconds": max(0, round(time.time() - row.timestamp)),
+        "items": items,
+    }
+
+
+def _difference(key: str, difference: float) -> str:
+    """A station-minus-model difference in the field's unit, signed; directions wrap to ±180°."""
+    for suffix, label, digits in UNITS:
+        if key.endswith("_" + suffix):
+            if suffix == "deg":
+                difference = (difference + 180) % 360 - 180
+            gap = "" if label in ("°", "%") else " "
+            return f"{difference:+.{digits}f}{gap}{label}".rstrip()
+    return f"{difference:+.1f}"
 
 
 def _console(points: list[Any]) -> dict[str, object]:
@@ -723,6 +806,8 @@ def _setup_view(
         "draft": draft,
         "units": Units(),
         "zones": timezones.all_zones(),
+        "models": weathermodel.MODELS,
+        "model_off": weathermodel.OFF,
         "kinds": list(store_settings.KINDS.values()),
         "database": _database_status(context),
         "db_draft": db_draft,
@@ -881,6 +966,8 @@ async def _station_action(
             latitude=latitude,
             longitude=longitude,
             timezone=form.get("timezone", "").strip() or None,
+            weather_model=form.get("weather_model")
+            or (existing.weather_model if existing else weathermodel.DEFAULT_MODEL),
             sensors=sensors,
             dismissed=existing.dismissed if existing else {},
         )
