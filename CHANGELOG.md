@@ -5,6 +5,22 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 [Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
 says what under *Upgrading*.
 
+## 2.3.0 — 2026-10-11
+
+### Added
+
+- **Weather model**: every 15 minutes, for each station with coordinates, Open-Meteo's values
+  for the location are stored in the `model` table, catching up on up to a week missed. Each
+  station chooses its model on the setup page (best for the location by default, a named one, or
+  off).
+- The status page compares the model with the station, saying which differences are beyond the
+  usual; the absolute-pressure check reads the same values.
+- Grafana draws the model dashed beside the station's readings, and plots the outdoor temperature
+  and wind direction minus the model's.
+- The dashboard shows the sky the model gives, with an icon, and its charts can draw the model's
+  values dashed (*Model*). The page credits Open-Meteo and lists the licences of what it bundles.
+- Weather codes are stored as integers.
+
 ## 2.2.0 — 2026-10-11
 
 ### Added

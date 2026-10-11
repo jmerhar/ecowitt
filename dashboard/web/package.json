@@ -1,7 +1,7 @@
 {
   "name": "ecowitt-dashboard-web",
   "private": true,
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Ecowitt Server's public dashboard pages: a thin client of the dashboard API",
   "type": "module",
   "scripts": {
