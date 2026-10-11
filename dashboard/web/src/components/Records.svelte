@@ -7,7 +7,7 @@
   import { ApiError } from "../lib/api";
   import { clock, moment, number, quantity } from "../lib/format";
   import { metricIcon } from "../lib/icons";
-  import TrophyIcon from "@lucide/svelte/icons/trophy";
+  import ArrowUpDownIcon from "@lucide/svelte/icons/arrow-up-down";
 
   type Props = {
     api: Api;
@@ -84,7 +84,7 @@
 
 <section class="card wide">
   <div class="toolbar">
-    <h2><TrophyIcon size={16} aria-hidden="true" /> Records</h2>
+    <h2><ArrowUpDownIcon size={16} aria-hidden="true" /> Highs and lows</h2>
     <div class="tabs" role="tablist" aria-label="Period">
       {#each meta.periods as p (p)}
         <button role="tab" aria-selected={p === period} onclick={() => (period = p)}>{PERIODS[p] ?? p}</button>

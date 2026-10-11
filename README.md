@@ -294,7 +294,7 @@ those.
 The page shows a station at a glance — temperature with what it feels like and today's range,
 wind on a compass, rain, pressure and its three-hour trend, sunrise and sunset, each room with
 whether airing it would help, and any sensor that needs attention — then charts over a day, a
-week, a month or a year, and the records of today, this month or this year. A card with
+week, a month or a year, and the highs and lows of today, this month or this year. A card with
 something to act on is edged in colour and says what: cold (5 °C or below) or heat, very humid or
 very dry air, strong gusts, heavy rain,
 pressure falling fast, very high UV, a room that is cold, hot, damp or dry, whether to air the

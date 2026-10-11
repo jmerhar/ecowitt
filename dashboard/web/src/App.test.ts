@@ -37,7 +37,7 @@ describe("App", () => {
     expect(screen.getByText("Gentle breeze from the SE")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Rooms" })).toBeInTheDocument();
     expect(screen.getByText("Good time to air")).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: "Records" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Highs and lows" })).toBeInTheDocument();
     expect(screen.getByText(/1 needs attention/)).toBeInTheDocument();
     expect(document.title).toBe("Home · Test weather");
     expect(api.now).toHaveBeenCalledWith("Home", {});
