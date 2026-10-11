@@ -5,7 +5,6 @@ fits the existing code, and lists what is still undecided. Delete a note when it
 
 | Note | In short |
 |---|---|
-| [Public frontend](public-frontend.md) | a companion app that shows a station's weather to the public |
 | [MQTT republish](mqtt-republish.md) | publish each report to an MQTT broker, with Home Assistant discovery |
 | [Backfill from ecowitt.net](ecowitt-net-backfill.md) | fill outage gaps from the history ecowitt.net keeps |
 | [Sun position](sun-position.md) | sunrise, sunset, sun elevation and clear-sky radiation per station |

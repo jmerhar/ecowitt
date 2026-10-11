@@ -4,8 +4,10 @@ __pycache__/
 *.egg-info/
 .venv/
 
-# Runtime state: the configuration written by the setup wizard and the write spool
+# Runtime state: the configuration written by the setup wizard and the write spool, and the
+# dashboard's settings, which hold a database token
 data/
+data-dashboard/
 
 # Local overrides of the compose defaults
 .env

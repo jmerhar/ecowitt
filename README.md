@@ -32,6 +32,9 @@ hardware it talks to.</sub>
   days of reports) and drops the oldest first when full. A report InfluxDB refuses outright,
   such as one with a field-type conflict, is set aside in `data/spool/rejected/` rather than
   retried for ever.
+- **Shows it to anyone, if you want.** An optional dashboard — its own container — serves a
+  page with current conditions, charts from a day to a year and records, from a read-only
+  token, and a JSON API another client can use.
 - **Tells stable apart from dead.** Consoles repeat a sensor's last value when its radio goes
   quiet, which looks exactly like a sensor that is not changing. Every reading carries how
   long it has been identical.
@@ -281,6 +284,59 @@ one alert per room or station (*Close the windows* is one per station):
 - A query that fails raises Grafana's own *DatasourceError* alert, with the rule's labels.
 - Like the dashboard, the queries name fields in the default units.
 
+## Public dashboard
+
+The dashboard is a second, optional container: a page anyone can be given the address of, and the
+read-only JSON API it is built on. It reads InfluxDB with a token that can only read, and never
+talks to the server's own listeners, so publishing it changes nothing about who can reach
+those.
+
+The page shows a station at a glance — temperature with what it feels like and today's range,
+wind on a compass, rain, pressure and its three-hour trend, sunrise and sunset, each room with
+whether airing it would help, and any sensor that needs attention — then charts over a day, a
+week, a month or a year, and the records of today, this month or this year. Visitors choose
+their own units; times are in the station's time zone.
+
+**Setting it up**
+
+1. Create a token that can only read the database:
+   `influxdb3 create token --permission "db:weather:read" --name dashboard`.
+2. Start it: `docker compose --profile dashboard up -d`. It listens on `127.0.0.1:2553`.
+3. Open `http://127.0.0.1:2553/setup`. Enter the database connection and choose *Connect and
+   load stations*; then choose which stations to show (every one, including any added later, or
+   only those ticked) and a title, and *Finish setup*.
+
+Setup writes `data-dashboard/dashboard.yaml` and the setup page disappears. **The setup page is
+not protected** — whoever reaches it first configures the dashboard — so finish setup before
+putting the port behind a public reverse proxy. To change the settings later, edit or delete
+the file and restart the container.
+
+**The API** is at `/api/v1`, documented at `/api/v1/docs`:
+
+| Path | |
+|---|---|
+| `/meta` | the metrics, units, chart ranges and record periods on offer |
+| `/stations` | each station shown, with its location, time zone and stored units |
+| `/stations/{id}/now` | current conditions, today's range, rooms with airing advice, sensor health, a one-line summary |
+| `/stations/{id}/series?metrics=…&range=24h` | metrics over `24h`, `7d`, `30d` or `1y`, in buckets that start at the station's midnight |
+| `/stations/{id}/extremes?period=today` | the lowest and highest of each metric `today`, this `month` or this `year` |
+
+Every answer is in the station's stored units unless the request asks otherwise, per quantity:
+`?temperature=f&wind=mph&pressure=inhg&rain=in`. Answers are cached for everyone alike for up to
+a minute (longer for long ranges), and each visitor's address has a request budget.
+
+| Variable | Default | |
+|---|---|---|
+| `PORT` | `2553` | inside the container |
+| `DATA_DIR` | `/data` | holds `dashboard.yaml` |
+| `FORWARDED_ALLOW_IPS` | `127.0.0.1` | reverse proxies whose `X-Forwarded-For` is believed — name yours, or every visitor shares one budget; `*` lets a visitor claim any address |
+| `RATE` / `BURST` | `5` / `60` | requests per second per visitor, and the burst before that applies |
+| `LOG_LEVEL` | `INFO` | |
+
+The compose file publishes it at `DASHBOARD_BIND:DASHBOARD_PORT` (`127.0.0.1:2553`) and passes
+`DASHBOARD_FORWARDED_ALLOW_IPS` through. The dashboard reads InfluxDB 3 only; reading an
+InfluxDB 2.x bucket is [planned](TODO/influxdb2-reads.md).
+
 ## Configuration
 
 The environment holds only how the process runs -- ports, limits, logging. The database
@@ -333,12 +389,19 @@ decided by the compose file's publish addresses.
 ## Development
 
 ```bash
-make install    # virtualenv and test extras
-make dev        # serve from the working copy
-make test       # the Python suite
-make test-js    # the page scripts' suite, with coverage (needs Node 22 or later)
-make check      # lint, both suites, coverage
+make install      # virtualenv and test extras
+make dev          # serve from the working copy
+make test         # the Python suites
+make test-js      # the admin page scripts' suite, with coverage (needs Node 22 or later)
+make web-install  # the dashboard page's dependencies, from its lockfile (needs Node 24)
+make test-web     # the dashboard page: type check and tests, with coverage
+make web-dev      # the dashboard page with hot reload, against a dashboard API on :2553
+make check        # lint, every suite, coverage
 ```
+
+The dashboard page's `package-lock.json` is written only by `make lockfile`, which installs in a
+Linux container (so it records the binaries CI and the image build need) and keeps every package
+on the public npm registry.
 
 ## Licence
 
