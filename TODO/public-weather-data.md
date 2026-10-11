@@ -2,7 +2,7 @@
 
 A weather model's view of each station's location, stored beside the station's own readings
 (the `model` table, written by `collector/.../admin/modelfeed.py`; see the README's *Weather
-model*). Grafana draws it beside the readings; what is left is the public dashboard.
+model*). Grafana draws it beside the readings, and the dashboard API serves it (`now.sky`, `/series?model=true`); what is left is the page.
 
 ## Decided
 
@@ -18,9 +18,6 @@ model*). Grafana draws it beside the readings; what is left is the public dashbo
 
 ## Still to do
 
-- **Dashboard API**: `now.sky` (weather code in words, day or night, cloud cover) from the newest
-  model row, empty when that row is over an hour old; the summary line opens with it; `/series`
-  can add the model's series for the metrics it has.
 - **Dashboard page**: a weather icon in the Now card -- Meteocons (MIT), only the icons used,
   vendored with their licence unless a package passes the 14-day rule -- and dashed model lines in
   the charts behind a "Show model" toggle.

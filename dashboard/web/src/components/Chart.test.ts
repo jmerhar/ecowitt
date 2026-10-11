@@ -65,7 +65,7 @@ describe("Chart", () => {
   it("draws points without a line and bars with uPlot's bar paths", () => {
     const wind = viewFor("wind");
     const points = align(wind, series({
-      series: [{ metric: "wind.direction", sensor: null, name: null, unit: "deg", t: [1], values: { circular: [5] } }],
+      series: [{ metric: "wind.direction", sensor: null, name: null, unit: "deg", source: "station", t: [1], values: { circular: [5] } }],
     }), {});
     render(Chart, { view: wind, data: points, symbols: SYMBOLS, timezone: "UTC" });
     const dot = made[0].options.series[1];
@@ -75,7 +75,7 @@ describe("Chart", () => {
 
     const rain = viewFor("rain");
     const bars = align(rain, series({
-      series: [{ metric: "rain.daily", sensor: "bucket", name: null, unit: "", t: [1], values: { max: [1] } }],
+      series: [{ metric: "rain.daily", sensor: "bucket", name: null, unit: "", source: "station", t: [1], values: { max: [1] } }],
     }), {});
     render(Chart, { view: rain, data: bars, symbols: {}, timezone: "UTC" });
     expect(made[1].options.series[1].paths).toBe("bars");

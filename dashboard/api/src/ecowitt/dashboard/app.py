@@ -229,6 +229,9 @@ def build_app(
         response: Response,
         metrics: Annotated[str, Query(description="Metric ids from /meta, comma-separated")],
         range_: Annotated[str, Query(alias="range", description=", ".join(RANGES))] = "24h",
+        model: Annotated[
+            bool, Query(description="Add the station's weather model's series, where it has one")
+        ] = False,
     ) -> models.SeriesOut:
         """Metrics over a range, in buckets aligned to the station's midnight."""
         chosen = [m.strip() for m in metrics.split(",") if m.strip()]
@@ -240,7 +243,7 @@ def build_app(
         if range_ not in RANGES:
             raise HTTPException(422, f"range must be one of {', '.join(RANGES)}")
         response.headers["Cache-Control"] = f"public, max-age={int(RANGES[range_].ttl)}"
-        return await board.series(station, chosen, range_, choice)
+        return await board.series(station, chosen, range_, choice, model=model)
 
     @router.get("/stations/{station}/extremes")
     async def extremes(

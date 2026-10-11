@@ -80,10 +80,16 @@ class Metric:
     aggregates: tuple[Aggregate, ...]
     scope: Scope = Scope.ALL
     extremes: Sides = Sides.BOTH
+    #: The weather model's base field for the same quantity, in the `model` table, if it has one.
+    model_base: str | None = None
 
     def field(self, units: Units) -> str:
         """The stored field in a station's units."""
         return field_name(self.base, self.kind, units)
+
+    def model_field(self, units: Units) -> str | None:
+        """The weather model's stored field in a station's units, if the model has one."""
+        return None if self.model_base is None else field_name(self.model_base, self.kind, units)
 
     @property
     def quantity(self) -> str | None:
@@ -117,20 +123,29 @@ T, H = Kind.TEMPERATURE, Kind.HUMIDITY
 METRICS: dict[str, Metric] = {
     metric.id: metric
     for metric in (
-        Metric("outdoor.temperature", "Temperature", _OUT, "temp", T, _RANGE, Scope.OUTDOOR),
-        Metric("outdoor.humidity", "Humidity", _OUT, "humidity", H, _RANGE, Scope.OUTDOOR),
-        Metric("outdoor.dew_point", "Dew point", _DERIVED, "dewpoint", T, _RANGE, Scope.OUTDOOR),
+        Metric(
+            "outdoor.temperature", "Temperature", _OUT, "temp", T, _RANGE, Scope.OUTDOOR,
+            model_base="temp",
+        ),
+        Metric(
+            "outdoor.humidity", "Humidity", _OUT, "humidity", H, _RANGE, Scope.OUTDOOR,
+            model_base="humidity",
+        ),
+        Metric(
+            "outdoor.dew_point", "Dew point", _DERIVED, "dewpoint", T, _RANGE, Scope.OUTDOOR,
+            model_base="dewpoint",
+        ),
         Metric(
             "wind.speed", "Wind speed", ("wind",), "speed", Kind.SPEED,
-            (Aggregate.MEAN, Aggregate.MAX), extremes=Sides.MAX,
+            (Aggregate.MEAN, Aggregate.MAX), extremes=Sides.MAX, model_base="speed",
         ),
         Metric(
             "wind.gust", "Wind gust", ("wind",), "gust", Kind.SPEED, (Aggregate.MAX,),
-            extremes=Sides.MAX,
+            extremes=Sides.MAX, model_base="gust",
         ),
         Metric(
             "wind.direction", "Wind direction", ("wind",), "dir", Kind.ANGLE,
-            (Aggregate.CIRCULAR,), extremes=Sides.NONE,
+            (Aggregate.CIRCULAR,), extremes=Sides.NONE, model_base="dir",
         ),
         Metric(
             "rain.rate", "Rain rate", ("rain",), "rate", Kind.RAIN_RATE, (Aggregate.MAX,),
@@ -142,17 +157,21 @@ METRICS: dict[str, Metric] = {
             "rain.daily", "Rain today", ("rain",), "daily", Kind.RAIN, (Aggregate.MAX,),
             extremes=Sides.MAX,
         ),
-        Metric("pressure.sea_level", "Pressure", ("pressure",), "sea", Kind.PRESSURE, _RANGE),
         Metric(
-            "pressure.absolute", "Station pressure", ("pressure",), "abs", Kind.PRESSURE, _RANGE
+            "pressure.sea_level", "Pressure", ("pressure",), "sea", Kind.PRESSURE, _RANGE,
+            model_base="sea",
+        ),
+        Metric(
+            "pressure.absolute", "Station pressure", ("pressure",), "abs", Kind.PRESSURE, _RANGE,
+            model_base="abs",
         ),
         Metric(
             "solar.radiation", "Solar radiation", ("solar",), "radiation", Kind.IRRADIANCE,
-            (Aggregate.MEAN, Aggregate.MAX), extremes=Sides.MAX,
+            (Aggregate.MEAN, Aggregate.MAX), extremes=Sides.MAX, model_base="radiation",
         ),
         Metric(
             "solar.uv_index", "UV index", ("solar",), "uv_index", Kind.UV_INDEX, (Aggregate.MAX,),
-            extremes=Sides.MAX,
+            extremes=Sides.MAX, model_base="uv_index",
         ),
         Metric("rooms.temperature", "Temperature", _ROOMS, "temp", T, _RANGE, Scope.ROOMS),
         Metric("rooms.humidity", "Humidity", _ROOMS, "humidity", H, _RANGE, Scope.ROOMS),

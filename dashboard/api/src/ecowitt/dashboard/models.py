@@ -21,6 +21,15 @@ class UnitsOut(BaseModel):
     distance: str
 
 
+class WeatherModel(BaseModel):
+    """The weather model stored beside a station's readings."""
+
+    #: Open-Meteo's name for it, as `best_match`.
+    id: str
+    #: In words, as "Best for this location".
+    label: str
+
+
 class Station(BaseModel):
     """A station and its published settings."""
 
@@ -31,6 +40,8 @@ class Station(BaseModel):
     timezone: str
     #: The units the station stores, which answers default to.
     units: UnitsOut
+    #: The weather model whose values /series can add, or None when the station has none.
+    weather_model: WeatherModel | None = None
 
 
 class At(BaseModel):
@@ -110,6 +121,19 @@ class Sun(BaseModel):
     polar: str | None = None
 
 
+class Sky(BaseModel):
+    """The sky at the station, from its weather model: what a station cannot measure."""
+
+    #: The WMO weather code, and the same in words: "Overcast", "Light rain"...
+    code: int
+    description: str
+    #: Whether it is day at the station, by the model; None when the model did not say.
+    is_day: bool | None = None
+    cloud_cover: float | None = None
+    #: When the model's values are for.
+    time: datetime
+
+
 class AiringAdvice(BaseModel):
     """Whether opening this room's windows would dry it."""
 
@@ -177,8 +201,10 @@ class Now(BaseModel):
     online: bool
     timezone: str
     units: UnitsOut
-    #: One line in words: temperature, wind, rain and the pressure trend.
+    #: One line in words: the sky, temperature, wind, rain and the pressure trend.
     summary: str
+    #: The sky from the weather model, when the station has one and its values are recent.
+    sky: Sky | None = None
     outdoor: Outdoor | None = None
     wind: Wind | None = None
     rain: Rain | None = None
@@ -200,6 +226,8 @@ class Series(BaseModel):
     sensor: str | None
     name: str | None
     unit: str
+    #: station, or model for the weather model's values for the same metric.
+    source: str = "station"
     #: Each bucket's start, in Unix seconds.
     t: list[int]
     #: Per aggregate the metric has (mean, min, max, circular), one value per bucket.
@@ -253,6 +281,8 @@ class MetricInfo(BaseModel):
     #: none, max or both.
     extremes: str
     per_sensor: bool
+    #: Whether the weather model has it, so /series can add the model's series.
+    model: bool = False
 
 
 class UnitChoice(BaseModel):

@@ -15,6 +15,7 @@ from collections.abc import Awaitable, Callable, Collection, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta, tzinfo
 
+from ecowitt.core import weathermodel
 from ecowitt.core.stationinfo import StationInfo
 from ecowitt.core.store.query import Buckets, Extreme, Extremes, Reader, Span
 from ecowitt.core.units import Kind, Units, convert, field_name
@@ -68,6 +69,9 @@ PRESSURE_TREND_COVERAGE = timedelta(hours=2, minutes=50)
 ONLINE_INTERVALS = 3
 #: ...or than this, whichever is longer.
 ONLINE_AT_LEAST = timedelta(minutes=5)
+#: The weather model's sky is shown while its newest values are younger than this: the model
+#: writes every 15 minutes, so older means the collector has stopped fetching.
+SKY_FRESH = timedelta(hours=1)
 
 
 #: Names for the sensors a console has one of, which nobody names on the setup page.
@@ -101,6 +105,8 @@ class _Latest:
     battery: list[Span] = field(default_factory=list)
     temperature_today: Extremes | None = None
     wind_today: Extremes | None = None
+    #: The station's weather model's newest sky, if it has a model and the values are fresh.
+    sky: Span | None = None
     #: When it was read.
     at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
@@ -112,6 +118,8 @@ class _Bucketed:
     start: datetime
     end: datetime
     groups: dict[str, list[Buckets]]
+    #: The weather model's buckets per metric, when they were asked for.
+    model: dict[str, Buckets] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -202,6 +210,7 @@ class Dashboard:
                     altitude_m=info.altitude_m,
                     timezone=info.timezone or "UTC",
                     units=_units(info.units),
+                    weather_model=_weather_model(info),
                 )
             )
         return found
@@ -219,6 +228,7 @@ class Dashboard:
                     aggregates=[a.value for a in m.aggregates],
                     extremes=m.extremes.value,
                     per_sensor=m.per_sensor,
+                    model=m.model_base is not None,
                 )
                 for m in METRICS.values()
             ],
@@ -260,6 +270,7 @@ class Dashboard:
         answer.rooms = _rooms(latest, values, stored, info, air)
         answer.sensors = _health(latest, info)
         answer.notices = _notices(latest, values, stored, answer)
+        answer.sky = _sky(latest, stored)
         answer.summary = _summary(answer, values.target)
         return answer
 
@@ -269,36 +280,52 @@ class Dashboard:
         metrics: list[str],
         range_name: str,
         choice: Mapping[str, str] | None = None,
+        *,
+        model: bool = False,
     ) -> models.SeriesOut:
-        """Metrics over a range, in buckets aligned to the station's midnight."""
+        """Metrics over a range, in buckets aligned to the station's midnight.
+
+        With `model`, each metric the station's weather model has also comes as the model's
+        series, marked `source: model`.
+        """
         info = await self.info(station)
         chosen = [METRICS[m] for m in dict.fromkeys(metrics)]
         span = RANGES[range_name]
-        key = ("series", station, range_name, tuple(m.id for m in chosen))
+        model = model and info.weather_model is not None
+        key = ("series", station, range_name, tuple(m.id for m in chosen), model)
         found = await self.cache.get(
-            key, span.ttl, lambda: self._bucketed(station, info, chosen, span)
+            key, span.ttl, lambda: self._bucketed(station, info, chosen, span, model=model)
         )
         values = _Values(info.units, _target(info.units, choice))
         series = []
         for metric in chosen:
             for group in found.groups.get(metric.id, []):
-                columns = {
-                    aggregate.value: [
-                        None if v is None else values.out(metric.kind, v)
-                        for v in group.values.get((metric.field(info.units), aggregate), [])
-                    ]
-                    for aggregate in metric.aggregates
-                }
-                if not any(v is not None for column in columns.values() for v in column):
-                    continue
-                sensor = _group(group.tags)
+                columns = _columns(metric, group, metric.field(info.units), values)
+                if columns is not None:
+                    series.append(
+                        models.Series(
+                            metric=metric.id,
+                            sensor=_group(group.tags),
+                            name=_name(info, group.tags, group.name),
+                            unit=unit(metric.kind, values.target),
+                            t=[int(t.timestamp()) for t in group.times],
+                            values=columns,
+                        )
+                    )
+            buckets = found.model.get(metric.id)
+            name = metric.model_field(info.units)
+            columns = (
+                None if buckets is None or name is None else _columns(metric, buckets, name, values)
+            )
+            if buckets is not None and columns is not None:
                 series.append(
                     models.Series(
                         metric=metric.id,
-                        sensor=sensor,
-                        name=_name(info, group.tags, group.name),
+                        sensor=None,
+                        name=None,
                         unit=unit(metric.kind, values.target),
-                        t=[int(t.timestamp()) for t in group.times],
+                        source="model",
+                        t=[int(t.timestamp()) for t in buckets.times],
                         values=columns,
                     )
                 )
@@ -378,7 +405,7 @@ class Dashboard:
         rain_fields += [f(b, R) for b in ("monthly", "yearly")] + [f("rate", Kind.RAIN_RATE)]
         (
             outdoor, derived, wind, rain, pressure, solar, indoor, channel, ventilation,
-            battery, temperature_today, wind_today,
+            battery, temperature_today, wind_today, sky,
         ) = await asyncio.gather(
             span("outdoor", f("temp", T), f("humidity", H), sensors=["outdoor"]),
             span("derived", f("dewpoint", T), "unchanged_s"),
@@ -394,6 +421,7 @@ class Dashboard:
                 station, "outdoor", [f("temp", T)], start=midnight, end=now, sensors=["outdoor"]
             ),
             self.reader.extremes(station, "wind", [f("gust", S)], start=midnight, end=now),
+            self._sky(station, info, now),
         )  # fmt: skip
         return _Latest(
             report=report,
@@ -408,13 +436,35 @@ class Dashboard:
             battery=battery,
             temperature_today=_first(temperature_today),
             wind_today=_first(wind_today),
+            sky=sky,
             at=now,
         )
 
+    async def _sky(self, station: str, info: StationInfo, now: datetime) -> Span | None:
+        """The newest sky from the station's weather model, if it has one and it is fresh."""
+        if info.weather_model is None:
+            return None
+        cloud = field_name("cloud_cover", Kind.PERCENT, info.units)
+        found = await self.reader.span(
+            station,
+            weathermodel.TABLE,
+            ["weather_code", "is_day", cloud],
+            start=now - SKY_FRESH,
+            end=now,
+        )
+        return next((s for s in found if s.tags.get("model") == info.weather_model), None)
+
     async def _bucketed(
-        self, station: str, info: StationInfo, metrics: list[Metric], span: Range
+        self,
+        station: str,
+        info: StationInfo,
+        metrics: list[Metric],
+        span: Range,
+        *,
+        model: bool = False,
     ) -> _Bucketed:
-        """Read each metric's buckets, one query per table and sensor filter."""
+        """Read each metric's buckets, one query per table and sensor filter, and with `model`
+        one more of the `model` table for the station's current weather model."""
         end = self.clock()
         start = end - span.duration
         origin = _midnight(start, _zone(info))
@@ -429,12 +479,24 @@ class Dashboard:
                 sensors=sensors,
             )  # fmt: skip
 
-        answers = await asyncio.gather(*(ask(*q) for q in queries))
+        async def ask_model() -> dict[str, Buckets]:
+            modelled = [m for m in metrics if m.model_base is not None]
+            if not model or not modelled:
+                return {}
+            pairs = [(m.model_field(info.units), a) for m in modelled for a in m.aggregates]
+            found = await self.reader.buckets(
+                station, weathermodel.TABLE, pairs, start=start, end=end, step=span.step,
+                origin=origin,
+            )  # type: ignore[arg-type]  # fmt: skip
+            current = next((g for g in found if g.tags.get("model") == info.weather_model), None)
+            return {} if current is None else {m.id: current for m in modelled}
+
+        *answers, modelled = await asyncio.gather(*(ask(*q) for q in queries), ask_model())
         groups: dict[str, list[Buckets]] = {}
         for (_, _, chosen), found in zip(queries, answers, strict=True):
             for metric in chosen:
                 groups.setdefault(metric.id, []).extend(g for g in found if metric.covers(g.sensor))
-        return _Bucketed(start, end, groups)
+        return _Bucketed(start, end, groups, modelled)
 
     async def _ranged(self, station: str, info: StationInfo, period: str) -> _Ranged:
         """Read the period's extremes of every metric that has them."""
@@ -789,9 +851,50 @@ def _notices(
     return found
 
 
+def _columns(
+    metric: Metric, buckets: Buckets, name: str, values: _Values
+) -> dict[str, list[float | None]] | None:
+    """A metric's columns from one group's buckets, converted; None when it has no value."""
+    columns = {
+        aggregate.value: [
+            None if v is None else values.out(metric.kind, v)
+            for v in buckets.values.get((name, aggregate), [])
+        ]
+        for aggregate in metric.aggregates
+    }
+    if not any(v is not None for column in columns.values() for v in column):
+        return None
+    return columns
+
+
+def _sky(latest: _Latest, stored: Units) -> models.Sky | None:
+    """The sky from the weather model's newest values, or None without a weather code."""
+    span = latest.sky
+    code = span.last.get("weather_code") if span else None
+    if span is None or isinstance(code, bool) or not isinstance(code, int | float):
+        return None
+    is_day = span.last.get("is_day")
+    cloud = span.last.get(field_name("cloud_cover", Kind.PERCENT, stored))
+    return models.Sky(
+        code=int(code),
+        description=weathermodel.describe(int(code)),
+        is_day=is_day if isinstance(is_day, bool) else None,
+        cloud_cover=float(cloud) if isinstance(cloud, int | float) else None,
+        time=span.last_time,
+    )
+
+
+def _weather_model(info: StationInfo) -> models.WeatherModel | None:
+    """The station's weather model, named, or None when it has none."""
+    if info.weather_model is None:
+        return None
+    label = weathermodel.MODELS.get(info.weather_model, info.weather_model)
+    return models.WeatherModel(id=info.weather_model, label=label)
+
+
 def _summary(now: models.Now, units: Units) -> str:
-    """One line: temperature and feels-like, wind, rain, and the pressure trend."""
-    parts = []
+    """One line: the sky, temperature and feels-like, wind, rain, and the pressure trend."""
+    parts = [now.sky.description] if now.sky is not None else []
     outdoor = now.outdoor
     if outdoor is not None and outdoor.temperature is not None:
         symbol = SYMBOLS[unit(Kind.TEMPERATURE, units)]

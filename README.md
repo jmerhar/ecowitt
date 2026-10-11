@@ -351,10 +351,10 @@ the file and restart the container.
 
 | Path | |
 |---|---|
-| `/meta` | the metrics, units, chart ranges and record periods on offer |
-| `/stations` | each station shown, with its location, time zone and stored units |
-| `/stations/{id}/now` | current conditions, today's range, rooms with airing advice, sensor health, a one-line summary |
-| `/stations/{id}/series?metrics=…&range=24h` | metrics over `24h`, `7d`, `30d` or `1y`, in buckets that start at the station's midnight |
+| `/meta` | the metrics, units, chart ranges and record periods on offer, and which metrics the weather model has |
+| `/stations` | each station shown, with its location, time zone, stored units and weather model |
+| `/stations/{id}/now` | current conditions, the sky from the weather model, today's range, rooms with airing advice, sensor health, a one-line summary |
+| `/stations/{id}/series?metrics=…&range=24h` | metrics over `24h`, `7d`, `30d` or `1y`, in buckets that start at the station's midnight; `&model=true` adds the weather model's series (`source: model`) |
 | `/stations/{id}/extremes?period=today` | the lowest and highest of each metric `today`, this `month` or this `year` |
 
 Every answer is in the station's stored units unless the request asks otherwise, per quantity:

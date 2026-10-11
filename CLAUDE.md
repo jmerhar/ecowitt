@@ -87,8 +87,10 @@ collector/tests/  one folder per subpackage (ingest/, admin/, delivery/), plus
   fixtures/       recorded payloads, the golden line protocol, the known-keys list
 dashboard/api/src/ecowitt/dashboard/   the public dashboard's read-only API
   app.py          /api/v1 routes behind one `access` dependency, /healthz, first-run /setup
-  service.py      answers built from a Reader: now, series, extremes; cached in stored units
-  catalogue.py    the metrics served: table, base field, kind, aggregates, which sensors
+  service.py      answers built from a Reader: now (with the weather model's sky), series (with
+                  its series when asked), extremes; cached in stored units
+  catalogue.py    the metrics served: table, base field, kind, aggregates, which sensors, and
+                  the weather model's field for the same quantity
   weather.py      compass, Beaufort, feels-like, pressure tendency, airing advice
   sun.py          sunrise, solar noon and sunset (NOAA's equations)
   siteconfig.py   /data/dashboard.yaml, written once by setup; edited or deleted by hand after

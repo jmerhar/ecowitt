@@ -13,6 +13,9 @@ export type Units = {
 
 export type At = { value: number; time: string };
 
+/** The weather model stored beside a station's readings. */
+export type WeatherModel = { id: string; label: string };
+
 export type Station = {
   id: string;
   latitude: number | null;
@@ -20,6 +23,8 @@ export type Station = {
   altitude_m: number | null;
   timezone: string;
   units: Units;
+  /** The weather model whose values /series can add, or null when the station has none. */
+  weather_model: WeatherModel | null;
 };
 
 export type Outdoor = {
@@ -86,6 +91,16 @@ export type Room = {
   flags: string[];
 };
 
+/** The sky at the station, from its weather model. */
+export type Sky = {
+  /** The WMO weather code, and the same in words. */
+  code: number;
+  description: string;
+  is_day: boolean | null;
+  cloud_cover: number | null;
+  time: string;
+};
+
 /** Something on a card that deserves attention: a warning, or good news worth acting on. */
 export type Notice = { level: "warning" | "good"; text: string };
 
@@ -112,6 +127,8 @@ export type Now = {
   timezone: string;
   units: Units;
   summary: string;
+  /** The sky from the weather model, when the station has one and its values are recent. */
+  sky: Sky | null;
   outdoor: Outdoor | null;
   wind: Wind | null;
   rain: Rain | null;
@@ -129,6 +146,8 @@ export type Series = {
   sensor: string | null;
   name: string | null;
   unit: string;
+  /** "model" for the weather model's values of the same metric. */
+  source: "station" | "model";
   t: number[];
   values: Record<string, (number | null)[]>;
 };
@@ -169,6 +188,8 @@ export type MetricInfo = {
   aggregates: string[];
   extremes: "none" | "max" | "both";
   per_sensor: boolean;
+  /** Whether the weather model has it, so /series can add the model's series. */
+  model: boolean;
 };
 
 export type Meta = {

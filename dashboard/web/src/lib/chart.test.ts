@@ -22,8 +22,8 @@ describe("align", () => {
   it("names room lines by room, and tells apart several gauges", () => {
     const rooms = series({
       series: [
-        { metric: "rooms.temperature", sensor: "ch1", name: "Bathroom", unit: "c", t: [1], values: { mean: [20] } },
-        { metric: "rooms.temperature", sensor: "ch2", name: null, unit: "c", t: [1], values: { mean: [19] } },
+        { metric: "rooms.temperature", sensor: "ch1", name: "Bathroom", unit: "c", source: "station", t: [1], values: { mean: [20] } },
+        { metric: "rooms.temperature", sensor: "ch2", name: null, unit: "c", source: "station", t: [1], values: { mean: [19] } },
       ],
     });
     expect(align(viewFor("rooms-temperature"), rooms, {}).lines.map((l) => [l.label, l.index])).toEqual([
@@ -32,9 +32,9 @@ describe("align", () => {
     ]);
     const gauges = series({
       series: [
-        { metric: "rain.daily", sensor: "bucket", name: null, unit: "mm", t: [1], values: { max: [1] } },
-        { metric: "rain.daily", sensor: "piezo", name: null, unit: "mm", t: [1], values: { max: [2] } },
-        { metric: "rain.rate", sensor: "bucket", name: null, unit: "mm_h", t: [1], values: { max: [0] } },
+        { metric: "rain.daily", sensor: "bucket", name: null, unit: "mm", source: "station", t: [1], values: { max: [1] } },
+        { metric: "rain.daily", sensor: "piezo", name: null, unit: "mm", source: "station", t: [1], values: { max: [2] } },
+        { metric: "rain.rate", sensor: "bucket", name: null, unit: "mm_h", source: "station", t: [1], values: { max: [0] } },
       ],
     });
     expect(align(viewFor("rain"), gauges, { "rain.daily": "Rain today" }).lines.map((l) => l.label)).toEqual([
@@ -46,15 +46,15 @@ describe("align", () => {
 
   it("takes each series' main aggregate", () => {
     const direction = series({
-      series: [{ metric: "wind.direction", sensor: null, name: null, unit: "deg", t: [1], values: { circular: [90] } }],
+      series: [{ metric: "wind.direction", sensor: null, name: null, unit: "deg", source: "station", t: [1], values: { circular: [90] } }],
     });
     expect(align(viewFor("wind"), direction, {}).lines[0].values).toEqual([90]);
     const minOnly = series({
-      series: [{ metric: "wind.speed", sensor: null, name: null, unit: "kmh", t: [1], values: { min: [3] } }],
+      series: [{ metric: "wind.speed", sensor: null, name: null, unit: "kmh", source: "station", t: [1], values: { min: [3] } }],
     });
     expect(align(viewFor("wind"), minOnly, {}).lines[0].values).toEqual([3]);
     const odd = series({
-      series: [{ metric: "wind.gust", sensor: null, name: null, unit: "kmh", t: [1], values: { p90: [7] } }],
+      series: [{ metric: "wind.gust", sensor: null, name: null, unit: "kmh", source: "station", t: [1], values: { p90: [7] } }],
     });
     expect(align(viewFor("wind"), odd, {}).lines[0].values).toEqual([7]);
   });
@@ -75,8 +75,8 @@ describe("spec", () => {
     const view = viewFor("rain");
     const answer = series({
       series: [
-        { metric: "rain.daily", sensor: "bucket", name: null, unit: "mm", t: [1], values: { max: [1] } },
-        { metric: "rain.rate", sensor: "bucket", name: null, unit: "mm_h", t: [1], values: { max: [0] } },
+        { metric: "rain.daily", sensor: "bucket", name: null, unit: "mm", source: "station", t: [1], values: { max: [1] } },
+        { metric: "rain.rate", sensor: "bucket", name: null, unit: "mm_h", source: "station", t: [1], values: { max: [0] } },
       ],
     });
     const built = spec(view, align(view, answer, {}));
@@ -84,7 +84,7 @@ describe("spec", () => {
     expect(built.axes.map((a) => a.scale)).toEqual(["left", "right"]);
     const wind = viewFor("wind");
     const points = spec(wind, align(wind, series({
-      series: [{ metric: "wind.direction", sensor: null, name: null, unit: "deg", t: [1], values: { circular: [5] } }],
+      series: [{ metric: "wind.direction", sensor: null, name: null, unit: "deg", source: "station", t: [1], values: { circular: [5] } }],
     }), {}));
     expect(points.series[0]).toMatchObject({ style: "points", width: 0, scale: "right" });
   });

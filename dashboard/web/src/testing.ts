@@ -13,11 +13,11 @@ export const UNITS = { temperature: "c", pressure: "hpa", rain: "mm", wind: "kmh
 export const META: Meta = {
   title: "Test weather",
   metrics: [
-    { id: "outdoor.temperature", label: "Temperature", quantity: "temperature", unit: null, aggregates: ["mean", "min", "max"], extremes: "both", per_sensor: false },
-    { id: "outdoor.dew_point", label: "Dew point", quantity: "temperature", unit: null, aggregates: ["mean", "min", "max"], extremes: "both", per_sensor: false },
-    { id: "wind.gust", label: "Wind gust", quantity: "wind", unit: null, aggregates: ["max"], extremes: "max", per_sensor: false },
-    { id: "rain.daily", label: "Rain today", quantity: "rain", unit: null, aggregates: ["max"], extremes: "max", per_sensor: false },
-    { id: "rooms.temperature", label: "Temperature", quantity: "temperature", unit: null, aggregates: ["mean", "min", "max"], extremes: "both", per_sensor: true },
+    { id: "outdoor.temperature", label: "Temperature", quantity: "temperature", unit: null, aggregates: ["mean", "min", "max"], extremes: "both", per_sensor: false, model: false },
+    { id: "outdoor.dew_point", label: "Dew point", quantity: "temperature", unit: null, aggregates: ["mean", "min", "max"], extremes: "both", per_sensor: false, model: false },
+    { id: "wind.gust", label: "Wind gust", quantity: "wind", unit: null, aggregates: ["max"], extremes: "max", per_sensor: false, model: false },
+    { id: "rain.daily", label: "Rain today", quantity: "rain", unit: null, aggregates: ["max"], extremes: "max", per_sensor: false, model: false },
+    { id: "rooms.temperature", label: "Temperature", quantity: "temperature", unit: null, aggregates: ["mean", "min", "max"], extremes: "both", per_sensor: true, model: false },
   ],
   units: {
     temperature: [{ code: "c", symbol: "°C" }, { code: "f", symbol: "°F" }],
@@ -33,6 +33,7 @@ export const META: Meta = {
 
 export const STATION: Station = {
   id: "Home", latitude: 38.72, longitude: -9.14, altitude_m: 100, timezone: "Europe/Lisbon", units: UNITS,
+  weather_model: null,
 };
 
 export function now(overrides: Partial<Now> = {}): Now {
@@ -43,6 +44,7 @@ export function now(overrides: Partial<Now> = {}): Now {
     timezone: "Europe/Lisbon",
     units: UNITS,
     summary: "18 °C. Gentle breeze from the SE.",
+    sky: null,
     outdoor: {
       temperature: 18, humidity: 70, dew_point: 12.5, feels_like: 16,
       high: { value: 21, time: "2026-10-10T13:00:00Z" }, low: { value: 9.5, time: "2026-10-10T06:00:00Z" },
@@ -90,9 +92,9 @@ export function series(overrides: Partial<SeriesOut> = {}): SeriesOut {
     station: "Home", range: "24h", step_s: 300, start: "2026-10-09T14:00:00Z", end: "2026-10-10T14:00:00Z",
     units: UNITS,
     series: [
-      { metric: "outdoor.temperature", sensor: "outdoor", name: "Outdoor", unit: "c", t: [100, 400, 700],
+      { metric: "outdoor.temperature", sensor: "outdoor", name: "Outdoor", unit: "c", source: "station", t: [100, 400, 700],
         values: { mean: [10, 11, 12], min: [9, 10, 11], max: [11, 12, 13] } },
-      { metric: "outdoor.dew_point", sensor: "outdoor", name: "Outdoor", unit: "c", t: [100, 700],
+      { metric: "outdoor.dew_point", sensor: "outdoor", name: "Outdoor", unit: "c", source: "station", t: [100, 700],
         values: { mean: [5, 6], min: [4, 5], max: [6, 7] } },
     ],
     ...overrides,
