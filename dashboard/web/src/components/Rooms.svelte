@@ -1,17 +1,54 @@
 <script lang="ts">
-  /** Every room's latest reading, with whether opening its windows would dry it. */
+  /**
+   * Every room's latest reading, with whether opening its windows would dry it; sorted by any
+   * column its header is clicked for, in the order the station lists the rooms until then.
+   */
   import HouseIcon from "@lucide/svelte/icons/house";
   import type { Notice, Room, Units } from "../lib/api";
   import { quantity } from "../lib/format";
+  import type { RoomSort } from "../lib/prefs";
 
   type Props = {
     rooms: Room[];
     units: Units;
     symbols: Record<string, string>;
-    onselect: (view: string) => void;
     notice?: Notice;
+    /** The order chosen, kept with the visitor's other choices. */
+    sort?: RoomSort | null;
   };
-  let { rooms, units, symbols, onselect, notice }: Props = $props();
+  let { rooms, units, symbols, notice, sort = $bindable(null) }: Props = $props();
+
+  /** What each sortable column sorts by. */
+  const COLUMNS: Record<string, (room: Room) => string | number | null | undefined> = {
+    name: (r) => r.name,
+    temperature: (r) => r.temperature,
+    humidity: (r) => r.humidity,
+    dew_point: (r) => r.dew_point,
+    after: (r) => r.airing?.humidity_after,
+  };
+
+  /** The rooms in the chosen order; a room without the value sorts last whichever way. */
+  const sorted = $derived.by(() => {
+    const by = sort ? COLUMNS[sort.column] : undefined;
+    if (!sort || !by) return rooms;
+    const sign = sort.descending ? -1 : 1;
+    return [...rooms].sort((a, b) => {
+      const x = by(a);
+      const y = by(b);
+      if (x == null || y == null) return x == null ? (y == null ? 0 : 1) : -1;
+      return sign * (typeof x === "string" ? x.localeCompare(String(y)) : x - (y as number));
+    });
+  });
+
+  /** Sort by a column, or turn it round when it is the one sorted by already. */
+  function choose(column: string): void {
+    sort = sort?.column === column ? { column, descending: !sort.descending } : { column, descending: false };
+  }
+
+  function ariaSort(column: string): "ascending" | "descending" | "none" {
+    if (sort?.column !== column) return "none";
+    return sort.descending ? "descending" : "ascending";
+  }
 
   const ADVICE = {
     open: { text: "Air it", hint: "The outside air is drier: airing would bring humidity down" },
@@ -41,16 +78,22 @@
     <table>
       <thead>
         <tr>
-          <th>Room</th>
-          <th class="num"><button class="link" onclick={() => onselect("rooms-temperature")}>Temperature</button></th>
-          <th class="num"><button class="link" onclick={() => onselect("rooms-humidity")}>Humidity</button></th>
-          <th class="num wide-only">Dew point</th>
-          <th class="num" title="The humidity each room would settle at once its air had been replaced by outdoor air">If aired</th>
+          {#snippet header(column: string, label: string, classes: string, hint?: string)}
+            <th class={classes} aria-sort={ariaSort(column)} title={hint}>
+              <button class="link" onclick={() => choose(column)}>{label}<span class="arrow" aria-hidden="true"
+                >{sort?.column === column ? (sort.descending ? " ↓" : " ↑") : ""}</span></button>
+            </th>
+          {/snippet}
+          {@render header("name", "Room", "")}
+          {@render header("temperature", "Temperature", "num")}
+          {@render header("humidity", "Humidity", "num")}
+          {@render header("dew_point", "Dew point", "num wide-only")}
+          {@render header("after", "If aired", "num", "The humidity each room would settle at once its air had been replaced by outdoor air")}
           {#if advised}<th class="wide-only">Airing</th>{/if}
         </tr>
       </thead>
       <tbody>
-        {#each rooms as room (room.sensor)}
+        {#each sorted as room (room.sensor)}
           {@const advice = room.airing ? ADVICE[room.airing.advice] : null}
           <tr>
             <td>{room.name}</td>

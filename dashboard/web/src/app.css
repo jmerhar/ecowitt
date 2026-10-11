@@ -84,6 +84,12 @@ button.card {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+  align-items: stretch;
+}
+/* Safari before 17 shrinks a button's contents to fit rather than stretching them, which would
+   leave a card's values ending mid-card; the full width is asked for outright. */
+button.card > * {
+  width: 100%;
 }
 button.card:hover,
 button.card:focus-visible {

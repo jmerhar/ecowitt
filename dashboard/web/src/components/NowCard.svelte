@@ -80,7 +80,8 @@
     color: var(--muted);
     font-size: 0.85rem;
     text-align: center;
-    margin: -0.5rem 0;
+    /* The icon's own margin, so it does not push the temperature down. */
+    margin-top: -0.5rem;
   }
   .temperature {
     font-size: clamp(2.8rem, 9vw, 4rem);

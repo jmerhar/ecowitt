@@ -132,6 +132,13 @@ describe("App", () => {
     expect(await screen.findByText("Sat 10 Oct, 14:21 Lisbon time")).toBeInTheDocument();
   });
 
+  it("remembers how the rooms are sorted", async () => {
+    const storage = memory();
+    render(App, { api: fakeApi(), storage });
+    await fireEvent.click(await screen.findByRole("button", { name: "Humidity" }));
+    expect(JSON.parse(storage.getItem("ecowitt-dashboard")!).rooms).toEqual({ column: "humidity", descending: false });
+  });
+
   it("works without any storage", async () => {
     render(App, { api: fakeApi() });
     expect(await screen.findByText("18.0 °C")).toBeInTheDocument();

@@ -14,7 +14,12 @@ export type Prefs = {
   period: string;
   /** Whether the charts show the weather model's lines beside the station's. */
   model: boolean;
+  /** How the rooms table is sorted, or null for the order the station lists them in. */
+  rooms: RoomSort | null;
 };
+
+/** A column of the rooms table, and which way it runs. */
+export type RoomSort = { column: string; descending: boolean };
 
 export const DEFAULTS: Prefs = {
   station: null,
@@ -23,6 +28,7 @@ export const DEFAULTS: Prefs = {
   range: "24h",
   period: "today",
   model: false,
+  rooms: null,
 };
 
 const KEY = "ecowitt-dashboard";
@@ -39,10 +45,18 @@ export function load(storage: Storage | undefined = globalThis.localStorage): Pr
       range: typeof saved.range === "string" ? saved.range : DEFAULTS.range,
       period: typeof saved.period === "string" ? saved.period : DEFAULTS.period,
       model: typeof saved.model === "boolean" ? saved.model : DEFAULTS.model,
+      rooms: roomSort(saved.rooms),
     };
   } catch {
     return { ...DEFAULTS };
   }
+}
+
+/** A saved rooms order, or null for anything that is not one. */
+function roomSort(saved: unknown): RoomSort | null {
+  if (typeof saved !== "object" || saved === null) return null;
+  const { column, descending } = saved as Partial<RoomSort>;
+  return typeof column === "string" && typeof descending === "boolean" ? { column, descending } : null;
 }
 
 /** Remember the choices, if this browser lets the page. */

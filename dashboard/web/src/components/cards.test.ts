@@ -180,9 +180,8 @@ describe("SunCard", () => {
 });
 
 describe("Rooms", () => {
-  it("lists each room with advice only where there is some", async () => {
-    const onselect = vi.fn();
-    render(Rooms, { rooms: now().rooms, units: UNITS, symbols: SYMBOLS, onselect });
+  it("lists each room with advice only where there is some", () => {
+    render(Rooms, { rooms: now().rooms, units: UNITS, symbols: SYMBOLS });
     expect(screen.getByText("Air it")).toHaveAttribute("title", expect.stringContaining("drier"));
     expect(screen.getByText("Keep closed")).toBeInTheDocument();
     // Airing would dry the bathroom (75% to 49%) and dampen the lounge (55% to 58%) and the
@@ -191,16 +190,49 @@ describe("Rooms", () => {
     expect(screen.getByText("58%")).toHaveClass("bad");
     expect(screen.getByText("71%")).toHaveClass("bad");
     expect(screen.getAllByRole("row")).toHaveLength(4);
+  });
+
+  it("sorts by the column clicked, and turns round on a second click", async () => {
+    const names = () => screen.getAllByRole("row").slice(1).map((r) => r.querySelector("td")!.textContent);
+    render(Rooms, { rooms: now().rooms, units: UNITS, symbols: SYMBOLS });
+    // The station's own order until a column is chosen.
+    expect(names()).toEqual(["Lounge", "Bathroom", "Attic"]);
+    expect(screen.getByRole("columnheader", { name: /Temperature/ })).toHaveAttribute("aria-sort", "none");
     await fireEvent.click(screen.getByRole("button", { name: "Temperature" }));
-    expect(onselect).toHaveBeenCalledWith("rooms-temperature");
-    await fireEvent.click(screen.getByRole("button", { name: "Humidity" }));
-    expect(onselect).toHaveBeenCalledWith("rooms-humidity");
+    expect(names()).toEqual(["Attic", "Bathroom", "Lounge"]);
+    expect(screen.getByRole("columnheader", { name: /Temperature/ })).toHaveAttribute("aria-sort", "ascending");
+    expect(screen.getByRole("button", { name: /Temperature/ })).toHaveTextContent("Temperature ↑");
+    await fireEvent.click(screen.getByRole("button", { name: /Temperature/ }));
+    expect(names()).toEqual(["Lounge", "Bathroom", "Attic"]);
+    expect(screen.getByRole("columnheader", { name: /Temperature/ })).toHaveAttribute("aria-sort", "descending");
+    await fireEvent.click(screen.getByRole("button", { name: "Room" }));
+    expect(names()).toEqual(["Attic", "Bathroom", "Lounge"]);
+    await fireEvent.click(screen.getByRole("button", { name: "If aired" }));
+    expect(names()).toEqual(["Bathroom", "Lounge", "Attic"]);
+    await fireEvent.click(screen.getByRole("button", { name: "Dew point" }));
+    expect(names()).toEqual(["Lounge", "Attic", "Bathroom"]);
+  });
+
+  it("keeps a room without the value last, whichever way the column runs", () => {
+    const rooms = [{ ...now().rooms[0], humidity: null }, ...now().rooms.slice(1)];
+    const names = () => screen.getAllByRole("row").slice(1).map((r) => r.querySelector("td")!.textContent);
+    const first = render(Rooms, { rooms, units: UNITS, symbols: SYMBOLS, sort: { column: "humidity", descending: false } });
+    expect(names()).toEqual(["Attic", "Bathroom", "Lounge"]);
+    first.unmount();
+    render(Rooms, { rooms, units: UNITS, symbols: SYMBOLS, sort: { column: "humidity", descending: true } });
+    expect(names()).toEqual(["Bathroom", "Attic", "Lounge"]);
+  });
+
+  it("keeps the station's order for a column it does not know", () => {
+    render(Rooms, { rooms: now().rooms, units: UNITS, symbols: SYMBOLS, sort: { column: "colour", descending: false } });
+    const names = screen.getAllByRole("row").slice(1).map((r) => r.querySelector("td")!.textContent);
+    expect(names).toEqual(["Lounge", "Bathroom", "Attic"]);
   });
 
   it("has no airing column while no room has advice", () => {
     render(Rooms, {
       rooms: [{ ...now().rooms[0], airing: null }, { ...now().rooms[0], sensor: "ch9" }],
-      units: UNITS, symbols: SYMBOLS, onselect: vi.fn(),
+      units: UNITS, symbols: SYMBOLS,
     });
     expect(screen.queryByRole("columnheader", { name: "Airing" })).not.toBeInTheDocument();
     expect(screen.getAllByRole("cell")).toHaveLength(10);
@@ -210,7 +242,7 @@ describe("Rooms", () => {
 
   it("leaves the change muted when it is under a point", () => {
     const room = { ...now().rooms[0], humidity: 58.6 };
-    render(Rooms, { rooms: [room], units: UNITS, symbols: SYMBOLS, onselect: vi.fn() });
+    render(Rooms, { rooms: [room], units: UNITS, symbols: SYMBOLS });
     expect(screen.getByText("58%")).toHaveClass("muted");
   });
 });
@@ -251,7 +283,7 @@ describe("highlights", () => {
 
   it("colour a room's cold or damp readings, and edge the table", () => {
     const { container } = render(Rooms, {
-      rooms: now().rooms, units: UNITS, symbols: SYMBOLS, onselect: vi.fn(), notice: now().notices.rooms,
+      rooms: now().rooms, units: UNITS, symbols: SYMBOLS, notice: now().notices.rooms,
     });
     expect(container.querySelector(".card")).toHaveClass("warning");
     expect(screen.getByText("Damp: Bathroom. Cold: Attic.")).toBeInTheDocument();

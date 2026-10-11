@@ -160,7 +160,7 @@
       {#if now.sun}<SunCard sun={now.sun} {symbols} {timezone} onselect={drill} notice={now.notices.sun} />{/if}
     </section>
 
-    {#if now.rooms.length}<Rooms rooms={now.rooms} units={now.units} {symbols} onselect={drill} notice={now.notices.rooms} />{/if}
+    {#if now.rooms.length}<Rooms rooms={now.rooms} units={now.units} {symbols} notice={now.notices.rooms} bind:sort={prefs.rooms} />{/if}
 
     <History
       {api}
