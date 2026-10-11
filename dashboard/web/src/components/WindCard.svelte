@@ -1,20 +1,23 @@
 <script lang="ts">
   /** The wind: a compass showing where it comes from, its speed, gusts and the day's strongest. */
-  import type { Units, Wind } from "../lib/api";
+  import WindIcon from "@lucide/svelte/icons/wind";
+  import type { Notice, Units, Wind } from "../lib/api";
   import { clock, quantity } from "../lib/format";
 
   type Props = {
+    notice?: Notice;
     wind: Wind;
     units: Units;
     symbols: Record<string, string>;
     timezone: string;
     onselect: (view: string) => void;
   };
-  let { wind, units, symbols, timezone, onselect }: Props = $props();
+  let { wind, units, symbols, timezone, onselect, notice }: Props = $props();
 </script>
 
-<button class="card" onclick={() => onselect("wind")}>
-  <h2>Wind</h2>
+<button class="card {notice?.level ?? ''}" onclick={() => onselect("wind")}>
+  <h2><WindIcon size={16} aria-hidden="true" /> Wind</h2>
+  {#if notice?.text}<p class="notice">{notice.text}</p>{/if}
   <div class="row">
     <svg viewBox="-50 -50 100 100" class="compass" role="img" aria-label={wind.compass ? `From the ${wind.compass}` : "Direction unknown"}>
       <circle r="44" class="ring" />

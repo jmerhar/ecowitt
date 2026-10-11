@@ -1,6 +1,7 @@
 <script lang="ts">
   /** Every room's latest reading, with whether opening its windows would dry it. */
-  import type { Room, Units } from "../lib/api";
+  import HouseIcon from "@lucide/svelte/icons/house";
+  import type { Notice, Room, Units } from "../lib/api";
   import { quantity } from "../lib/format";
 
   type Props = {
@@ -8,8 +9,9 @@
     units: Units;
     symbols: Record<string, string>;
     onselect: (view: string) => void;
+    notice?: Notice;
   };
-  let { rooms, units, symbols, onselect }: Props = $props();
+  let { rooms, units, symbols, onselect, notice }: Props = $props();
 
   const ADVICE = {
     open: { text: "Air it", hint: "The outside air is drier: airing would bring humidity down" },
@@ -32,8 +34,9 @@
   const advised = $derived(rooms.some((r) => r.airing && r.airing.advice !== "no_need"));
 </script>
 
-<section class="card wide">
-  <h2>Rooms</h2>
+<section class="card wide {notice?.level ?? ''}">
+  <h2><HouseIcon size={16} aria-hidden="true" /> Rooms</h2>
+  {#if notice?.text}<p class="notice">{notice.text}</p>{/if}
   <div class="table-wrap">
     <table>
       <thead>
@@ -51,8 +54,10 @@
           {@const advice = room.airing ? ADVICE[room.airing.advice] : null}
           <tr>
             <td>{room.name}</td>
-            <td class="num">{quantity(room.temperature, units.temperature, symbols)}</td>
-            <td class="num">{quantity(room.humidity, "pct", symbols)}</td>
+            <td class="num" class:warn={room.flags.includes("cold") || room.flags.includes("hot")}>
+              {quantity(room.temperature, units.temperature, symbols)}</td>
+            <td class="num" class:warn={room.flags.includes("damp") || room.flags.includes("dry")}>
+              {quantity(room.humidity, "pct", symbols)}</td>
             <td class="num wide-only">{quantity(room.dew_point, units.temperature, symbols)}</td>
             <td class="num {effect(room)}">{quantity(room.airing?.humidity_after, "pct", symbols)}</td>
             {#if advised}<td class="wide-only">

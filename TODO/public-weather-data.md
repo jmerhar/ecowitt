@@ -27,6 +27,10 @@ Side by side with a model the difference shows, and stays in the history.
 - **The existing pressure reference** moves onto this data, so one fetch serves both.
 - **Dashboard**: model series drawn dashed behind the station's in the outdoor panels; a
   "station minus model" panel for temperature and wind direction.
+- **Public dashboard**: the model's weather code (clear, cloudy, rain, fog...) is what a station
+  cannot measure, so it can headline the page with a matching icon. The page's icons are
+  Lucide's, which are line drawings of things; for weather states consider Meteocons (MIT), a
+  set drawn for exactly that, alongside them.
 
 ## Open questions
 

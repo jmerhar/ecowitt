@@ -117,7 +117,7 @@ describe("SunCard", () => {
   it("gives today's sunrise, sunset and daylight, and the UV risk", async () => {
     const onselect = vi.fn();
     render(SunCard, { sun: now().sun!, symbols: SYMBOLS, timezone: tz, onselect });
-    expect(screen.getByText("↑ 07:42 ↓ 19:07")).toBeInTheDocument();
+    expect(screen.getByTitle("Sunrise")).toHaveTextContent("07:42");
     expect(screen.getByText("11 h 25 min of daylight")).toBeInTheDocument();
     expect(screen.getByText("4 Moderate")).toBeInTheDocument();
     await fireEvent.click(screen.getByRole("button"));
@@ -177,6 +177,63 @@ describe("Rooms", () => {
     const room = { ...now().rooms[0], humidity: 58.6 };
     render(Rooms, { rooms: [room], units: UNITS, symbols: SYMBOLS, onselect: vi.fn() });
     expect(screen.getByText("58%")).toHaveClass("muted");
+  });
+});
+
+describe("highlights", () => {
+  it("give a card with a warning its edge and its words", () => {
+    const notice = { level: "warning" as const, text: "Strong gusts." };
+    const { container } = render(WindCard, {
+      wind: now().wind!, units: UNITS, symbols: SYMBOLS, timezone: tz, onselect: vi.fn(), notice,
+    });
+    expect(container.querySelector(".card")).toHaveClass("warning");
+    expect(screen.getByText("Strong gusts.")).toHaveClass("notice");
+  });
+
+  it.each([
+    ["outdoor", NowCard, { now: now() }],
+    ["rain", RainCard, { rain: now().rain!, units: UNITS }],
+    ["pressure", PressureCard, { pressure: now().pressure!, units: UNITS }],
+    ["sun", SunCard, { sun: now().sun!, timezone: tz }],
+  ] as const)("reach the %s card", (_, Card, props) => {
+    const { container } = render(Card as never, {
+      ...props, symbols: SYMBOLS, timezone: tz, onselect: vi.fn(), notice: { level: "warning", text: "Look." },
+    } as never);
+    expect(container.querySelector(".card")).toHaveClass("warning");
+    expect(screen.getByText("Look.")).toBeInTheDocument();
+  });
+
+  it("leave an unremarkable card plain, and a notice without words wordless", () => {
+    const plain = render(SunCard, { sun: now().sun!, symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
+    expect(plain.container.querySelector(".card")!.className).not.toMatch(/warning|good/);
+    plain.unmount();
+    const { container } = render(AiringCard, {
+      airing: now().airing!, symbols: SYMBOLS, onselect: vi.fn(), notice: { level: "good", text: "" },
+    });
+    expect(container.querySelector(".card")).toHaveClass("good");
+    expect(container.querySelector(".notice")).toBeNull();
+  });
+
+  it("colour a room's cold or damp readings, and edge the table", () => {
+    const { container } = render(Rooms, {
+      rooms: now().rooms, units: UNITS, symbols: SYMBOLS, onselect: vi.fn(), notice: now().notices.rooms,
+    });
+    expect(container.querySelector(".card")).toHaveClass("warning");
+    expect(screen.getByText("Damp: Bathroom. Cold: Attic.")).toBeInTheDocument();
+    expect(screen.getByText("75%")).toHaveClass("warn");
+    expect(screen.getByText("19.0 °C")).toHaveClass("warn");
+    expect(screen.getByText("21.0 °C")).not.toHaveClass("warn");
+  });
+
+  it("edge the sensors when one needs attention", () => {
+    const { container } = render(Sensors, { sensors: now().sensors, notice: now().notices.sensors });
+    expect(container.querySelector(".card")).toHaveClass("warning");
+  });
+
+  it("show sunrise and sunset by icon", () => {
+    render(SunCard, { sun: now().sun!, symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
+    expect(screen.getByTitle("Sunrise")).toHaveTextContent("07:42");
+    expect(screen.getByTitle("Sunset")).toHaveTextContent("19:07");
   });
 });
 

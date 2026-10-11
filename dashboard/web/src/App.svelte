@@ -148,15 +148,15 @@
 
   {#if now && station && meta}
     <section class="glance">
-      <NowCard {now} {symbols} {timezone} onselect={drill} />
-      {#if now.airing}<AiringCard airing={now.airing} {symbols} onselect={drill} />{/if}
-      {#if now.wind}<WindCard wind={now.wind} units={now.units} {symbols} {timezone} onselect={drill} />{/if}
-      {#if now.rain}<RainCard rain={now.rain} units={now.units} {symbols} onselect={drill} />{/if}
-      {#if now.pressure}<PressureCard pressure={now.pressure} units={now.units} {symbols} onselect={drill} />{/if}
-      {#if now.sun}<SunCard sun={now.sun} {symbols} {timezone} onselect={drill} />{/if}
+      <NowCard {now} {symbols} {timezone} onselect={drill} notice={now.notices.outdoor} />
+      {#if now.airing}<AiringCard airing={now.airing} {symbols} onselect={drill} notice={now.notices.airing} />{/if}
+      {#if now.wind}<WindCard wind={now.wind} units={now.units} {symbols} {timezone} onselect={drill} notice={now.notices.wind} />{/if}
+      {#if now.rain}<RainCard rain={now.rain} units={now.units} {symbols} onselect={drill} notice={now.notices.rain} />{/if}
+      {#if now.pressure}<PressureCard pressure={now.pressure} units={now.units} {symbols} onselect={drill} notice={now.notices.pressure} />{/if}
+      {#if now.sun}<SunCard sun={now.sun} {symbols} {timezone} onselect={drill} notice={now.notices.sun} />{/if}
     </section>
 
-    {#if now.rooms.length}<Rooms rooms={now.rooms} units={now.units} {symbols} onselect={drill} />{/if}
+    {#if now.rooms.length}<Rooms rooms={now.rooms} units={now.units} {symbols} onselect={drill} notice={now.notices.rooms} />{/if}
 
     <History
       {api}
@@ -171,7 +171,7 @@
 
     <Records {api} {meta} station={station.id} units={prefs.units} {timezone} {tick} bind:period={prefs.period} />
 
-    {#if now.sensors.length}<Sensors sensors={now.sensors} />{/if}
+    {#if now.sensors.length}<Sensors sensors={now.sensors} notice={now.notices.sensors} />{/if}
   {/if}
 </main>
 

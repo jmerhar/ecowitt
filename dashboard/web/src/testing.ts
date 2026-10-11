@@ -66,16 +66,21 @@ export function now(overrides: Partial<Now> = {}): Now {
     airing: { advice: "open", rooms: ["Bathroom"], humidity: 70, humidity_after: 58, dew_point_difference: 0.3 },
     rooms: [
       { sensor: "indoor", name: "Lounge", temperature: 21, humidity: 55, dew_point: 11.9,
-        airing: { advice: "no_need", humidity_after: 58, dew_point_difference: 0.3 } },
+        airing: { advice: "no_need", humidity_after: 58, dew_point_difference: 0.3 }, flags: [] },
       { sensor: "ch1", name: "Bathroom", temperature: 20, humidity: 75, dew_point: 15.4,
-        airing: { advice: "open", humidity_after: 49, dew_point_difference: 2.9 } },
+        airing: { advice: "open", humidity_after: 49, dew_point_difference: 2.9 }, flags: ["damp"] },
       { sensor: "ch2", name: "Attic", temperature: 19, humidity: 70, dew_point: 13.4,
-        airing: { advice: "keep_closed", humidity_after: 71, dew_point_difference: 0.2 } },
+        airing: { advice: "keep_closed", humidity_after: 71, dew_point_difference: 0.2 }, flags: ["cold"] },
     ],
     sensors: [
       { sensor: "outdoor", name: "Outdoor", battery_low: false, unchanged_s: 0, updating: true },
       { sensor: "ch1", name: "Bathroom", battery_low: true, unchanged_s: 20000, updating: false },
     ],
+    notices: {
+      airing: { level: "good", text: "" },
+      rooms: { level: "warning", text: "Damp: Bathroom. Cold: Attic." },
+      sensors: { level: "warning", text: "" },
+    },
     ...overrides,
   };
 }

@@ -1,14 +1,16 @@
 <script lang="ts">
   /** Whether to open the windows: the house's verdict, up top where it is seen. */
-  import type { HouseAiring } from "../lib/api";
+  import DoorOpenIcon from "@lucide/svelte/icons/door-open";
+  import type { Notice, HouseAiring } from "../lib/api";
   import { quantity } from "../lib/format";
 
   type Props = {
+    notice?: Notice;
     airing: HouseAiring;
     symbols: Record<string, string>;
     onselect: (view: string) => void;
   };
-  let { airing, symbols, onselect }: Props = $props();
+  let { airing, symbols, onselect, notice }: Props = $props();
 
   const HEADLINES = {
     open: "Good time to air",
@@ -20,8 +22,9 @@
   const after = $derived(quantity(airing.humidity_after, "pct", symbols));
 </script>
 
-<button class="card airing {airing.advice}" onclick={() => onselect("rooms-humidity")}>
-  <h2>Airing</h2>
+<button class="card airing {airing.advice} {notice?.level ?? ''}" onclick={() => onselect("rooms-humidity")}>
+  <h2><DoorOpenIcon size={16} aria-hidden="true" /> Airing</h2>
+  {#if notice?.text}<p class="notice">{notice.text}</p>{/if}
   <div class="big">{HEADLINES[airing.advice]}</div>
   <p>
     {#if airing.advice === "open"}
@@ -36,17 +39,8 @@
 </button>
 
 <style>
-  .airing {
-    border-left-width: 4px;
-  }
-  .open {
-    border-left-color: var(--good);
-  }
   .open .big {
     color: var(--good);
-  }
-  .keep_closed {
-    border-left-color: var(--warn);
   }
   .keep_closed .big {
     color: var(--warn);

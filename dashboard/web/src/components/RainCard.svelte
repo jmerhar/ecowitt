@@ -1,21 +1,24 @@
 <script lang="ts">
   /** Rain: whether it is raining now, and the console's running totals. */
-  import type { Rain, Units } from "../lib/api";
+  import CloudRainIcon from "@lucide/svelte/icons/cloud-rain";
+  import type { Notice, Rain, Units } from "../lib/api";
   import { quantity } from "../lib/format";
 
   type Props = {
+    notice?: Notice;
     rain: Rain;
     units: Units;
     symbols: Record<string, string>;
     onselect: (view: string) => void;
   };
-  let { rain, units, symbols, onselect }: Props = $props();
+  let { rain, units, symbols, onselect, notice }: Props = $props();
 
   const rate = $derived(units.rain === "in" ? "in_h" : "mm_h");
 </script>
 
-<button class="card" onclick={() => onselect("rain")}>
-  <h2>Rain</h2>
+<button class="card {notice?.level ?? ''}" onclick={() => onselect("rain")}>
+  <h2><CloudRainIcon size={16} aria-hidden="true" /> Rain</h2>
+  {#if notice?.text}<p class="notice">{notice.text}</p>{/if}
   {#if rain.raining}
     <div class="big">{quantity(rain.rate, rate, symbols)}</div>
     <div class="muted">Raining now</div>

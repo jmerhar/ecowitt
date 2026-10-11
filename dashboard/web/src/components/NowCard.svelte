@@ -1,15 +1,16 @@
 <script lang="ts">
   /** The headline: outdoor temperature, what it feels like, the day's range and one line in words. */
-  import type { Now } from "../lib/api";
+  import type { Notice, Now } from "../lib/api";
   import { clock, quantity } from "../lib/format";
 
   type Props = {
+    notice?: Notice;
     now: Now;
     symbols: Record<string, string>;
     timezone: string;
     onselect: (view: string) => void;
   };
-  let { now, symbols, timezone, onselect }: Props = $props();
+  let { now, symbols, timezone, onselect, notice }: Props = $props();
 
   const t = $derived(now.units.temperature);
   const outdoor = $derived(now.outdoor);
@@ -17,13 +18,14 @@
   const summary = $derived(outdoor ? now.summary.split(". ").slice(1).join(". ") : now.summary);
 </script>
 
-<button class="card hero" onclick={() => onselect("temperature")}>
+<button class="card hero {notice?.level ?? ''}" onclick={() => onselect("temperature")}>
   {#if outdoor}
     <div class="temperature">{quantity(outdoor.temperature, t, symbols)}</div>
     {#if outdoor.feels_like !== null && outdoor.feels_like !== outdoor.temperature}
       <div class="feels">Feels like {quantity(outdoor.feels_like, t, symbols)}</div>
     {/if}
   {/if}
+  {#if notice?.text}<p class="notice">{notice.text}</p>{/if}
   {#if summary}<p class="summary">{summary}</p>{/if}
   {#if outdoor}
     <dl>

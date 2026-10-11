@@ -40,10 +40,31 @@ body {
   font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 h2 {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
   font-size: 1rem;
   margin: 0 0 0.5rem;
   color: var(--muted);
   font-weight: 500;
+}
+/* A card with something to act on: an edge in the notice's colour, and its words. */
+.card.warning {
+  border-left: 4px solid var(--warn);
+}
+.card.good {
+  border-left: 4px solid var(--good);
+}
+.notice {
+  margin: 0.4rem 0 0;
+  font-weight: 500;
+}
+.warning .notice,
+.warn {
+  color: var(--warn);
+}
+.good .notice {
+  color: var(--good);
 }
 .card {
   display: block;

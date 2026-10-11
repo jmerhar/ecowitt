@@ -45,6 +45,29 @@ AIRING_HUMIDITY_PCT = 65.0
 #: Close the windows alert rule applies it to the house as a whole.
 CLOSING_DEWPOINT_DELTA_C = 1.0
 
+# What deserves a visitor's attention. Each threshold with an alert rule in grafana/alerts.json is
+# that rule's, and a test holds them together.
+#: Strong wind: a gust above this, in km/h.
+STRONG_GUST_KMH = 60.0
+#: Heavy rain: a rate above this, in mm/h.
+HEAVY_RAIN_MM_H = 10.0
+#: Pressure falling fast: more than this many hPa in three hours.
+FAST_FALL_HPA = 3.0
+#: A room too cold or too hot, in °C.
+ROOM_COLD_C = 8.0
+ROOM_HOT_C = 32.0
+#: A damp room, in % humidity: the Damp room rule's level, though not its six hours.
+ROOM_DAMP_PCT = 70.0
+#: A room dry enough to be uncomfortable, in %.
+ROOM_DRY_PCT = 30.0
+#: Freezing outdoors, in °C.
+FREEZING_C = 0.0
+#: Heat: a feels-like temperature at or above the US National Weather Service's "extreme
+#: caution" level for the heat index (90 °F), in °C.
+HEAT_FEELS_C = 32.0
+#: The WHO's "very high" UV index.
+UV_VERY_HIGH = 8.0
+
 #: A sensor whose values have not changed for this long is reported as not updating, as the
 #: Sensor not updating alert rule does.
 STALE_AFTER_S = 3 * 3600
@@ -156,3 +179,17 @@ def house_airing(rooms: list[tuple[float, float]]) -> Airing:
     if rooms and statistics.median(delta for _, delta in rooms) < CLOSING_DEWPOINT_DELTA_C:
         return Airing.KEEP_CLOSED
     return Airing.NO_NEED
+
+
+def room_flags(temp_c: float | None, humidity_pct: float | None) -> list[str]:
+    """What is wrong with a room, if anything: cold, hot, damp or dry."""
+    flags = []
+    if temp_c is not None and temp_c < ROOM_COLD_C:
+        flags.append("cold")
+    if temp_c is not None and temp_c > ROOM_HOT_C:
+        flags.append("hot")
+    if humidity_pct is not None and humidity_pct >= ROOM_DAMP_PCT:
+        flags.append("damp")
+    if humidity_pct is not None and humidity_pct <= ROOM_DRY_PCT:
+        flags.append("dry")
+    return flags

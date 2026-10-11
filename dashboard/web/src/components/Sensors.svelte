@@ -1,16 +1,17 @@
 <script lang="ts">
   /** Whether each sensor is reporting and how its battery is; folded away unless something is wrong. */
-  import type { SensorHealth } from "../lib/api";
+  import RadioIcon from "@lucide/svelte/icons/radio";
+  import type { Notice, SensorHealth } from "../lib/api";
   import { duration } from "../lib/format";
 
-  let { sensors }: { sensors: SensorHealth[] } = $props();
+  let { sensors, notice }: { sensors: SensorHealth[]; notice?: Notice } = $props();
 
   const problems = $derived(sensors.filter((s) => s.battery_low || !s.updating));
 </script>
 
-<details class="card wide" open={problems.length > 0}>
+<details class="card wide {notice?.level ?? ''}" open={problems.length > 0}>
   <summary>
-    <h2>Sensors</h2>
+    <h2><RadioIcon size={16} aria-hidden="true" /> Sensors</h2>
     <span class:bad={problems.length > 0} class="muted">
       {problems.length ? `${problems.length} need${problems.length === 1 ? "s" : ""} attention` : "All reporting"}
     </span>

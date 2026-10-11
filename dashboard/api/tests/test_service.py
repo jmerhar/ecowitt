@@ -446,3 +446,72 @@ async def test_a_room_without_a_prediction_still_counts(reader: MemoryReader) ->
     reader.rows.append(row("ventilation", LAST, {"dewpoint_delta_c": -1.0}, sensor="indoor"))
     now = await Dashboard(reader, clock=lambda: NOW).now("example")
     assert now.airing is not None and now.airing.humidity_after is None
+
+
+async def test_notices_point_at_what_deserves_attention(board: Dashboard) -> None:
+    now = await board.now("example")
+    assert set(now.notices) == {"airing", "rooms", "sensors"}
+    assert now.notices["airing"].level == "good"
+    assert now.notices["rooms"].text == "Damp: Bathroom."
+    assert now.notices["sensors"].level == "warning"
+    assert [r.flags for r in now.rooms] == [[], ["damp"]]
+
+
+async def test_weather_worth_a_warning_is_flagged(reader: MemoryReader) -> None:
+    later = LAST + timedelta(seconds=30)
+    reader.rows += [
+        row("station", later, {"interval_s": 60.0}),
+        row("outdoor", later, {"temp_c": -1.0, "humidity_pct": 50.0}, sensor="outdoor"),
+        row("wind", later, {"speed_kmh": 40.0, "gust_kmh": 61.0, "dir_deg": 0.0}),
+        row("rain", later, {"rate_mm_h": 10.5}, gauge="bucket"),
+        # 1015 hPa at the start of the three hours, 1011.5 at their end: 3.5 hPa down.
+        row("pressure", later - timedelta(hours=3), {"sea_hpa": 1015.0}),
+        row("pressure", later, {"sea_hpa": 1011.5}),
+        row("solar", later, {"radiation_wm2": 900.0, "uv_index": 8.0}),
+        row(
+            "channel",
+            later,
+            {"temp_c": 7.0, "humidity_pct": 25.0},
+            sensor="ch1",
+            name="ch1",
+            channel="1",
+        ),
+    ]
+    notices = (await Dashboard(reader, clock=lambda: NOW).now("example")).notices
+    assert {card: n.text for card, n in notices.items() if card not in {"sensors", "airing"}} == {
+        "outdoor": "Freezing: watch for ice.",
+        "wind": "Strong gusts.",
+        "rain": "Heavy rain.",
+        "pressure": "Falling fast: a front or a storm is likely.",
+        "sun": "Very high UV: seek shade at midday.",
+        "rooms": "Cold: Bathroom. Dry: Bathroom.",
+    }
+
+
+async def test_heat_is_judged_by_what_it_feels_like(reader: MemoryReader) -> None:
+    later = LAST + timedelta(seconds=30)
+    reader.rows += [
+        row("station", later, {"interval_s": 60.0}),
+        row("outdoor", later, {"temp_c": 31.0, "humidity_pct": 60.0}, sensor="outdoor"),
+    ]
+    notices = (await Dashboard(reader, clock=lambda: NOW).now("example")).notices
+    assert notices["outdoor"].text == "Heat: take care outdoors."
+
+
+async def test_a_calm_dry_day_has_no_weather_notices(reader: MemoryReader) -> None:
+    reader.rows = [r for r in reader.rows if r.table not in {"pressure", "ventilation"}]
+    reader.rows.append(row("pressure", LAST, {"rel_hpa": 1012.0}))
+    for i, r in enumerate(reader.rows):
+        if r.table == "outdoor" and dict(r.tags).get("sensor") == "outdoor":
+            reader.rows[i] = row(
+                "outdoor", datetime.fromtimestamp(r.timestamp, UTC), {"temp_c": 18.0}
+            )
+    notices = (await Dashboard(reader, clock=lambda: NOW).now("example")).notices
+    assert set(notices) == {"rooms", "sensors"}
+
+
+async def test_closed_windows_are_a_warning(reader: MemoryReader) -> None:
+    reader.rows = [r for r in reader.rows if r.table != "ventilation"]
+    reader.rows.append(row("ventilation", LAST, {"dewpoint_delta_c": -2.0}, sensor="indoor"))
+    notices = (await Dashboard(reader, clock=lambda: NOW).now("example")).notices
+    assert notices["airing"].level == "warning"

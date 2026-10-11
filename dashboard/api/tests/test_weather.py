@@ -161,3 +161,39 @@ def test_the_thresholds_match_the_alert_rules() -> None:
 )
 def test_house_airing(rooms: list[tuple[float, float]], advice: Airing) -> None:
     assert weather.house_airing(rooms) is advice
+
+
+@pytest.mark.parametrize(
+    ("temp", "humidity", "flags"),
+    [
+        (21, 50, []),
+        (7.9, 50, ["cold"]),
+        (32.1, 50, ["hot"]),
+        (20, 70, ["damp"]),
+        (20, 30, ["dry"]),
+        (5, 80, ["cold", "damp"]),
+        (None, None, []),
+    ],
+)
+def test_room_flags(temp: float | None, humidity: float | None, flags: list[str]) -> None:
+    assert weather.room_flags(temp, humidity) == flags
+
+
+def test_the_notices_share_the_alert_rules_thresholds() -> None:
+    rules = {
+        rule["title"]: rule
+        for group in json.loads((REPO / "grafana/alerts.json").read_text())["groups"]
+        for rule in group["rules"]
+    }
+
+    def threshold(title: str) -> float:
+        (condition,) = [d for d in rules[title]["data"] if d["refId"] == "C"]
+        return condition["model"]["conditions"][0]["evaluator"]["params"][0]
+
+    assert threshold("Strong wind") == weather.STRONG_GUST_KMH
+    assert threshold("Heavy rain") == weather.HEAVY_RAIN_MM_H
+    assert threshold("Pressure falling fast") == weather.FAST_FALL_HPA
+    assert threshold("Room too cold") == weather.ROOM_COLD_C
+    assert threshold("Room too hot") == weather.ROOM_HOT_C
+    # The rule compares whole percents with "above 69.5".
+    assert threshold("Damp room") == weather.ROOM_DAMP_PCT - 0.5

@@ -259,6 +259,7 @@ class Dashboard:
         answer.airing = _house(air, values)
         answer.rooms = _rooms(latest, values, stored, info, air)
         answer.sensors = _health(latest, info)
+        answer.notices = _notices(latest, values, stored, answer)
         answer.summary = _summary(answer, values.target)
         return answer
 
@@ -556,34 +557,38 @@ def _rain(latest: _Latest, values: _Values, stored: Units) -> models.Rain | None
     )
 
 
+def _pressure_change(latest: _Latest, values: _Values, stored: Units) -> float | None:
+    """How far pressure has moved over the last three hours, in hPa; None unless they are
+    nearly all covered. Sea-level pressure where there is an altitude, relative otherwise."""
+    span = latest.pressure
+    if span is None or span.last_time - span.first_time < PRESSURE_TREND_COVERAGE:
+        return None
+    P = Kind.PRESSURE
+    sea, relative = field_name("sea", P, stored), field_name("rel", P, stored)
+    reference = sea if sea in span.last else relative
+    first = values.metric(P, span.first.get(reference))
+    last = values.metric(P, span.last.get(reference))
+    return None if first is None or last is None else last - first
+
+
 def _pressure(latest: _Latest, values: _Values, stored: Units) -> models.Pressure | None:
     """The pressure section, with the trend when the last three hours are covered."""
     span = latest.pressure
     if span is None:
         return None
     P = Kind.PRESSURE
-    sea, absolute, relative = (field_name(b, P, stored) for b in ("sea", "abs", "rel"))
-    reference = sea if sea in span.last else relative
+    change = _pressure_change(latest, values, stored)
     trend = None
-    first, last = (
-        values.metric(P, span.first.get(reference)),
-        values.metric(P, span.last.get(reference)),
-    )
-    if (
-        first is not None
-        and last is not None
-        and span.last_time - span.first_time >= PRESSURE_TREND_COVERAGE
-    ):
-        change = last - first
+    if change is not None:
         trend = models.PressureTrend(
             change=values.from_metric(P, change),
             hours=round((span.last_time - span.first_time).total_seconds() / 3600, 1),
             tendency=weather.tendency(change),
         )
     return models.Pressure(
-        sea_level=values.out(P, span.last.get(sea)),
-        absolute=values.out(P, span.last.get(absolute)),
-        relative=values.out(P, span.last.get(relative)),
+        sea_level=values.out(P, span.last.get(field_name("sea", P, stored))),
+        absolute=values.out(P, span.last.get(field_name("abs", P, stored))),
+        relative=values.out(P, span.last.get(field_name("rel", P, stored))),
         trend=trend,
     )
 
@@ -674,14 +679,17 @@ def _rooms(
                 humidity_after=None if room.after is None else values.from_metric(H, room.after),
                 dew_point_difference=values.from_metric(Kind.TEMPERATURE_DELTA, room.delta),
             )
+        temp = values.metric(T, span.last.get(field_name("temp", T, stored)))
+        humidity = values.metric(H, span.last.get(field_name("humidity", H, stored)))
         rooms.append(
             models.Room(
                 sensor=sensor,
                 name=_name(info, span.tags, span.name) or sensor,
-                temperature=values.out(T, span.last.get(field_name("temp", T, stored))),
-                humidity=values.out(H, span.last.get(field_name("humidity", H, stored))),
+                temperature=None if temp is None else values.from_metric(T, temp),
+                humidity=None if humidity is None else values.from_metric(H, humidity),
                 dew_point=values.out(T, dew_points.get(sensor)),
                 airing=advice,
+                flags=weather.room_flags(temp, humidity),
             )
         )
     return rooms
@@ -717,6 +725,61 @@ def _judged(sensor: str) -> bool:
     silent array still shows.
     """
     return sensor == "outdoor" or ROOM_SENSOR.fullmatch(sensor) is not None
+
+
+def _notices(
+    latest: _Latest, values: _Values, stored: Units, now: models.Now
+) -> dict[str, models.Notice]:
+    """What deserves attention, card by card, judged in metric units."""
+    found: dict[str, models.Notice] = {}
+
+    def warn(card: str, text: str = "") -> None:
+        found[card] = models.Notice(level="warning", text=text)
+
+    if latest.outdoor is not None:
+        T, H = Kind.TEMPERATURE, Kind.HUMIDITY
+        temp = values.metric(T, latest.outdoor.last.get(field_name("temp", T, stored)))
+        humidity = values.metric(H, latest.outdoor.last.get(field_name("humidity", H, stored)))
+        speed = None
+        if latest.wind is not None:
+            speed = values.metric(
+                Kind.SPEED, latest.wind.last.get(field_name("speed", Kind.SPEED, stored))
+            )
+        if temp is not None and temp <= weather.FREEZING_C:
+            warn("outdoor", "Freezing: watch for ice.")
+        elif temp is not None and weather.feels_like(temp, humidity, speed) >= weather.HEAT_FEELS_C:
+            warn("outdoor", "Heat: take care outdoors.")
+    if latest.wind is not None:
+        gust = values.metric(
+            Kind.SPEED, latest.wind.last.get(field_name("gust", Kind.SPEED, stored))
+        )
+        if gust is not None and gust > weather.STRONG_GUST_KMH:
+            warn("wind", "Strong gusts.")
+    if latest.rain:
+        R = Kind.RAIN_RATE
+        rates = [values.metric(R, s.last.get(field_name("rate", R, stored))) for s in latest.rain]
+        if any(r is not None and r > weather.HEAVY_RAIN_MM_H for r in rates):
+            warn("rain", "Heavy rain.")
+    change = _pressure_change(latest, values, stored)
+    if change is not None and -change > weather.FAST_FALL_HPA:
+        warn("pressure", "Falling fast: a front or a storm is likely.")
+    if latest.solar is not None:
+        uv = values.metric(Kind.UV_INDEX, latest.solar.last.get("uv_index"))
+        if uv is not None and uv >= weather.UV_VERY_HIGH:
+            warn("sun", "Very high UV: seek shade at midday.")
+    if now.airing is not None and now.airing.advice == "open":
+        found["airing"] = models.Notice(level="good")
+    elif now.airing is not None and now.airing.advice == "keep_closed":
+        warn("airing")
+    flagged: dict[str, list[str]] = {}
+    for room in now.rooms:
+        for flag in room.flags:
+            flagged.setdefault(flag, []).append(room.name)
+    if flagged:
+        warn("rooms", " ".join(f"{f.capitalize()}: {', '.join(n)}." for f, n in flagged.items()))
+    if any(s.battery_low or not s.updating for s in now.sensors):
+        warn("sensors")
+    return found
 
 
 def _summary(now: models.Now, units: Units) -> str:

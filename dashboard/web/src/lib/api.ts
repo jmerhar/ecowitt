@@ -82,7 +82,12 @@ export type Room = {
     humidity_after: number | null;
     dew_point_difference: number;
   } | null;
+  /** What is wrong with it: cold, hot, damp or dry. */
+  flags: string[];
 };
+
+/** Something on a card that deserves attention: a warning, or good news worth acting on. */
+export type Notice = { level: "warning" | "good"; text: string };
 
 export type HouseAiring = {
   advice: "open" | "keep_closed" | "no_need";
@@ -115,6 +120,8 @@ export type Now = {
   airing: HouseAiring | null;
   rooms: Room[];
   sensors: SensorHealth[];
+  /** What deserves attention, by card; a card missing from it is unremarkable. */
+  notices: Partial<Record<string, Notice>>;
 };
 
 export type Series = {

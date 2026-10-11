@@ -121,6 +121,15 @@ class AiringAdvice(BaseModel):
     dew_point_difference: float
 
 
+class Notice(BaseModel):
+    """Something on a card that deserves attention."""
+
+    #: warning, or good for news worth acting on (a good time to air).
+    level: str
+    #: What it is, in a few words; empty when the card says it already.
+    text: str = ""
+
+
 class HouseAiring(BaseModel):
     """Whether opening the windows would dry the house."""
 
@@ -144,6 +153,8 @@ class Room(BaseModel):
     humidity: float | None = None
     dew_point: float | None = None
     airing: AiringAdvice | None = None
+    #: What is wrong with it: cold, hot, damp or dry.
+    flags: list[str] = Field(default_factory=list)
 
 
 class SensorHealth(BaseModel):
@@ -175,6 +186,9 @@ class Now(BaseModel):
     sun: Sun | None = None
     airing: HouseAiring | None = None
     rooms: list[Room] = Field(default_factory=list)
+    #: What deserves attention, by card: outdoor, wind, rain, pressure, sun, airing, rooms,
+    #: sensors. A card missing from it is unremarkable.
+    notices: dict[str, Notice] = Field(default_factory=dict)
     sensors: list[SensorHealth] = Field(default_factory=list)
 
 
