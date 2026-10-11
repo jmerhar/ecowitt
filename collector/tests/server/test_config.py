@@ -86,7 +86,7 @@ NOT_FORWARDED = {
     "opentopodata_url",
     "open_elevation_url",
     "open_meteo_url",
-    "reference_interval_seconds",
+    "model_interval_seconds",
 }
 
 

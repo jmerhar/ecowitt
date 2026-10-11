@@ -1,4 +1,4 @@
-"""Facts about a location from public services: its elevation, and the weather model's pressure.
+"""Facts about a location from public services: its elevation, and a weather model's values.
 
 Both are asked only about stations whose coordinates the operator has entered, because the
 coordinates are sent to them. Every failure -- no network, a rate limit, an answer of the wrong
@@ -10,9 +10,14 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx2
+
+from ecowitt.core import weathermodel
+from ecowitt.core.readings import Value
+from ecowitt.core.units import Kind
 
 logger = logging.getLogger(__name__)
 
@@ -52,30 +57,86 @@ async def elevation(
     return None
 
 
-async def surface_pressure(
+@dataclass(frozen=True)
+class ModelSample:
+    """A weather model's values at one time, by Open-Meteo's variable names.
+
+    Measurements are floats, a weather code an int and a flag a bool; a variable the model
+    left out at that time is absent.
+    """
+
+    timestamp: int
+    values: dict[str, Value]
+
+
+async def weather_model(
     client: httpx2.AsyncClient,
     latitude: float,
     longitude: float,
     altitude_m: float | None,
     *,
+    start: int,
+    end: int,
+    model: str,
     open_meteo_url: str,
-) -> float | None:
-    """A weather model's current surface pressure at a point, in hPa.
+) -> list[ModelSample] | None:
+    """A weather model's 15-minute values at a point, from `start` to `end` (Unix seconds).
 
-    Given the station's altitude, Open-Meteo corrects its grid cell's pressure to that height,
-    which is what makes the value comparable with the console's absolute reading.
+    Given the station's altitude, Open-Meteo adjusts its grid cell's temperature and pressure to
+    that height, which is what makes them comparable with the station's. Outside the regions
+    with a native 15-minute model it interpolates hourly values, in the same shape.
     """
     params: dict[str, str] = {
         "latitude": str(latitude),
         "longitude": str(longitude),
-        "current": "surface_pressure",
+        "models": model,
+        "minutely_15": ",".join(weathermodel.VARIABLES),
+        "start_minutely_15": _quarter(start),
+        "end_minutely_15": _quarter(end),
+        "wind_speed_unit": "ms",
+        "timeformat": "unixtime",
     }
     if altitude_m is not None:
         params["elevation"] = str(altitude_m)
     data = await _get_json(client, open_meteo_url, params)
-    current = data.get("current") if isinstance(data, dict) else None
-    value = current.get("surface_pressure") if isinstance(current, dict) else None
-    return _finite(value)
+    block = data.get("minutely_15") if isinstance(data, dict) else None
+    times = block.get("time") if isinstance(block, dict) else None
+    if not isinstance(times, list):
+        return None
+    columns = {
+        name: column
+        for name in weathermodel.VARIABLES
+        if isinstance(column := block.get(name), list) and len(column) == len(times)
+    }
+    samples = []
+    for index, timestamp in enumerate(times):
+        if isinstance(timestamp, bool) or not isinstance(timestamp, int):
+            return None
+        values = {
+            name: value
+            for name, column in columns.items()
+            if (value := _typed(weathermodel.VARIABLES[name][1], column[index])) is not None
+        }
+        if values:
+            samples.append(ModelSample(timestamp, values))
+    return samples
+
+
+def _quarter(timestamp: int) -> str:
+    """A time as Open-Meteo's 15-minute parameters take it: UTC, to the minute."""
+    return datetime.fromtimestamp(timestamp, UTC).strftime("%Y-%m-%dT%H:%M")
+
+
+def _typed(kind: Kind, value: Any) -> Value | None:
+    """A model value as its kind is stored, or None for a missing or malformed one."""
+    number = _finite(value)
+    if number is None:
+        return None
+    if kind is Kind.FLAG:
+        return bool(number)
+    if kind is Kind.CODE:
+        return int(number)
+    return number
 
 
 async def _get_json(client: httpx2.AsyncClient, url: str, params: dict[str, str]) -> Any:

@@ -1,19 +1,14 @@
-"""Elevation and model surface pressure from public services, against a real HTTP server."""
+"""Elevation and weather model values from public services, against a real HTTP server."""
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
 import json
 
 import httpx2
 import pytest
 
 from ecowitt.collector.admin import lookups
-from ecowitt.collector.admin.calibration import CalibrationMonitor
-from ecowitt.collector.admin.reference import ReferenceUpdater
-from ecowitt.collector.admin.stationconfig import Station, StationConfig
-from ecowitt.core.preferences import Preferences
+from ecowitt.core import weathermodel
 from ecowitt.core.testing import StubInflux, serving
 
 DEAD = "http://127.0.0.1:1/nothing"
@@ -65,123 +60,124 @@ async def test_no_network_gives_none() -> None:
     assert await elevation(DEAD, DEAD) is None
 
 
-async def test_surface_pressure_asks_for_the_station_altitude() -> None:
-    reply = json.dumps({"current": {"surface_pressure": 1009.3}})
-    async with serving(StubInflux(status=200, reply=reply)) as stub, httpx2.AsyncClient() as client:
-        value = await lookups.surface_pressure(client, 45.0, 7.0, 180.0, open_meteo_url=stub.url)
+#: 2026-10-11 12:00 and 12:15 UTC.
+NOON = 1791720000
+QUARTER = NOON + 900
 
-    assert value == 1009.3
-    assert stub.requests[0].query == {
+
+def answer(**columns: list[object]) -> str:
+    """An Open-Meteo answer with two 15-minute times and the given columns."""
+    return json.dumps({"elevation": 180.0, "minutely_15": {"time": [NOON, QUARTER], **columns}})
+
+
+async def weather_model(
+    url: str, altitude: float | None = 180.0
+) -> list[lookups.ModelSample] | None:
+    async with httpx2.AsyncClient() as client:
+        return await lookups.weather_model(
+            client,
+            45.0,
+            7.0,
+            altitude,
+            start=NOON,
+            end=QUARTER + 600,
+            model="best_match",
+            open_meteo_url=url,
+        )
+
+
+async def test_weather_model_asks_for_every_variable_at_the_station_altitude() -> None:
+    async with serving(StubInflux(status=200, reply=answer())) as stub:
+        await weather_model(stub.url)
+
+    query = stub.requests[0].query
+    assert query.pop("minutely_15").split(",") == list(weathermodel.VARIABLES)
+    assert query == {
         "latitude": "45.0",
         "longitude": "7.0",
-        "current": "surface_pressure",
         "elevation": "180.0",
+        "models": "best_match",
+        # Open-Meteo takes the window in UTC to the minute; its own quarters answer it.
+        "start_minutely_15": "2026-10-11T12:00",
+        "end_minutely_15": "2026-10-11T12:25",
+        "wind_speed_unit": "ms",
+        "timeformat": "unixtime",
     }
 
 
-async def test_surface_pressure_without_an_altitude_omits_it() -> None:
-    reply = json.dumps({"current": {"surface_pressure": 1000.0}})
-    async with serving(StubInflux(status=200, reply=reply)) as stub, httpx2.AsyncClient() as client:
-        await lookups.surface_pressure(client, 45.0, 7.0, None, open_meteo_url=stub.url)
+async def test_weather_model_without_an_altitude_leaves_it_to_open_meteo() -> None:
+    async with serving(StubInflux(status=200, reply=answer())) as stub:
+        await weather_model(stub.url, altitude=None)
 
     assert "elevation" not in stub.requests[0].query
 
 
+async def test_weather_model_values_come_typed_by_kind() -> None:
+    reply = answer(
+        temperature_2m=[18.4, 18.0],
+        relative_humidity_2m=[64, 66],
+        weather_code=[3, 61.0],
+        is_day=[1, 0],
+    )
+    async with serving(StubInflux(status=200, reply=reply)) as stub:
+        samples = await weather_model(stub.url)
+
+    assert samples == [
+        lookups.ModelSample(
+            NOON,
+            {
+                "temperature_2m": 18.4,
+                "relative_humidity_2m": 64.0,
+                "weather_code": 3,
+                "is_day": True,
+            },
+        ),
+        lookups.ModelSample(
+            QUARTER,
+            {
+                "temperature_2m": 18.0,
+                "relative_humidity_2m": 66.0,
+                "weather_code": 61,
+                "is_day": False,
+            },
+        ),
+    ]
+    # A humidity of 64 is stored as the float every other humidity is, and a code as an integer.
+    values = samples[0].values  # type: ignore[index]
+    assert type(values["relative_humidity_2m"]) is float
+    assert type(values["weather_code"]) is int
+
+
+async def test_weather_model_skips_what_it_cannot_use() -> None:
+    reply = answer(
+        temperature_2m=[None, 18.0],
+        relative_humidity_2m=[64],
+        dew_point_2m=["x", True],
+        unknown_thing=[1, 2],
+    )
+    async with serving(StubInflux(status=200, reply=reply)) as stub:
+        samples = await weather_model(stub.url)
+
+    # A null, a column of the wrong length, a non-number and an unasked variable are left out,
+    # and a time left with nothing is dropped.
+    assert samples == [lookups.ModelSample(QUARTER, {"temperature_2m": 18.0})]
+
+
 @pytest.mark.parametrize(
-    "reply", ["{}", '{"current": 5}', '{"current": {"surface_pressure": "x"}}', "[1]"]
+    "reply",
+    [
+        "[1]",
+        "{}",
+        '{"minutely_15": 5}',
+        '{"minutely_15": {"time": 5}}',
+        '{"minutely_15": {"time": ["2026-10-11T12:00"], "temperature_2m": [1.0]}}',
+        '{"minutely_15": {"time": [true], "temperature_2m": [1.0]}}',
+    ],
 )
-async def test_surface_pressure_bad_answers_give_none(reply: str) -> None:
-    async with serving(StubInflux(status=200, reply=reply)) as stub, httpx2.AsyncClient() as client:
-        assert (
-            await lookups.surface_pressure(client, 1.0, 2.0, None, open_meteo_url=stub.url) is None
-        )
+async def test_weather_model_bad_answers_give_none(reply: str) -> None:
+    async with serving(StubInflux(status=200, reply=reply)) as stub:
+        assert await weather_model(stub.url) is None
 
 
-class TestReferenceUpdater:
-    located = Station("Home", Preferences(altitude_m=180.0), "K", latitude=45.0, longitude=7.0)
-    unlocated = Station("Cabin", Preferences(), "L")
-
-    async def test_refresh_fetches_only_for_located_stations(self) -> None:
-        monitor = CalibrationMonitor()
-        reply = json.dumps({"current": {"surface_pressure": 1009.3}})
-        async with (
-            serving(StubInflux(status=200, reply=reply)) as stub,
-            httpx2.AsyncClient() as client,
-        ):
-            updater = ReferenceUpdater(
-                lambda: StationConfig((self.located, self.unlocated)),
-                monitor,
-                client,
-                url=stub.url,
-                interval_seconds=60,
-                clock=lambda: 5000.0,
-            )
-            answered = await updater.refresh()
-
-        assert answered == 1
-        assert len(stub.requests) == 1
-        assert monitor._tracks["Home"].reference == (5000, 1009.3)
-        assert "Cabin" not in monitor._tracks
-
-    async def test_a_failed_fetch_records_nothing(self) -> None:
-        monitor = CalibrationMonitor()
-        async with httpx2.AsyncClient() as client:
-            updater = ReferenceUpdater(
-                lambda: StationConfig((self.located,)),
-                monitor,
-                client,
-                url=DEAD,
-                interval_seconds=60,
-            )
-            assert await updater.refresh() == 0
-
-        assert "Home" not in monitor._tracks
-
-    async def test_run_survives_an_unexpected_error_and_keeps_its_cycle(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
-        def explode() -> StationConfig:
-            raise RuntimeError("config gone")
-
-        async with httpx2.AsyncClient() as client:
-            updater = ReferenceUpdater(
-                explode, CalibrationMonitor(), client, url=DEAD, interval_seconds=0.01
-            )
-            task = asyncio.create_task(updater.run())
-            try:
-                async with asyncio.timeout(5):
-                    while caplog.text.count("reference pressure refresh failed") < 3:
-                        await asyncio.sleep(0.005)
-            finally:
-                task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await task
-
-        assert caplog.text.count("reference pressure refresh failed") >= 3
-
-    async def test_waking_refreshes_without_waiting_out_the_interval(self) -> None:
-        """Coordinates saved on the setup page are checked within moments."""
-        refreshes: list[int] = []
-
-        def stations() -> StationConfig:
-            refreshes.append(1)
-            return StationConfig()
-
-        async with httpx2.AsyncClient() as client:
-            updater = ReferenceUpdater(
-                stations, CalibrationMonitor(), client, url=DEAD, interval_seconds=3600
-            )
-            task = asyncio.create_task(updater.run())
-            try:
-                async with asyncio.timeout(5):
-                    while len(refreshes) < 1:
-                        await asyncio.sleep(0.005)
-                    updater.wake()
-                    while len(refreshes) < 2:
-                        await asyncio.sleep(0.005)
-            finally:
-                task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await task
-
-        assert len(refreshes) == 2
+async def test_weather_model_without_the_network_gives_none() -> None:
+    assert await weather_model(DEAD) is None

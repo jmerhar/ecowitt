@@ -19,10 +19,15 @@ from urllib.parse import urlsplit
 import httpx2
 
 from ecowitt.collector.state import State
+from ecowitt.core import stationinfo, weathermodel
+from ecowitt.core.store.base import Row
 
 logger = logging.getLogger(__name__)
 
 TIMEOUT_SECONDS = 10.0
+
+#: Tables the collector writes itself rather than from a station's report.
+OWN_TABLES = frozenset({stationinfo.TABLE, weathermodel.TABLE})
 
 
 class Heartbeat:
@@ -59,6 +64,15 @@ class Heartbeat:
     def beat(self) -> None:
         """Note that readings were written; the next call goes out as soon as one may."""
         self._due.set()
+
+    def written(self, rows: list[Row]) -> None:
+        """Beat if a write carried a station's readings.
+
+        The collector writes rows of its own as well -- station settings, the weather model --
+        and those must not keep the monitor happy while the console has stopped uploading.
+        """
+        if any(row.table not in OWN_TABLES for row in rows):
+            self.beat()
 
     async def run(self) -> None:
         """Call the URL for each beat, an interval apart at most. Cancel the task to stop it.

@@ -139,14 +139,34 @@ The status page checks both, and says what to change:
 - **Absolute, sudden**: a jump in absolute pressure faster than any weather — almost always
   someone changing the absolute calibration when they meant the relative one.
 - **Absolute, constant**: for a station with coordinates, the absolute reading against a weather
-  model's surface pressure there ([Open-Meteo](https://open-meteo.com)), refreshed every half
-  hour.
+  model's surface pressure there, from the [model values](#weather-model) stored beside its
+  readings.
 
 The stored sea-level pressure (`pressure.sea_hpa`) is computed here from the absolute reading and
 the altitude, so it is right whatever the console's relative setting says.
 
 Coordinates are sent to public services, and only when you enter them: to OpenTopoData or
-Open-Elevation when you look up an altitude, and to Open-Meteo for the absolute check.
+Open-Elevation when you look up an altitude, and to Open-Meteo for the weather model.
+
+### Weather model
+
+For each station with coordinates, the server stores a weather model's view of the same place in
+the `model` table, from [Open-Meteo](https://open-meteo.com): temperature, humidity, dew point,
+wind, surface and sea-level pressure, precipitation, radiation, UV, cloud cover and the weather
+code, every 15 minutes. Side by side with the station's own readings it shows a sheltered vane, a
+thermometer in the sun or a gauge that has stopped tipping, and it supplies what a station cannot
+measure.
+
+Open-Meteo adjusts temperature and pressure to the station's altitude, so set the altitude before
+comparing. A station is fetched back 7 days when first seen, and after a change of coordinates,
+altitude or model; after that each fetch picks up where the last one that answered left off, so
+an outage of up to a week leaves no gap. The free service allows 10,000 calls a day for
+non-commercial use; a station costs about 140.
+
+`OPEN_METEO_MODEL` chooses the model. The default, `best_match`, takes the best Open-Meteo has
+for the location; naming one (`icon_seamless`, `ecmwf_ifs`, `meteofrance_seamless`...) keeps
+the reference from changing character when that choice does. Rows are tagged with the model, so
+changing it starts new series.
 
 ## Two ports, and why it matters
 
@@ -210,6 +230,7 @@ tables) and `name` (its display name).
 | `ventilation` | per indoor sensor: dew-point difference from outdoors, and the humidity the room would settle at after airing |
 | `battery` | per sensor, in whichever form that sensor reports: a low flag, a voltage or a level |
 | `station` | the console's model, firmware, uptime, upload interval and clock skew |
+| `model` | per located station, a weather model's values every 15 minutes, tagged `source` and `model`; see [Weather model](#weather-model). Precipitation (`precip_15m_mm`) is the 15 minutes ending at the row's time |
 | `station_info` | each station's settings: coordinates, altitude, time zone, stored units and sensor names. Written at startup and when the configuration changes them, never otherwise; read the newest row as a whole |
 | `soil`, `soil_ec`, `pm`, `air`, `lightning`, `leak`, `probe`, `leaf`, `depth` | only when those sensors report |
 | `unmapped` | any field this server does not recognise, under its original name |
@@ -362,8 +383,9 @@ optional:
 | `HEARTBEAT_URL` / `HEARTBEAT_URL_FILE` | — | a push monitor's URL, called after readings are written; see below |
 | `HEARTBEAT_INTERVAL_SECONDS` | `60` | the least time between two heartbeat calls |
 | `LOG_LEVEL` | `INFO` | |
-| `REFERENCE_INTERVAL_SECONDS` | `1800` | how often a located station's model surface pressure is fetched |
-| `OPEN_METEO_URL`, `OPENTOPODATA_URL`, `OPEN_ELEVATION_URL` | the public services | the model pressure and elevation lookups, for a mirror or an air-gapped host |
+| `OPEN_METEO_MODEL` | `best_match` | the [weather model](#weather-model) stored beside each located station |
+| `MODEL_INTERVAL_SECONDS` | `900` | how often a located station's model values are fetched |
+| `OPEN_METEO_URL`, `OPENTOPODATA_URL`, `OPEN_ELEVATION_URL` | the public services | the weather model and elevation lookups, for a mirror or an air-gapped host |
 
 The shipped compose file passes all of these through except the last two rows, the listeners'
 bind addresses and `DATA_DIR`, which the container fixes; add those to its `environment:` to
@@ -383,8 +405,9 @@ holds two stations in different units. A malformed file stops the server from st
 the reason, rather than letting it run and discard every report.
 
 A push monitor — Uptime Kuma's *Push* type, healthchecks.io — alerts when its URL stops being
-called. Set its URL as `HEARTBEAT_URL` and the server calls it after each write InfluxDB accepts,
-at most once a minute, so the monitor alerts whenever readings stop reaching the database: the
+called. Set its URL as `HEARTBEAT_URL` and the server calls it after each write of a station's
+readings InfluxDB accepts, at most once a minute (its own rows, the station settings and the
+weather model, do not count), so the monitor alerts whenever readings stop reaching the database: the
 console has stopped uploading, the server is unreachable or down, or InfluxDB is refusing writes
 or unreachable. Reports held in the spool do not count until they are written. Give the monitor a
 grace period of a few upload intervals.

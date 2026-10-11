@@ -33,7 +33,8 @@ class Writer(Protocol):
 class Delivery:
     """Writes reports, spooling the ones that cannot be written yet.
 
-    `on_written` is called after every write the database accepts, live or replayed.
+    `on_written` is called with the rows of every write the database accepts, live or
+    replayed.
     """
 
     def __init__(
@@ -43,7 +44,7 @@ class Delivery:
         state: State,
         *,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
-        on_written: Callable[[], None] = lambda: None,
+        on_written: Callable[[list[Row]], None] = lambda _: None,
     ) -> None:
         self._store = store
         self._on_written = on_written
@@ -62,7 +63,7 @@ class Delivery:
         outcome = await self._store.write(rows)
         self._state.record_write(outcome is Outcome.OK)
         if outcome is Outcome.OK:
-            self._on_written()
+            self._on_written(rows)
         elif outcome is Outcome.RETRY:
             self._queue(rows)
         else:
@@ -108,7 +109,7 @@ class Delivery:
         self._state.record_write(outcome is Outcome.OK)
         if outcome is Outcome.OK:
             self._spool.ack(path)
-            self._on_written()
+            self._on_written(rows)
             pause = FIRST_PAUSE_SECONDS
             if not len(self._spool):
                 logger.info("spool drained")

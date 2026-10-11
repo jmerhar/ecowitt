@@ -47,6 +47,10 @@
     <tr><td class="muted">Station settings</td>
       <td>{% if status.settings.published %}last sent to the database {{ status.settings.seconds_since_last|ago }}
         {%- else %}<span class="muted">not sent since this server started</span>{% endif %}</td></tr>
+    <tr><td class="muted">Weather model</td>
+      <td>{% if status.model.seconds_since_last_ok is not none or status.model.failures %}Open-Meteo ({{ status.model.name }}): last fetched {{ status.model.seconds_since_last_ok|ago }}
+        {%- if status.model.failures %}, <span class="bad">{{ status.model.failures }} failed since</span>{% endif %}
+        {%- else %}<span class="muted">nothing fetched yet; stations with coordinates are</span>{% endif %}</td></tr>
     <tr><td class="muted">Uptime</td><td>{{ status.uptime_seconds|duration }}</td></tr>
   </table>
   </div>

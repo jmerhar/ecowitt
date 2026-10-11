@@ -10,6 +10,7 @@ import httpx2
 import pytest
 
 from ecowitt.collector.delivery.heartbeat import Heartbeat
+from ecowitt.core.store.base import Row
 from ecowitt.core.testing import StubInflux, serving
 
 DEAD = "http://127.0.0.1:1/api/push/s3cr3t"
@@ -170,3 +171,22 @@ async def test_calls_are_counted_in_the_state_the_status_page_reads() -> None:
         await heartbeat.call()
     assert state.heartbeat_failures == 1
     assert state.seconds_since_last_heartbeat is not None
+
+
+@pytest.mark.parametrize(
+    ("tables", "beats"),
+    [
+        (["outdoor"], True),
+        (["model", "outdoor"], True),
+        (["model"], False),
+        (["station_info"], False),
+        (["model", "station_info"], False),
+    ],
+)
+def test_only_a_stations_readings_count_as_written(tables: list[str], beats: bool) -> None:
+    """Rows the collector writes itself must not keep the monitor happy without the console."""
+    heartbeat = Heartbeat(httpx2.AsyncClient(), "http://monitor.invalid/push", interval_seconds=60)
+
+    heartbeat.written([Row(table, (("station", "Home"),), 0, {"x": 1.0}) for table in tables])
+
+    assert heartbeat._due.is_set() is beats

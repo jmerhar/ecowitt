@@ -42,7 +42,7 @@ def render(
 
 def _field(reading: Reading, preferences: Preferences) -> tuple[str, Value]:
     """The stored field name and value: unit suffix added, numbers converted and rounded."""
-    if reading.kind in (Kind.TEXT, Kind.FLAG):
+    if reading.kind in (Kind.TEXT, Kind.FLAG, Kind.CODE):
         return reading.field, reading.value
     value, suffix = from_canonical(reading.kind, float(reading.value), preferences.units)
     name = f"{reading.field}_{suffix}" if suffix else reading.field

@@ -21,7 +21,7 @@ from ecowitt.collector.admin import auth
 from ecowitt.collector.admin.app import AdminContext
 from ecowitt.collector.admin.calibration import CalibrationMonitor
 from ecowitt.collector.admin.configstore import ConfigStore
-from ecowitt.collector.admin.reference import ReferenceUpdater
+from ecowitt.collector.admin.modelfeed import ModelFeed
 from ecowitt.collector.config import Settings, get_settings
 from ecowitt.collector.delivery.database import ConfiguredStore
 from ecowitt.collector.delivery.delivery import Delivery
@@ -198,7 +198,7 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
             )
             logger.info("heartbeat to %s after each write", heartbeat.host)
         delivery = Delivery(
-            writer, spool, state, on_written=heartbeat.beat if heartbeat else lambda: None
+            writer, spool, state, on_written=heartbeat.written if heartbeat else lambda _: None
         )
         secret = auth.load_secret(settings.secret_file)
         pending, calibration = PendingStations(key=secret), CalibrationMonitor()
@@ -226,21 +226,24 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
             database=writer,
             http=lookup_client,
         )
-        reference = ReferenceUpdater(
+        model = ModelFeed(
             lambda: store.stations,
+            delivery,
             calibration,
             lookup_client,
             url=settings.open_meteo_url,
-            interval_seconds=settings.reference_interval_seconds,
+            model=settings.open_meteo_model,
+            interval_seconds=settings.model_interval_seconds,
+            state=state,
         )
-        store.subscribe(lambda _: reference.wake())
-        calibration.on_step = reference.wake
+        store.subscribe(lambda _: model.wake())
+        calibration.on_step = model.wake
         logger.info("stations: %s", ", ".join(store.stations.names) or "none configured")
         if not writer.configured:
             logger.warning("no database is configured: reports are spooled until one is set up")
         background += [
             asyncio.create_task(delivery.run(), name="spool-replay"),
-            asyncio.create_task(reference.run(), name="reference-pressure"),
+            asyncio.create_task(model.run(), name="weather-model"),
             asyncio.create_task(metadata.run(), name="station-metadata"),
         ]
         if heartbeat is not None:

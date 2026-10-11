@@ -451,6 +451,11 @@ def _status(context: AdminContext) -> dict[str, object]:
             "published": state.settings_published,
             "seconds_since_last": _rounded(state.seconds_since_last_settings),
         },
+        "model": {
+            "name": settings.open_meteo_model,
+            "seconds_since_last_ok": _rounded(state.seconds_since_last_model),
+            "failures": state.model_failures,
+        },
     }
 
 

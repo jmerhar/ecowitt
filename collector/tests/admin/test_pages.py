@@ -787,6 +787,8 @@ class TestStatus:
         state.heartbeat_configured = True
         state.record_heartbeat(False)
         state.record_settings(1)
+        state.record_model(True)
+        state.record_model(False)
 
         page = rig.client.get("/").text
         status = rig.client.get("/api/status").json()
@@ -802,6 +804,13 @@ class TestStatus:
             "failures": 1,
         }
         assert status["settings"]["published"] == 1
+        assert "Open-Meteo (best_match): last fetched 0 s ago" in page
+        assert '<span class="bad">1 failed since</span>' in page
+        assert status["model"] == {
+            "name": "best_match",
+            "seconds_since_last_ok": 0.0,
+            "failures": 1,
+        }
 
     async def test_a_quiet_heartbeat_and_settings_say_so(self, rig: Rig) -> None:
         rig.store.replace(ConfigDocument(stations=[StationEntry(name="Home", passkey="K")]))
@@ -809,6 +818,7 @@ class TestStatus:
         page = rig.client.get("/").text
 
         assert "not configured" in page and "not sent since this server started" in page
+        assert "nothing fetched yet; stations with coordinates are" in page
 
     async def test_the_console_describes_itself(self, rig: Rig) -> None:
         await rig.report()

@@ -70,8 +70,12 @@ class Settings(BaseSettings):
     opentopodata_url: str = "https://api.opentopodata.org/v1/srtm30m"
     open_elevation_url: str = "https://api.open-elevation.com/api/v1/lookup"
     open_meteo_url: str = "https://api.open-meteo.com/v1/forecast"
-    #: How often a located station's model surface pressure is fetched for the absolute check.
-    reference_interval_seconds: int = 1800
+    #: The weather model stored beside each located station's readings: `best_match` lets
+    #: Open-Meteo choose the best for the location, or name one (`icon_seamless`,
+    #: `ecmwf_ifs`...). Rows are tagged with it, so changing it starts new series.
+    open_meteo_model: str = "best_match"
+    #: How often a located station's model values are fetched; the model's resolution is 15 min.
+    model_interval_seconds: int = 900
 
     #: The console's "Path" field. Ecowitt firmware sends it with a trailing slash; both
     #: spellings are served, so either value works here.

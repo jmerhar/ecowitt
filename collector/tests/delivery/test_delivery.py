@@ -254,31 +254,35 @@ async def test_a_success_mid_backlog_resets_the_pause(spool: Spool) -> None:
 
 async def test_every_accepted_write_is_announced_live_or_replayed(spool: Spool) -> None:
     """The heartbeat hangs off this: a write counts once InfluxDB has accepted it."""
-    written: list[bool] = []
+    written: list[str] = []
     sender = ScriptedSender([Outcome.OK, Outcome.RETRY, Outcome.RETRY])
     delivery = Delivery(
-        sender, spool, State(), sleep=Pauses(), on_written=lambda: written.append(True)
+        sender, spool, State(), sleep=Pauses(), on_written=lambda rows: written.append(label(rows))
     )
 
     await delivery.submit(report("live"))
-    assert written == [True]
+    assert written == ["live"]
 
     await delivery.submit(report("spooled"))
-    assert written == [True]
+    assert written == ["live"]
 
     async with replaying(delivery):
         await until(lambda: not len(spool))
 
+    # Each announcement carries the rows written, the replayed ones read back from the spool.
     assert sender.sent == ["live", "spooled", "spooled", "spooled"]
-    assert written == [True, True]
+    assert written == ["live", "spooled"]
 
 
 @pytest.mark.parametrize("live", [True, False])
 async def test_a_refused_write_is_not_announced(spool: Spool, live: bool) -> None:
-    written: list[bool] = []
+    written: list[str] = []
     outcomes = [Outcome.REJECT] if live else [Outcome.RETRY, Outcome.REJECT]
     delivery = Delivery(
-        ScriptedSender(outcomes), spool, State(), on_written=lambda: written.append(True)
+        ScriptedSender(outcomes),
+        spool,
+        State(),
+        on_written=lambda rows: written.append(label(rows)),
     )
 
     await delivery.submit(report("refused"))

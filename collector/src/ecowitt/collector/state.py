@@ -51,6 +51,10 @@ class State:
     settings_published: int = 0
     last_settings_at: float | None = None
 
+    #: The weather model's fetches: the last that answered, and how many failed since it did.
+    last_model_ok_at: float | None = None
+    model_failures: int = 0
+
     @property
     def uptime_seconds(self) -> float:
         """How long this process has been running."""
@@ -106,6 +110,19 @@ class State:
         """Note station settings rows handed to delivery."""
         self.settings_published += count
         self.last_settings_at = time.monotonic()
+
+    def record_model(self, ok: bool) -> None:
+        """Note the outcome of one station's weather model fetch."""
+        if ok:
+            self.last_model_ok_at = time.monotonic()
+            self.model_failures = 0
+        else:
+            self.model_failures += 1
+
+    @property
+    def seconds_since_last_model(self) -> float | None:
+        """Age of the last weather model fetch that answered, or None if none has."""
+        return _age(self.last_model_ok_at)
 
     @property
     def seconds_since_last_heartbeat(self) -> float | None:

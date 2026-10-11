@@ -301,7 +301,7 @@ async def test_run_without_a_handler_loads_the_configured_stations(
 
     monkeypatch.setattr(InfluxStore, "aclose", track_close)
     woken: list[bool] = []
-    monkeypatch.setattr(serve.ReferenceUpdater, "wake", lambda _self: woken.append(True))
+    monkeypatch.setattr(serve.ModelFeed, "wake", lambda _self: woken.append(True))
     monitors: list[serve.CalibrationMonitor] = []
     real_monitor = serve.CalibrationMonitor
 
@@ -337,8 +337,8 @@ async def test_run_without_a_handler_loads_the_configured_stations(
     assert (tmp_path / "spool" / "pending").is_dir()
     assert (tmp_path / "secret.key").is_file()
     names = {t.get_name() for t in asyncio.all_tasks()}
-    assert not names & {"spool-replay", "reference-pressure", "station-metadata"}
-    # Configuration changes and pressure steps both wake the reference refresh; subscribing
+    assert not names & {"spool-replay", "weather-model", "station-metadata"}
+    # Configuration changes and pressure steps both wake the weather model refresh; subscribing
     # delivers the first configuration at once.
     assert woken
     assert monitors[0].on_step is not None
@@ -450,6 +450,52 @@ async def test_a_heartbeat_follows_a_delivered_write(
 
     assert influx.requests and monitor.requests[0].path == "/api/push/token"
     assert "heartbeat" not in {t.get_name() for t in asyncio.all_tasks()}
+
+
+async def test_the_collectors_own_rows_do_not_beat(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Station settings written at startup leave the monitor uncalled: no reading arrived."""
+    from ecowitt.core.testing import StubInflux, serving
+
+    listeners: list[serve._Listener] = []
+    real_build = serve.build
+
+    def capture(*args: object, **kwargs: object) -> tuple[serve._Listener, serve._Listener]:
+        built = real_build(*args, **kwargs)  # type: ignore[arg-type]
+        listeners.extend(built)
+        return built
+
+    monkeypatch.setattr(serve, "build", capture)
+
+    async with serving(StubInflux()) as influx, serving(StubInflux(status=200)) as monitor:
+        (tmp_path / "config.yaml").write_text(
+            f"store: {{kind: influx3, url: '{influx.url}'}}\n"
+            "stations: [{name: Home, passkey: AAAA}]\n",
+            encoding="utf-8",
+        )
+        settings = Settings(
+            data_dir=tmp_path,
+            ingest_port=0,
+            admin_port=0,
+            heartbeat_url=monitor.url + "/api/push/token",
+        )
+        task = asyncio.create_task(serve.run(settings))
+        try:
+            async with asyncio.timeout(10):
+                while not any(r.body.startswith("station_info") for r in influx.requests):
+                    await asyncio.sleep(0.02)
+            # A beat is called straight away; this is many times the time one takes.
+            await asyncio.sleep(0.3)
+        finally:
+            async with asyncio.timeout(10):
+                while len(listeners) < 2:
+                    await asyncio.sleep(0.02)
+            serve.stop_all(listeners)
+            async with asyncio.timeout(10):
+                await task
+
+    assert monitor.requests == []
 
 
 def test_the_writer_follows_the_saved_connection(tmp_path: Path) -> None:

@@ -16,6 +16,7 @@ core/src/ecowitt/core/   shared by the collector and the dashboard
   preferences.py  units, sensor names, altitude
   stationinfo.py  a station's published settings: the station_info row the collector writes and
                   the dashboard reads
+  weathermodel.py the `model` table: Open-Meteo's variables and the fields they are stored as
   ratelimit.py    the public listeners' per-address token bucket
   testing.py      a stand-in HTTP server every project's tests use for InfluxDB and lookups
   store/          where rows are written, behind one interface
@@ -62,15 +63,17 @@ collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init_
     stationconfig.py  /data/config.yaml: the database connection, the PASSKEY allowlist and
                       per-station preferences
     calibration.py  the relative, absolute-step and absolute-reference pressure checks
-    lookups.py    elevation and model surface pressure from public services
-    reference.py  the background refresh of model surface pressure
+    lookups.py    elevation and a weather model's values from public services
+    modelfeed.py  a weather model's values for located stations, every 15 min: written to the
+                  `model` table, and the reference the absolute-pressure check reads
     timezones.py  a station's time zone from its coordinates (offline, tzfpy), and validation
 
   delivery/       getting rows into the database (through a core Store)
     database.py   ConfiguredStore: the store config.yaml names, swapped in place on a save
     delivery.py   write now or spool; the replay loop that drains the spool
     spool.py      the bounded on-disk queue, one atomically written file per report
-    heartbeat.py  calls a push monitor's URL after writes, at most once per interval
+    heartbeat.py  calls a push monitor's URL after a station's readings are written, at most once
+                  per interval (the collector's own rows -- settings, the model -- do not count)
     metadata.py   publishes each station's settings as station_info, only when they change
 collector/tests/  one folder per subpackage (ingest/, admin/, delivery/), plus
   server/         wiring: the two listeners, settings, the health probe
@@ -164,10 +167,12 @@ bin/              every script the Makefile and CI run; its Python is linted wit
   one; the step and reference checks exist for exactly that.
 - **The unit belongs in the field name** (`temp_c`, `abs_hpa`). A bare `temp` whose unit
   depends on configuration history would silently mix °F and °C in one series.
-- **Every number is written as a float**, `60.0` and never `60i`. InfluxDB fixes a field's type
-  on its first write and rejects later writes of another type, so one integer-looking humidity
-  would make every fractional one fail. For the same reason an unmapped key's textual values go
-  to `<key>_text`, separate from its numeric ones.
+- **Every measurement is written as a float**, `60.0` and never `60i`. InfluxDB fixes a field's
+  type on its first write and rejects later writes of another type, so one integer-looking
+  humidity would make every fractional one fail. For the same reason an unmapped key's textual
+  values go to `<key>_text`, separate from its numeric ones. A value that is a category rather
+  than a quantity (`Kind.CODE`, a WMO weather code) is an integer, and a yes/no is a boolean:
+  neither can arrive in another form.
 - **A key that matches no row is not an error.** It is stored under `unmapped`, so a typo in a
   pattern fails nothing at runtime. `test_fields` is the guard: every key in
   `fixtures/known_keys.txt` must match exactly one row, and every row must be reached by one.
@@ -178,9 +183,10 @@ bin/              every script the Makefile and CI run; its Python is linted wit
 - **`sensor` is the join key; `name` is a label.** Every row of a `NAMED_TABLES` table carries
   both. Renaming a room changes its `name` tag and so starts new series under the new name;
   dashboards should group by `sensor`.
-- **Derived quantities are always computed, never taken from the report.** A console that also
-  sends a dew point uses its own formula, and mixing the two would put a step in the series
-  wherever the source changed.
+- **A console's derived quantities are always computed, never taken from its report.** A
+  console that also sends a dew point uses its own formula, and mixing the two would put a step
+  in the series wherever the source changed. The weather model's values are stored as Open-Meteo
+  supplies them: they are one source throughout, and its dew point agrees with ours to 0.1 °C.
 - **`rel_error` is measured against a reduction at the standard atmosphere's temperature**, not
   the outdoor one that `sea` uses. A console's offset is a constant, so it can only match a
   constant-temperature reduction; the temperature-dependent one would swing by a few hPa a

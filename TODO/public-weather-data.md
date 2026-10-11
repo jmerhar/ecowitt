@@ -1,48 +1,34 @@
 # Public weather data
 
-Store a weather model's view of each station's location beside the station's own readings: the
-same quantities, from a free public API, on a slow cycle. It gives a reference to check sensors
-against, a way to spot a sheltered or failing sensor, and values for quantities the station does
-not measure.
+A weather model's view of each station's location, stored beside the station's own readings
+(the `model` table, written by `collector/.../admin/modelfeed.py`; see the README's *Weather
+model*). What is left is showing it.
 
-## Why
+## Decided
 
-A single station has nothing to compare itself with. A wind vane in a building's lee, a
-thermometer in afternoon sun, or a rain gauge that has stopped tipping all look like weather.
-Side by side with a model the difference shows, and stays in the history.
+- **Model**: Open-Meteo's `best_match`, overridable with `OPEN_METEO_MODEL` and recorded in a
+  `model` tag. Models disagree by several degrees and on the weather code at the same place, so
+  the comparison catches gross faults (a vane pointing the wrong way, a thermometer in the sun, a
+  gauge that has stopped), and the most local model is the best reference for that.
+- **Altitude**: Open-Meteo's `elevation` parameter adjusts temperature and pressure to the
+  station's altitude; no correction of our own on top.
+- **History**: 7 days on first sight and after a change of place or model; each later fetch
+  starts where the last one that answered ended.
+- **Dew point**: Open-Meteo's own; computed from its temperature and humidity it agrees to 0.1 °C.
 
-## Sketch
+## Still to do
 
-- **Open-Meteo**, already used for the absolute-pressure reference (`lookups.surface_pressure`,
-  refreshed by `reference.py`): free for non-commercial use, no key, global. Extend that cycle
-  rather than add a second client.
-- **Fetched every 15 minutes** for stations with coordinates, matching the model's
-  `minutely_15` resolution where available, `current` otherwise.
-- **Quantities**: temperature, humidity, dew point, wind speed, gust and direction, surface and
-  sea-level pressure, precipitation, cloud cover, shortwave radiation, UV index. Cloud cover and
-  model radiation are what the station cannot measure.
-- **Stored in a `model` table**, tagged `station` and `source=open_meteo`, with field names in
-  the operator's units like every other table (`temp_c`, `speed_kmh`). Values pass through
-  `points.py` so units and rounding match the station's own rows.
-- **The existing pressure reference** moves onto this data, so one fetch serves both.
-- **Dashboard**: model series drawn dashed behind the station's in the outdoor panels; a
-  "station minus model" panel for temperature and wind direction.
-- **Public dashboard**: the model's weather code (clear, cloudy, rain, fog...) is what a station
-  cannot measure, so it can headline the page with a matching icon. The page's icons are
-  Lucide's, which are line drawings of things; for weather states consider Meteocons (MIT), a
-  set drawn for exactly that, alongside them.
-
-## Open questions
-
-- Which model: Open-Meteo's best-match default, or a pinned one (e.g. a regional model where
-  there is one) so the reference does not change character when the default does.
-- Model grid cells are kilometres wide and often at another altitude; temperature needs a lapse
-  correction to the station's altitude before comparing, as pressure already has.
-- Whether to fetch the model's history for days the station already has, to give new
-  installations a comparison from the first day.
+- **Grafana**: model series dashed behind the station's in the outdoor panels; a "station minus
+  model" panel for temperature and wind direction (the direction difference wrapped to ±180°).
+- **Dashboard API**: `now.sky` (weather code in words, day or night, cloud cover) from the newest
+  model row, empty when that row is over an hour old; the summary line opens with it; `/series`
+  can add the model's series for the metrics it has.
+- **Dashboard page**: a weather icon in the Now card -- Meteocons (MIT), only the icons used,
+  vendored with their licence unless a package passes the 14-day rule -- and dashed model lines in
+  the charts behind a "Show model" toggle.
+- **Later**: an alert for a station disagreeing with the model for hours, once a few weeks of data
+  show what disagreement is normal.
 
 ## Done when
 
-Each located station has a `model` series beside its own, refreshed every 15 minutes, in the
-operator's units, with the pressure check reading from it, and the dashboard can draw model and
-station together.
+The dashboard and Grafana draw model and station together, and the page headlines the sky.
