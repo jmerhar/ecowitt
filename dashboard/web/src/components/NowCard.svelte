@@ -43,11 +43,6 @@
 </button>
 
 <style>
-  @media (min-width: 36rem) {
-    .hero {
-      grid-column: span 2;
-    }
-  }
   .temperature {
     font-size: clamp(2.8rem, 9vw, 4rem);
     font-weight: 600;

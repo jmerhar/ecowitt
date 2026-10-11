@@ -82,6 +82,9 @@ button.card:focus-visible {
 .bad {
   color: var(--bad);
 }
+.good {
+  color: var(--good);
+}
 dl {
   margin: 0.75rem 0 0;
   display: grid;

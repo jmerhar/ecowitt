@@ -6,6 +6,7 @@ import RainCard from "./RainCard.svelte";
 import PressureCard from "./PressureCard.svelte";
 import SunCard from "./SunCard.svelte";
 import Rooms from "./Rooms.svelte";
+import AiringCard from "./AiringCard.svelte";
 import Sensors from "./Sensors.svelte";
 import UnitsMenu from "./UnitsMenu.svelte";
 import { META, now, SYMBOLS, UNITS } from "../testing";
@@ -148,9 +149,12 @@ describe("Rooms", () => {
     const onselect = vi.fn();
     render(Rooms, { rooms: now().rooms, units: UNITS, symbols: SYMBOLS, onselect });
     expect(screen.getByText("Air it")).toHaveAttribute("title", expect.stringContaining("drier"));
-    expect(screen.getByText("→ 49%")).toBeInTheDocument();
     expect(screen.getByText("Keep closed")).toBeInTheDocument();
-    expect(screen.queryByText("→ 71%")).not.toBeInTheDocument();
+    // Airing would dry the bathroom (75% to 49%) and dampen the lounge (55% to 58%) and the
+    // attic (70% to 71%, a point).
+    expect(screen.getByText("49%")).toHaveClass("good");
+    expect(screen.getByText("58%")).toHaveClass("bad");
+    expect(screen.getByText("71%")).toHaveClass("bad");
     expect(screen.getAllByRole("row")).toHaveLength(4);
     await fireEvent.click(screen.getByRole("button", { name: "Temperature" }));
     expect(onselect).toHaveBeenCalledWith("rooms-temperature");
@@ -164,7 +168,34 @@ describe("Rooms", () => {
       units: UNITS, symbols: SYMBOLS, onselect: vi.fn(),
     });
     expect(screen.queryByRole("columnheader", { name: "Airing" })).not.toBeInTheDocument();
-    expect(screen.getAllByRole("cell")).toHaveLength(8);
+    expect(screen.getAllByRole("cell")).toHaveLength(10);
+    expect(screen.getAllByRole("cell")[4]).toHaveTextContent("–");
+    expect(screen.getAllByRole("cell")[4]).toHaveClass("muted");
+  });
+
+  it("leaves the change muted when it is under a point", () => {
+    const room = { ...now().rooms[0], humidity: 58.6 };
+    render(Rooms, { rooms: [room], units: UNITS, symbols: SYMBOLS, onselect: vi.fn() });
+    expect(screen.getByText("58%")).toHaveClass("muted");
+  });
+});
+
+describe("AiringCard", () => {
+  it.each([
+    [{ advice: "open", rooms: ["Bathroom", "Kitchen"] }, "Good time to air", "airing would dry Bathroom, Kitchen."],
+    [{ advice: "keep_closed", rooms: [] }, "Keep the windows closed", "airing would take them from about 70% to 58%."],
+    [{ advice: "keep_closed", rooms: [], humidity_after: null }, "Keep the windows closed", "or more."],
+    [{ advice: "no_need", rooms: [] }, "No need to air", "dry enough, at about 70%."],
+  ] as const)("says what to do: %#", async (overrides, headline, words) => {
+    const onselect = vi.fn();
+    const { container } = render(AiringCard, {
+      airing: { ...now().airing!, ...overrides, rooms: [...overrides.rooms] }, symbols: SYMBOLS, onselect,
+    });
+    expect(screen.getByText(headline)).toBeInTheDocument();
+    expect(container.querySelector("p")!.textContent!.replace(/\s+/g, " ")).toContain(words);
+    expect(container.querySelector(".airing")).toHaveClass(overrides.advice);
+    await fireEvent.click(screen.getByRole("button"));
+    expect(onselect).toHaveBeenCalledWith("rooms-humidity");
   });
 });
 

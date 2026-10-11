@@ -77,10 +77,10 @@ describe("Records", () => {
     render(Records, { ...base, api, period: "today" });
     expect(screen.getByText("Loading…")).toBeInTheDocument();
     const temperature = (await screen.findByText("Temperature", { selector: ".label" })).closest(".tile")!;
-    expect(temperature).toHaveTextContent("Low 9.5 °C at 07:00");
-    expect(temperature).toHaveTextContent("High 21.0 °C at 14:00");
+    expect(temperature).toHaveTextContent("Low 9.5 °C 07:00");
+    expect(temperature).toHaveTextContent("High 21.0 °C 14:00");
     const gust = screen.getByText("Wind gust", { selector: ".label" }).closest(".tile")!;
-    expect(gust).toHaveTextContent("High 52.0 km/h at 11:00");
+    expect(gust).toHaveTextContent("High 52.0 km/h 11:00");
     expect(gust).not.toHaveTextContent("Low");
     expect(screen.queryByText("Rain today")).not.toBeInTheDocument();
   });
@@ -107,7 +107,7 @@ describe("Records", () => {
     );
     expect(screen.getByText("ch2").closest("tr")).toHaveTextContent("ch2––");
     expect(screen.getByText("Temperature", { selector: ".label" }).closest(".tile")).toHaveTextContent(
-      "Low 9.5 °C at 10 Oct, 07:00",
+      "Low 9.5 °C 10 Oct, 07:00",
     );
   });
 

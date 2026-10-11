@@ -148,3 +148,16 @@ def test_the_thresholds_match_the_alert_rules() -> None:
     silent = next(d for d in rules["Sensor not updating"]["data"] if d["refId"] == "A")
     # The sensors the dashboard judges too (service._judged): the outdoor one and the rooms.
     assert "d.sensor IN ('indoor', 'outdoor') OR d.sensor LIKE 'ch%'" in silent["model"]["rawSql"]
+
+
+@pytest.mark.parametrize(
+    ("rooms", "advice"),
+    [
+        ([(70, 3.0), (50, -2.0), (50, -2.0)], Airing.OPEN),
+        ([(50, -2.0), (55, 0.5), (60, 3.0)], Airing.KEEP_CLOSED),
+        ([(50, 1.0), (55, 3.0)], Airing.NO_NEED),
+        ([], Airing.NO_NEED),
+    ],
+)
+def test_house_airing(rooms: list[tuple[float, float]], advice: Airing) -> None:
+    assert weather.house_airing(rooms) is advice

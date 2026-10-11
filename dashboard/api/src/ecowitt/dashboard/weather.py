@@ -7,6 +7,7 @@ published tables rather than against this code.
 from __future__ import annotations
 
 import math
+import statistics
 from bisect import bisect_right
 from enum import Enum
 
@@ -137,5 +138,21 @@ def airing(humidity_pct: float, dewpoint_delta_c: float) -> Airing:
     if dewpoint_delta_c > AIRING_DEWPOINT_DELTA_C:
         return Airing.OPEN
     if dewpoint_delta_c < CLOSING_DEWPOINT_DELTA_C:
+        return Airing.KEEP_CLOSED
+    return Airing.NO_NEED
+
+
+def house_airing(rooms: list[tuple[float, float]]) -> Airing:
+    """Advice for the whole house, from each room's humidity and dew-point difference.
+
+    Air when any room would be dried by it. Otherwise keep the windows closed when the median
+    room's dew point is less than CLOSING_DEWPOINT_DELTA_C above the outdoor one: the outside air
+    would bring in as much moisture as it let out, or more. Unlike the Close the windows alert
+    rule this does not wait for the rooms to be damp -- a page can say "airing would not help"
+    when a notification would only be noise.
+    """
+    if any(airing(humidity, delta) is Airing.OPEN for humidity, delta in rooms):
+        return Airing.OPEN
+    if rooms and statistics.median(delta for _, delta in rooms) < CLOSING_DEWPOINT_DELTA_C:
         return Airing.KEEP_CLOSED
     return Airing.NO_NEED

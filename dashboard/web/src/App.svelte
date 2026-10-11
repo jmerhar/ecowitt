@@ -5,9 +5,10 @@
    */
   import { onDestroy, onMount } from "svelte";
   import { Api, ApiError, type Meta, type Now, type Station, type UnitChoice } from "./lib/api";
-  import { ago } from "./lib/format";
+  import { ago, today, zoneCity } from "./lib/format";
   import { load, save, type Prefs } from "./lib/prefs";
   import NowCard from "./components/NowCard.svelte";
+  import AiringCard from "./components/AiringCard.svelte";
   import WindCard from "./components/WindCard.svelte";
   import RainCard from "./components/RainCard.svelte";
   import PressureCard from "./components/PressureCard.svelte";
@@ -22,9 +23,11 @@
     api?: Api;
     /** How often the current conditions are fetched again, in milliseconds. */
     refreshMs?: number;
+    /** How often the clock in the header moves, in milliseconds. */
+    clockMs?: number;
     storage?: Storage;
   };
-  let { api = new Api(), refreshMs = 60_000, storage }: Props = $props();
+  let { api = new Api(), refreshMs = 60_000, clockMs = 10_000, storage }: Props = $props();
 
   // The saved choices are read once, when the page opens.
   // svelte-ignore state_referenced_locally
@@ -37,6 +40,8 @@
   /** Counts the refreshes, so the charts and records fetch again on each as well. */
   let tick = $state(0);
   let timer: ReturnType<typeof setInterval> | undefined;
+  /** Keeps the clock and "updated ... ago" current between refreshes. */
+  let ticker: ReturnType<typeof setInterval> | undefined;
 
   const station = $derived(
     stations.find((s) => s.id === prefs.station) ?? stations[0] ?? null,
@@ -62,7 +67,6 @@
     }
     await refresh();
     timer = setInterval(() => {
-      clock = new Date();
       tick += 1;
       void refresh();
     }, refreshMs);
@@ -99,8 +103,14 @@
     document.getElementById("history")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  onMount(() => void start());
-  onDestroy(() => clearInterval(timer));
+  onMount(() => {
+    ticker = setInterval(() => (clock = new Date()), clockMs);
+    void start();
+  });
+  onDestroy(() => {
+    clearInterval(timer);
+    clearInterval(ticker);
+  });
 </script>
 
 <header>
@@ -118,6 +128,9 @@
     {/if}
   </div>
   <div class="status">
+    {#if station}
+      <span class="time" title={timezone}>{today(clock.toISOString(), timezone)} {zoneCity(timezone)} time</span>
+    {/if}
     {#if now}
       <span class="dot" class:offline={!now.online} title={now.online ? "Reporting" : "Not reporting"}></span>
       <span>{now.online ? "Updated" : "Last report"} {ago(now.time, clock)}</span>
@@ -136,6 +149,7 @@
   {#if now && station && meta}
     <section class="glance">
       <NowCard {now} {symbols} {timezone} onselect={drill} />
+      {#if now.airing}<AiringCard airing={now.airing} {symbols} onselect={drill} />{/if}
       {#if now.wind}<WindCard wind={now.wind} units={now.units} {symbols} {timezone} onselect={drill} />{/if}
       {#if now.rain}<RainCard rain={now.rain} units={now.units} {symbols} onselect={drill} />{/if}
       {#if now.pressure}<PressureCard pressure={now.pressure} units={now.units} {symbols} onselect={drill} />{/if}
@@ -191,6 +205,10 @@
     color: var(--muted);
     font-size: 0.9rem;
   }
+  .time {
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+  }
   .dot {
     width: 0.6rem;
     height: 0.6rem;
@@ -205,8 +223,8 @@
     margin: 0 auto;
     padding: 1rem var(--gutter) 3rem;
   }
-  /* Five cards, the first twice as wide: three columns by two rows on a wide screen, two by
-     three on a narrower one, one column on a phone -- always a full grid. */
+  /* Six cards: three columns by two rows on a wide screen, two by three on a narrower one, one
+     column on a phone -- always a full grid. */
   .glance {
     display: grid;
     grid-template-columns: 1fr;

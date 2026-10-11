@@ -63,6 +63,7 @@ export function now(overrides: Partial<Now> = {}): Now {
       radiation: 450, uv_index: 4, sunrise: "2026-10-10T06:42:00Z", noon: "2026-10-10T12:24:00Z",
       sunset: "2026-10-10T18:07:00Z", daylight_s: 41100, polar: null,
     },
+    airing: { advice: "open", rooms: ["Bathroom"], humidity: 70, humidity_after: 58, dew_point_difference: 0.3 },
     rooms: [
       { sensor: "indoor", name: "Lounge", temperature: 21, humidity: 55, dew_point: 11.9,
         airing: { advice: "no_need", humidity_after: 58, dew_point_difference: 0.3 } },

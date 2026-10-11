@@ -121,6 +121,20 @@ class AiringAdvice(BaseModel):
     dew_point_difference: float
 
 
+class HouseAiring(BaseModel):
+    """Whether opening the windows would dry the house."""
+
+    #: open, keep_closed or no_need.
+    advice: str
+    #: The rooms airing would dry, when the advice is to open.
+    rooms: list[str] = Field(default_factory=list)
+    #: The median room's humidity now, and once its air had been replaced by outdoor air.
+    humidity: float
+    humidity_after: float | None = None
+    #: How far the median room's dew point is above the outdoor one.
+    dew_point_difference: float
+
+
 class Room(BaseModel):
     """One room's latest reading."""
 
@@ -159,6 +173,7 @@ class Now(BaseModel):
     rain: Rain | None = None
     pressure: Pressure | None = None
     sun: Sun | None = None
+    airing: HouseAiring | None = None
     rooms: list[Room] = Field(default_factory=list)
     sensors: list[SensorHealth] = Field(default_factory=list)
 

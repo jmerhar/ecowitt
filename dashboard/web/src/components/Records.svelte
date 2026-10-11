@@ -96,14 +96,18 @@
       {#each outdoor as record (`${record.metric}/${record.sensor}`)}
         <div class="tile">
           <div class="label">{labels[record.metric] ?? record.metric}</div>
-          {#if record.min}
-            <div><span class="side">Low</span> <strong>{quantity(record.min.value, record.unit, meta.symbols)}</strong>
-              <span class="when">at {when(record.min.time)}</span></div>
-          {/if}
-          {#if record.max}
-            <div><span class="side">High</span> <strong>{quantity(record.max.value, record.unit, meta.symbols)}</strong>
-              <span class="when">at {when(record.max.time)}</span></div>
-          {/if}
+          <dl>
+            {#if record.min}
+              <dt>Low</dt>
+              <dd class="value">{quantity(record.min.value, record.unit, meta.symbols)}</dd>
+              <dd class="when">{when(record.min.time)}</dd>
+            {/if}
+            {#if record.max}
+              <dt>High</dt>
+              <dd class="value">{quantity(record.max.value, record.unit, meta.symbols)}</dd>
+              <dd class="when">{when(record.max.time)}</dd>
+            {/if}
+          </dl>
         </div>
       {/each}
     </div>
@@ -144,7 +148,7 @@
   }
   .tiles {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
     gap: 0.75rem;
   }
   .tile {
@@ -158,14 +162,26 @@
     font-size: 0.85rem;
     margin-bottom: 0.2rem;
   }
-  .side {
-    display: inline-block;
-    width: 2.4rem;
+  /* Label, value and when on one line each, in columns that line up down the tile. */
+  dl {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    gap: 0.15rem 0.6rem;
+    margin: 0;
+    align-items: baseline;
+  }
+  dt {
     color: var(--muted);
+  }
+  .value {
+    font-weight: 600;
+    text-align: left;
+    white-space: nowrap;
   }
   .when {
     color: var(--muted);
     font-size: 0.85rem;
+    white-space: nowrap;
   }
   .rooms {
     margin-top: 1rem;

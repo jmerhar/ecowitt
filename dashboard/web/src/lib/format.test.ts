@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ago, axisLabels, clock, duration, moment, number, quantity, uvRisk } from "./format";
+import { ago, axisLabels, clock, duration, moment, number, quantity, today, uvRisk, zoneCity } from "./format";
 import { SYMBOLS } from "../testing";
 
 describe("number", () => {
@@ -67,6 +67,21 @@ describe("axisLabels", () => {
 
   it("gives dates alone for steps of a day or more", () => {
     expect(axisLabels([midnight, midnight + 86400], 86400, "Europe/Lisbon")).toEqual(["10 Oct", "11 Oct"]);
+  });
+});
+
+describe("today", () => {
+  it("gives the weekday, date and time at the station", () => {
+    expect(today("2026-10-11T23:30:00Z", "Europe/Lisbon")).toBe("Mon 12 Oct, 00:30");
+  });
+});
+
+describe("zoneCity", () => {
+  it.each([
+    ["Europe/Lisbon", "Lisbon"], ["America/New_York", "New York"],
+    ["America/Argentina/Buenos_Aires", "Buenos Aires"], ["UTC", "UTC"],
+  ])("%s is %s", (zone, city) => {
+    expect(zoneCity(zone)).toBe(city);
   });
 });
 

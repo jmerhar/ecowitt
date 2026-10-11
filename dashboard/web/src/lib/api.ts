@@ -84,6 +84,14 @@ export type Room = {
   } | null;
 };
 
+export type HouseAiring = {
+  advice: "open" | "keep_closed" | "no_need";
+  rooms: string[];
+  humidity: number;
+  humidity_after: number | null;
+  dew_point_difference: number;
+};
+
 export type SensorHealth = {
   sensor: string;
   name: string;
@@ -104,6 +112,7 @@ export type Now = {
   rain: Rain | null;
   pressure: Pressure | null;
   sun: Sun | null;
+  airing: HouseAiring | null;
   rooms: Room[];
   sensors: SensorHealth[];
 };

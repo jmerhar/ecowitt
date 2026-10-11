@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import statistics
 import zoneinfo
 from collections.abc import Awaitable, Callable, Collection, Iterable, Mapping
 from dataclasses import dataclass, field
@@ -254,7 +255,9 @@ class Dashboard:
         answer.rain = _rain(latest, values, stored)
         answer.pressure = _pressure(latest, values, stored)
         answer.sun = _sun(latest, values, stored, info, zone)
-        answer.rooms = _rooms(latest, values, stored, info)
+        air = _room_air(latest, values, stored, info)
+        answer.airing = _house(air, values)
+        answer.rooms = _rooms(latest, values, stored, info, air)
         answer.sensors = _health(latest, info)
         answer.summary = _summary(answer, values.target)
         return answer
@@ -606,33 +609,77 @@ def _sun(
     return answer
 
 
-def _rooms(latest: _Latest, values: _Values, stored: Units, info: StationInfo) -> list[models.Room]:
+@dataclass(frozen=True)
+class _RoomAir:
+    """What airing one room would do, in metric units."""
+
+    sensor: str
+    name: str
+    humidity: float
+    delta: float
+    after: float | None
+
+
+def _room_air(latest: _Latest, values: _Values, stored: Units, info: StationInfo) -> list[_RoomAir]:
+    """Each room with both its humidity and a comparison with the outdoor air."""
+    H, D = Kind.HUMIDITY, Kind.TEMPERATURE_DELTA
+    vents = {s.sensor: s.last for s in latest.ventilation}
+    found = []
+    for span in latest.rooms:
+        sensor = span.sensor or ""
+        vent = vents.get(sensor, {})
+        humidity = values.metric(H, span.last.get(field_name("humidity", H, stored)))
+        delta = values.metric(D, vent.get(field_name("dewpoint_delta", D, stored)))
+        if humidity is None or delta is None:
+            continue
+        after = values.metric(H, vent.get(field_name("predicted_humidity", H, stored)))
+        name = _name(info, span.tags, span.name) or sensor
+        found.append(_RoomAir(sensor, name, humidity, delta, after))
+    return found
+
+
+def _house(air: list[_RoomAir], values: _Values) -> models.HouseAiring | None:
+    """The whole house's airing advice, from its rooms'."""
+    if not air:
+        return None
+    advice = weather.house_airing([(r.humidity, r.delta) for r in air])
+    afters = [r.after for r in air if r.after is not None]
+    H = Kind.HUMIDITY
+    return models.HouseAiring(
+        advice=advice.value,
+        rooms=[r.name for r in air if weather.airing(r.humidity, r.delta) is weather.Airing.OPEN],
+        humidity=values.from_metric(H, statistics.median(r.humidity for r in air)),
+        humidity_after=values.from_metric(H, statistics.median(afters)) if afters else None,
+        dew_point_difference=values.from_metric(
+            Kind.TEMPERATURE_DELTA, statistics.median(r.delta for r in air)
+        ),
+    )
+
+
+def _rooms(
+    latest: _Latest, values: _Values, stored: Units, info: StationInfo, air: list[_RoomAir]
+) -> list[models.Room]:
     """Each room, indoor sensor first, with its airing advice."""
     T, H = Kind.TEMPERATURE, Kind.HUMIDITY
     dew_points = {s.sensor: s.last.get(field_name("dewpoint", T, stored)) for s in latest.derived}
-    vents = {s.sensor: s.last for s in latest.ventilation}
+    by_sensor = {r.sensor: r for r in air}
     rooms = []
     for span in sorted(latest.rooms, key=lambda s: _natural(s.sensor or "")):
         sensor = span.sensor or ""
-        humidity = values.metric(H, span.last.get(field_name("humidity", H, stored)))
-        vent = vents.get(sensor, {})
-        delta = values.metric(
-            Kind.TEMPERATURE_DELTA,
-            vent.get(field_name("dewpoint_delta", Kind.TEMPERATURE_DELTA, stored)),
-        )
+        room = by_sensor.get(sensor)
         advice = None
-        if delta is not None and humidity is not None:
+        if room is not None:
             advice = models.AiringAdvice(
-                advice=weather.airing(humidity, delta).value,
-                humidity_after=values.out(H, vent.get(field_name("predicted_humidity", H, stored))),
-                dew_point_difference=values.from_metric(Kind.TEMPERATURE_DELTA, delta),
+                advice=weather.airing(room.humidity, room.delta).value,
+                humidity_after=None if room.after is None else values.from_metric(H, room.after),
+                dew_point_difference=values.from_metric(Kind.TEMPERATURE_DELTA, room.delta),
             )
         rooms.append(
             models.Room(
                 sensor=sensor,
                 name=_name(info, span.tags, span.name) or sensor,
                 temperature=values.out(T, span.last.get(field_name("temp", T, stored))),
-                humidity=None if humidity is None else values.from_metric(H, humidity),
+                humidity=values.out(H, span.last.get(field_name("humidity", H, stored))),
                 dew_point=values.out(T, dew_points.get(sensor)),
                 airing=advice,
             )

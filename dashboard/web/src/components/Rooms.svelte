@@ -20,6 +20,14 @@
     no_need: { text: "", hint: "" },
   } as const;
 
+  /** Whether airing would dry a room (good) or dampen it (bad), by a point or more. */
+  function effect(room: Room): string {
+    const after = room.airing?.humidity_after;
+    if (after === null || after === undefined || room.humidity === null) return "muted";
+    if (after <= room.humidity - 1) return "good";
+    return after >= room.humidity + 1 ? "bad" : "muted";
+  }
+
   /** The airing column, only while some room has advice to give. */
   const advised = $derived(rooms.some((r) => r.airing && r.airing.advice !== "no_need"));
 </script>
@@ -34,6 +42,7 @@
           <th class="num"><button class="link" onclick={() => onselect("rooms-temperature")}>Temperature</button></th>
           <th class="num"><button class="link" onclick={() => onselect("rooms-humidity")}>Humidity</button></th>
           <th class="num">Dew point</th>
+          <th class="num" title="The humidity each room would settle at once its air had been replaced by outdoor air">If aired</th>
           {#if advised}<th>Airing</th>{/if}
         </tr>
       </thead>
@@ -45,12 +54,10 @@
             <td class="num">{quantity(room.temperature, units.temperature, symbols)}</td>
             <td class="num">{quantity(room.humidity, "pct", symbols)}</td>
             <td class="num">{quantity(room.dew_point, units.temperature, symbols)}</td>
+            <td class="num {effect(room)}">{quantity(room.airing?.humidity_after, "pct", symbols)}</td>
             {#if advised}<td>
               {#if advice?.text}
                 <span class="badge {room.airing?.advice}" title={advice.hint}>{advice.text}</span>
-                {#if room.airing?.humidity_after !== null && room.airing?.advice === "open"}
-                  <span class="muted">→ {quantity(room.airing?.humidity_after, "pct", symbols)}</span>
-                {/if}
               {/if}
             </td>{/if}
           </tr>

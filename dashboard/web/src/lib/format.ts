@@ -84,6 +84,24 @@ export function axisLabels(ticks: number[], stepSeconds: number, timezone: strin
   });
 }
 
+/** The day, date and time at the station: "Sun 11 Oct, 12:20". */
+export function today(iso: string, timezone: string, locale = LOCALE): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: timezone,
+  }).format(new Date(iso));
+}
+
+/** The place a time zone is named after: "Europe/Lisbon" is Lisbon, "America/New_York" New York. */
+export function zoneCity(timezone: string): string {
+  const city = timezone.split("/").pop() ?? timezone;
+  return city.replaceAll("_", " ");
+}
+
 /** A duration in hours and minutes: "11 h 22 min". */
 export function duration(seconds: number | null | undefined): string {
   if (seconds === null || seconds === undefined) return "–";

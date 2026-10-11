@@ -36,6 +36,7 @@ describe("App", () => {
     expect(screen.getByText("Home")).toBeInTheDocument();
     expect(screen.getByText("Gentle breeze from the SE")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Rooms" })).toBeInTheDocument();
+    expect(screen.getByText("Good time to air")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Records" })).toBeInTheDocument();
     expect(screen.getByText(/1 needs attention/)).toBeInTheDocument();
     expect(document.title).toBe("Home · Test weather");
@@ -114,6 +115,16 @@ describe("App", () => {
     await vi.advanceTimersByTimeAsync(1100);
     await waitFor(() => expect(api.series).toHaveBeenCalledTimes(2));
     expect(api.extremes).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows the time at the station, and keeps it moving", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-10-10T13:20:00Z"));
+    render(App, { api: fakeApi(), storage: memory(), clockMs: 1000 });
+    expect(await screen.findByText("Sat 10 Oct, 14:20 Lisbon time")).toHaveAttribute("title", "Europe/Lisbon");
+    vi.setSystemTime(new Date("2026-10-10T13:21:00Z"));
+    await vi.advanceTimersByTimeAsync(1100);
+    expect(await screen.findByText("Sat 10 Oct, 14:21 Lisbon time")).toBeInTheDocument();
   });
 
   it("works without any storage", async () => {

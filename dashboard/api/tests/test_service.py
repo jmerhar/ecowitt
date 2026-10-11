@@ -400,3 +400,49 @@ async def test_an_unnamed_room_keeps_its_identifier(reader: MemoryReader) -> Non
     reader.rows.append(row("channel", LAST, {"temp_c": 19.0}, sensor="ch3", name="Attic"))
     rooms = (await Dashboard(reader, clock=lambda: NOW).now("example")).rooms
     assert [r.name for r in rooms[2:]] == ["ch2", "Attic"]
+
+
+async def test_the_house_is_told_which_rooms_to_air(board: Dashboard) -> None:
+    airing = (await board.now("example")).airing
+    assert airing is not None
+    assert (airing.advice, airing.rooms) == ("open", ["Bathroom"])
+    assert (airing.humidity, airing.humidity_after, airing.dew_point_difference) == (
+        65.0,
+        54.0,
+        1.1,
+    ), "medians of 55 and 75, 58 and 49, -0.6 and 2.9, rounded as shown"
+
+
+async def test_humid_outside_air_keeps_the_windows_closed(reader: MemoryReader) -> None:
+    reader.rows = [r for r in reader.rows if r.table != "ventilation"]
+    for sensor, delta, after in (("indoor", -2.0, 70.0), ("ch1", 0.5, 74.0)):
+        reader.rows.append(
+            row(
+                "ventilation",
+                LAST,
+                {"dewpoint_delta_c": delta, "predicted_humidity_pct": after},
+                sensor=sensor,
+            )
+        )
+    now = await Dashboard(reader, clock=lambda: NOW).now("example", {"temperature": "f"})
+    assert now.airing is not None
+    assert (now.airing.advice, now.airing.rooms, now.airing.humidity_after) == (
+        "keep_closed",
+        [],
+        72.0,
+    )
+    assert now.airing.dew_point_difference == -1.4, "-0.75 °C as a Fahrenheit difference"
+
+
+async def test_no_outdoor_comparison_means_no_house_advice(reader: MemoryReader) -> None:
+    reader.rows = [r for r in reader.rows if r.table != "ventilation"]
+    now = await Dashboard(reader, clock=lambda: NOW).now("example")
+    assert now.airing is None
+    assert all(room.airing is None for room in now.rooms)
+
+
+async def test_a_room_without_a_prediction_still_counts(reader: MemoryReader) -> None:
+    reader.rows = [r for r in reader.rows if r.table != "ventilation"]
+    reader.rows.append(row("ventilation", LAST, {"dewpoint_delta_c": -1.0}, sensor="indoor"))
+    now = await Dashboard(reader, clock=lambda: NOW).now("example")
+    assert now.airing is not None and now.airing.humidity_after is None
