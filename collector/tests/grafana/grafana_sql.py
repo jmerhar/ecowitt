@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import re
 
+from ecowitt.core import weathermodel
 from ecowitt.core.stationinfo import TABLE, StationInfo
+from ecowitt.core.units import Units, field_name
 
 from ..conftest import FIXTURES
 
@@ -28,6 +30,12 @@ FUNCTIONS = {
     "interval",
     "date_part",
     "initcap",
+    # A direction's mean is taken around the circle: the angle of the summed unit vectors.
+    "sin",
+    "cos",
+    "atan2",
+    "radians",
+    "degrees",
 }
 IDENTIFIER = re.compile(r"\b[a-z][a-z0-9_]*\b")
 #: Quoted strings and Grafana's macros and variables, which hold no column names.
@@ -53,8 +61,16 @@ def schema() -> dict[str, set[str]]:
             columns.update(re.findall(r"(?:^|,)([a-z0-9_]+)=", values))
     # Written by the collector's metadata publisher rather than from a report, so it is in no
     # golden file: its columns come from a row with every setting present.
-    info = StationInfo("s", 0.0, 0.0, 0.0, "UTC", sensors={"ch1": "x"}).to_row(0)
+    info = StationInfo("s", 0.0, 0.0, 0.0, "UTC", sensors={"ch1": "x"}, weather_model="m").to_row(0)
     tables[TABLE] = {"time", *(tag for tag, _ in info.tags), *info.fields}
+    # Written by the weather model feed, from its declared variables in the default units.
+    tables[weathermodel.TABLE] = {
+        "time",
+        "station",
+        "source",
+        "model",
+        *(field_name(base, kind, Units()) for base, kind in weathermodel.VARIABLES.values()),
+    }
     return tables
 
 

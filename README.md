@@ -236,7 +236,7 @@ tables) and `name` (its display name).
 | `battery` | per sensor, in whichever form that sensor reports: a low flag, a voltage or a level |
 | `station` | the console's model, firmware, uptime, upload interval and clock skew |
 | `model` | per located station, a weather model's values every 15 minutes, tagged `source` and `model`; see [Weather model](#weather-model). Precipitation (`precip_15m_mm`) is the 15 minutes ending at the row's time |
-| `station_info` | each station's settings: coordinates, altitude, time zone, stored units and sensor names. Written at startup and when the configuration changes them, never otherwise; read the newest row as a whole |
+| `station_info` | each station's settings: coordinates, altitude, time zone, stored units, sensor names and the weather model it uses. Written at startup and when the configuration changes them, never otherwise; read the newest row as a whole |
 | `soil`, `soil_ec`, `pm`, `air`, `lightning`, `leak`, `probe`, `leaf`, `depth` | only when those sensors report |
 | `unmapped` | any field this server does not recognise, under its original name |
 
@@ -256,7 +256,10 @@ Create it before first use if you want anything other than keeping everything.
 - whether airing would dry or dampen each room: its dew point against the outdoor one, and
   the humidity it would settle at;
 - indoor humidity, temperature, dew point and absolute humidity, room by room;
-- outdoor temperature, humidity, wind, pressure, rain and sun;
+- outdoor temperature, humidity, wind, pressure, rain and sun, each with the
+  [weather model](#weather-model)'s value dashed behind it;
+- the outdoor temperature and wind direction minus the model's, with the band within which a
+  difference is usual shaded;
 - battery flags, rooms and outdoor sensors that have stopped changing, the console's pressure
   calibration, and the station's settings as last published (time zone, coordinates, altitude,
   stored units).

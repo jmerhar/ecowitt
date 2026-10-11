@@ -60,6 +60,22 @@
         "definition": "SELECT timezone FROM station_info WHERE station = '${station}' ORDER BY time DESC LIMIT 1",
         "refresh": 2,
         "hide": 2
+      },
+      {
+        "name": "model",
+        "label": "Weather model",
+        "type": "query",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "query": {
+          "query": "SELECT weather_model FROM station_info WHERE station = '${station}' ORDER BY time DESC LIMIT 1",
+          "refId": "InfluxVariableQueryEditor-VariableQuery"
+        },
+        "definition": "SELECT weather_model FROM station_info WHERE station = '${station}' ORDER BY time DESC LIMIT 1",
+        "refresh": 2,
+        "hide": 2
       }
     ]
   },
@@ -1787,6 +1803,30 @@
           "rawQuery": true,
           "rawSql": "SELECT $__dateBin(time) AS time, avg(dewpoint_c) AS \"Dew point\"\nFROM derived\nWHERE station = '${station}' AND $__timeFilter(time) AND sensor = 'outdoor'\nGROUP BY 1 ORDER BY 1",
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__dateBin(time) AS time, avg(temp_c) AS \"Temperature (model)\"\nFROM model\nWHERE station = '${station}' AND model = '${model}' AND $__timeFilter(time)\nGROUP BY 1 ORDER BY 1",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__dateBin(time) AS time, avg(dewpoint_c) AS \"Dew point (model)\"\nFROM model\nWHERE station = '${station}' AND model = '${model}' AND $__timeFilter(time)\nGROUP BY 1 ORDER BY 1",
+          "refId": "D"
         }
       ],
       "fieldConfig": {
@@ -1834,6 +1874,64 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Temperature (model)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dew point (model)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
           }
         ]
       },
@@ -1847,7 +1945,8 @@
           "mode": "multi",
           "sort": "desc"
         }
-      }
+      },
+      "description": "Outdoor temperature and dew point. Dashed: the weather model's value for the location (see the README's Weather model), for comparison."
     },
     {
       "id": 25,
@@ -1875,6 +1974,18 @@
           "rawQuery": true,
           "rawSql": "SELECT $__dateBin(time) AS time, avg(humidity_pct) AS \"Humidity\"\nFROM outdoor\nWHERE station = '${station}' AND $__timeFilter(time)\nGROUP BY 1 ORDER BY 1",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__dateBin(time) AS time, avg(humidity_pct) AS \"Humidity (model)\"\nFROM model\nWHERE station = '${station}' AND model = '${model}' AND $__timeFilter(time)\nGROUP BY 1 ORDER BY 1",
+          "refId": "B"
         }
       ],
       "fieldConfig": {
@@ -1895,7 +2006,52 @@
           "max": 100,
           "decimals": 0
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Humidity"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Humidity (model)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
@@ -1907,7 +2063,8 @@
           "mode": "multi",
           "sort": "desc"
         }
-      }
+      },
+      "description": "Outdoor relative humidity. Dashed: the weather model's value for the location (see the README's Weather model), for comparison."
     },
     {
       "id": 26,
@@ -1935,6 +2092,18 @@
           "rawQuery": true,
           "rawSql": "SELECT $__dateBin(time) AS time, avg(speed_kmh) AS \"Speed\", max(gust_kmh) AS \"Gust\"\nFROM wind\nWHERE station = '${station}' AND $__timeFilter(time)\nGROUP BY 1 ORDER BY 1",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__dateBin(time) AS time, avg(speed_kmh) AS \"Speed (model)\"\nFROM model\nWHERE station = '${station}' AND model = '${model}' AND $__timeFilter(time)\nGROUP BY 1 ORDER BY 1",
+          "refId": "B"
         }
       ],
       "fieldConfig": {
@@ -1969,6 +2138,50 @@
                 "value": 3
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Speed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Speed (model)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
           }
         ]
       },
@@ -1982,7 +2195,8 @@
           "mode": "multi",
           "sort": "desc"
         }
-      }
+      },
+      "description": "Wind speed, and the strongest gust in each interval. Dashed: the weather model's value for the location (see the README's Weather model), for comparison."
     },
     {
       "id": 27,
@@ -2008,15 +2222,30 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT $__dateBin(time) AS time, avg(dir_avg10m_deg) AS \"Direction\"\nFROM wind\nWHERE station = '${station}' AND $__timeFilter(time)\nGROUP BY 1 ORDER BY 1",
+          "rawSql": "SELECT $__dateBin(time) AS time, (degrees(atan2(avg(sin(radians(dir_avg10m_deg))), avg(cos(radians(dir_avg10m_deg))))) + 360) % 360 AS \"Direction\"\nFROM wind\nWHERE station = '${station}' AND $__timeFilter(time)\nGROUP BY 1 ORDER BY 1",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__dateBin(time) AS time, (degrees(atan2(avg(sin(radians(dir_deg))), avg(cos(radians(dir_deg))))) + 360) % 360 AS \"Direction (model)\"\nFROM model\nWHERE station = '${station}' AND model = '${model}' AND $__timeFilter(time)\nGROUP BY 1 ORDER BY 1",
+          "refId": "B"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "degree",
           "custom": {
-            "axisSoftMin": 0
+            "axisSoftMin": 0,
+            "drawStyle": "points",
+            "pointSize": 4,
+            "showPoints": "always"
           },
           "color": {
             "mode": "palette-classic"
@@ -2025,7 +2254,38 @@
           "max": 360,
           "decimals": 0
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Direction"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Direction (model)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
@@ -2038,7 +2298,7 @@
           "sort": "desc"
         }
       },
-      "description": "Ten-minute average direction the wind blows from: 0° north, 90° east, 180° south, 270° west."
+      "description": "Ten-minute average direction the wind blows from: 0° north, 90° east, 180° south, 270° west; averaged around the circle, so north stays north. Blue: the weather model's direction, for comparison."
     },
     {
       "id": 28,
@@ -2066,6 +2326,18 @@
           "rawQuery": true,
           "rawSql": "SELECT $__dateBin(time) AS time, avg(sea_hpa) AS \"Sea level\"\nFROM pressure\nWHERE station = '${station}' AND $__timeFilter(time)\nGROUP BY 1 ORDER BY 1",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__dateBin(time) AS time, avg(sea_hpa) AS \"Sea level (model)\"\nFROM model\nWHERE station = '${station}' AND model = '${model}' AND $__timeFilter(time)\nGROUP BY 1 ORDER BY 1",
+          "refId": "B"
         }
       ],
       "fieldConfig": {
@@ -2083,7 +2355,52 @@
             "mode": "palette-classic"
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sea level"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sea level (model)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
@@ -2096,7 +2413,7 @@
           "sort": "desc"
         }
       },
-      "description": "Reduced to sea level from the absolute reading, the station's altitude and the outdoor temperature."
+      "description": "Reduced to sea level from the absolute reading, the station's altitude and the outdoor temperature. Dashed: the weather model's value for the location (see the README's Weather model), for comparison."
     },
     {
       "id": 29,
@@ -2253,6 +2570,18 @@
           "rawQuery": true,
           "rawSql": "SELECT $__dateBin(time) AS time, max(uv_index) AS \"UV index\"\nFROM solar\nWHERE station = '${station}' AND $__timeFilter(time)\nGROUP BY 1 ORDER BY 1",
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__dateBin(time) AS time, avg(radiation_wm2) AS \"Radiation (model)\"\nFROM model\nWHERE station = '${station}' AND model = '${model}' AND $__timeFilter(time)\nGROUP BY 1 ORDER BY 1",
+          "refId": "C"
         }
       ],
       "fieldConfig": {
@@ -2313,6 +2642,35 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Radiation (model)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
           }
         ]
       },
@@ -2326,7 +2684,169 @@
           "mode": "multi",
           "sort": "desc"
         }
-      }
+      },
+      "description": "Solar radiation and the UV index. Dashed: the weather model's value for the location (see the README's Weather model), for comparison."
+    },
+    {
+      "id": 37,
+      "type": "timeseries",
+      "title": "Temperature: station minus model",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 104,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "WITH s AS (\n  SELECT $__dateBin(time) AS time, avg(temp_c) AS v FROM outdoor\n  WHERE station = '${station}' AND $__timeFilter(time) GROUP BY 1\n), m AS (\n  SELECT $__dateBin(time) AS time, avg(temp_c) AS v FROM model\n  WHERE station = '${station}' AND model = '${model}' AND $__timeFilter(time) GROUP BY 1\n)\nSELECT s.time, s.v - m.v AS \"Station − model\"\nFROM s JOIN m ON s.time = m.time\nORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "drawStyle": "points",
+            "pointSize": 4,
+            "showPoints": "always",
+            "thresholdsStyle": {
+              "mode": "dashed+area"
+            },
+            "axisSoftMin": -6,
+            "axisSoftMax": 6,
+            "axisBorderShow": false
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": -3
+              },
+              {
+                "color": "transparent",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "The outdoor temperature minus the weather model's. Within the shaded ±3 °C band is what usually separates one thermometer from a model's grid cell, the bound the status page uses; a lasting excursion beyond it points at the sensor or its siting, such as afternoon sun on the screen."
+    },
+    {
+      "id": 38,
+      "type": "timeseries",
+      "title": "Wind direction: station minus model",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 104,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "WITH s AS (\n  SELECT $__dateBin(time) AS time, (degrees(atan2(avg(sin(radians(dir_avg10m_deg))), avg(cos(radians(dir_avg10m_deg))))) + 360) % 360 AS d FROM wind\n  WHERE station = '${station}' AND $__timeFilter(time) GROUP BY 1\n), m AS (\n  SELECT $__dateBin(time) AS time, (degrees(atan2(avg(sin(radians(dir_deg))), avg(cos(radians(dir_deg))))) + 360) % 360 AS d FROM model\n  WHERE station = '${station}' AND model = '${model}' AND $__timeFilter(time) GROUP BY 1\n  HAVING avg(speed_kmh) >= 10.8\n)\nSELECT s.time, (s.d - m.d + 540) % 360 - 180 AS \"Station − model\"\nFROM s JOIN m ON s.time = m.time\nORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "degree",
+          "custom": {
+            "drawStyle": "points",
+            "pointSize": 4,
+            "showPoints": "always",
+            "thresholdsStyle": {
+              "mode": "dashed+area"
+            },
+            "axisSoftMin": -120,
+            "axisSoftMax": 120,
+            "axisBorderShow": false
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": -60
+              },
+              {
+                "color": "transparent",
+                "value": 60
+              }
+            ]
+          },
+          "min": -180,
+          "max": 180,
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "The station's ten-minute direction minus the weather model's, the short way round, only while the model has at least 10.8 km/h (3 m/s) of wind: below that a vane wanders. Within the shaded ±60° band is usual; a steady offset beyond it is a vane pointed wrongly or turned by a building."
     },
     {
       "id": 31,
@@ -2335,7 +2855,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 104,
+        "y": 112,
         "w": 24,
         "h": 1
       },
@@ -2351,7 +2871,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 105,
+        "y": 113,
         "w": 4,
         "h": 7
       },
@@ -2423,7 +2943,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 105,
+        "y": 113,
         "w": 10,
         "h": 16
       },
@@ -2552,7 +3072,7 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 112,
+        "y": 120,
         "w": 10,
         "h": 9
       },
@@ -2630,7 +3150,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 112,
+        "y": 120,
         "w": 4,
         "h": 9
       },
@@ -2695,7 +3215,7 @@
       "description": "The station's settings as the collector last published them to the database: written when it starts and whenever the setup page changes them. The time zone decides where the station's day begins, and is taken from the coordinates unless one was entered.",
       "gridPos": {
         "x": 14,
-        "y": 105,
+        "y": 113,
         "w": 10,
         "h": 7
       },

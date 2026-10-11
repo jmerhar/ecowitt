@@ -2,7 +2,7 @@
 
 A weather model's view of each station's location, stored beside the station's own readings
 (the `model` table, written by `collector/.../admin/modelfeed.py`; see the README's *Weather
-model*). What is left is showing it.
+model*). Grafana draws it beside the readings; what is left is the public dashboard.
 
 ## Decided
 
@@ -18,8 +18,6 @@ model*). What is left is showing it.
 
 ## Still to do
 
-- **Grafana**: model series dashed behind the station's in the outdoor panels; a "station minus
-  model" panel for temperature and wind direction (the direction difference wrapped to ±180°).
 - **Dashboard API**: `now.sky` (weather code in words, day or night, cloud cover) from the newest
   model row, empty when that row is over an hour old; the summary line opens with it; `/series`
   can add the model's series for the metrics it has.
@@ -31,4 +29,4 @@ model*). What is left is showing it.
 
 ## Done when
 
-The dashboard and Grafana draw model and station together, and the page headlines the sky.
+The dashboard draws model and station together, and the page headlines the sky.

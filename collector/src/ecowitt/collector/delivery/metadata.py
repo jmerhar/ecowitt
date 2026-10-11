@@ -36,6 +36,7 @@ def info_for(station: Station) -> StationInfo:
         timezone=station.timezone,
         units=prefs.units,
         sensors=dict(prefs.names),
+        weather_model=station.model,
     )
 
 

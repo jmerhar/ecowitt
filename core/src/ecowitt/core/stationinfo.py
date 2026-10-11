@@ -38,6 +38,9 @@ class StationInfo:
     units: Units = field(default_factory=Units)
     #: Display names by sensor identifier, as on the setup page.
     sensors: Mapping[str, str] = field(default_factory=dict)
+    #: The weather model whose rows the `model` table holds for this station now, or None when
+    #: it has none. Earlier models' rows stay, under their own `model` tag.
+    weather_model: str | None = None
 
     def to_row(self, timestamp: int) -> Row:
         """The `station_info` row for these settings, leaving out what is not set."""
@@ -51,6 +54,8 @@ class StationInfo:
                 values[name] = float(value)
         if self.timezone:
             values["timezone"] = self.timezone
+        if self.weather_model:
+            values["weather_model"] = self.weather_model
         for unit in fields(Units):
             values[UNITS_PREFIX + unit.name] = getattr(self.units, unit.name)
         for sensor, name in self.sensors.items():
@@ -80,6 +85,7 @@ class StationInfo:
         except ValueError:
             stored_units = Units()
         timezone = present.get("timezone")
+        model = present.get("weather_model")
         return cls(
             station=station,
             latitude=number("latitude_deg"),
@@ -92,4 +98,5 @@ class StationInfo:
                 for k, v in sorted(present.items())
                 if k.startswith(SENSOR_PREFIX) and isinstance(v, str)
             },
+            weather_model=model if isinstance(model, str) and model else None,
         )

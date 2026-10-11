@@ -57,7 +57,17 @@ def test_a_station_publishes_its_settings_and_its_zone_from_the_coordinates() ->
         timezone="Europe/Amsterdam",
         units=Units(),
         sensors={"indoor": "Lounge"},
+        weather_model="best_match",
     )
+
+
+def test_a_station_without_a_model_publishes_none() -> None:
+    """Off, or no coordinates: the dashboards then read no model rows for it."""
+    (off,) = config(HOME.model_copy(update={"weather_model": "off"})).stations
+    (unlocated,) = config(COTTAGE).stations
+
+    assert info_for(off).weather_model is None
+    assert info_for(unlocated).weather_model is None
 
 
 async def test_every_station_is_published_at_startup() -> None:
