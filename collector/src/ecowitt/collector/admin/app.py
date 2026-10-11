@@ -74,7 +74,27 @@ def ago(seconds: float | None) -> str:
     return "never" if seconds is None else f"{duration(seconds)} ago"
 
 
+#: Where each radio band Ecowitt sells is for, from Ecowitt's own guide to choosing one.
+BANDS = {
+    "433": "for Australia, New Zealand and most other regions",
+    "868": "for Europe and the UK",
+    "915": "for North America",
+    "920": "where local rules call for it",
+}
+
+
+def band(freq: str) -> str:
+    """A console's radio band in words: "868M" is "868 MHz, for Europe and the UK"."""
+    matched = re.fullmatch(r"(\d+)\s*M(?:Hz)?", freq.strip(), re.IGNORECASE)
+    if matched is None:
+        return freq
+    megahertz = matched.group(1)
+    region = BANDS.get(megahertz)
+    return f"{megahertz} MHz, {region}" if region else f"{megahertz} MHz"
+
+
 TEMPLATES.env.filters["duration"] = duration
+TEMPLATES.env.filters["band"] = band
 TEMPLATES.env.filters["ago"] = ago
 #: Scripts the pages load. Served as files rather than inlined so they can be tested on their own.
 STATIC_DIR = Path(__file__).parent / "static"

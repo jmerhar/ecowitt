@@ -821,7 +821,7 @@ class TestStatus:
         assert station["console"]["model"] == "HP2551AE_Pro_V2.1.4"
         # The recorded report's own clock is days behind the moment the test replays it.
         assert "HP2551AE_Pro_V2.1.4, EasyWeatherPro_V5.2.7; reports every 10 s; clock " in page
-        assert re.search(r"clock \d+ days off; 868M\.", page)
+        assert re.search(r"clock \d+ days off; 868 MHz, for Europe and the UK\.", page)
         assert station["overdue"] is False
 
     async def test_every_stored_value_is_listed_under_the_summary(self, rig: Rig) -> None:
@@ -1119,3 +1119,25 @@ def test_durations_read_as_words(seconds: float | None, words: str) -> None:
 
 def test_a_text_value_is_shown_as_it_is() -> None:
     assert admin._item("mode_text", "eco") == {"field": "mode_text", "text": "eco"}
+
+
+@pytest.mark.parametrize(
+    ("freq", "words"),
+    [
+        ("868M", "868 MHz, for Europe and the UK"),
+        ("915M", "915 MHz, for North America"),
+        ("433M", "433 MHz, for Australia, New Zealand and most other regions"),
+        ("920 MHz", "920 MHz, where local rules call for it"),
+        ("2400M", "2400 MHz"),
+        ("unknown", "unknown"),
+    ],
+)
+def test_the_radio_band_is_named_with_its_region(freq: str, words: str) -> None:
+    assert admin.band(freq) == words
+
+
+def test_the_pages_have_an_icon(rig: Rig) -> None:
+    rig.store.replace(ConfigDocument(stations=[StationEntry(name="Home", passkey="K")]))
+    assert '<link rel="icon" href="/static/favicon.svg"' in rig.client.get("/").text
+    icon = rig.client.get("/static/favicon.svg")
+    assert icon.status_code == 200 and icon.headers["content-type"].startswith("image/svg+xml")

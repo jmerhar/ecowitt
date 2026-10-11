@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- An outdoor sensor array in silhouette: rain gauge, arm, pole, wind cups and vane. -->
+  <circle cx="32" cy="32" r="32" fill="#8393ab"/>
+  <g fill="#fff">
+    <!-- Rain gauge: funnel rim, tapering body, threaded base. -->
+    <rect x="8" y="23" width="16" height="4" rx="1.5"/>
+    <path d="M9.5 27h13l-1.5 11h-10z"/>
+    <path d="M12.5 38h7v9h-7z"/>
+    <!-- Arm from the gauge up to the anemometer, with the light sensor on top. -->
+    <path d="M22 29l22-5 4 2-1 4-24 7z"/>
+    <rect x="33" y="22" width="2" height="5" rx="1"/>
+    <!-- Mounting pole. -->
+    <rect x="29" y="33" width="4.5" height="14" rx="1"/>
+    <!-- Anemometer: post, hub and two cups. -->
+    <path d="M46 31V18h2.5v13z"/>
+    <rect x="40" y="16.5" width="15" height="2" rx="1"/>
+    <circle cx="40.5" cy="17.5" r="3"/>
+    <circle cx="54.5" cy="17.5" r="3"/>
+    <!-- Wind vane. -->
+    <rect x="45" y="34" width="12" height="1.6" rx="0.8"/>
+    <path d="M43 31.5l4 3.3-4 3.2z"/>
+  </g>
+</svg>

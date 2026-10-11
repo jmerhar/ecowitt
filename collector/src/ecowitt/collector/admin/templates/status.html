@@ -76,7 +76,7 @@
     {% if c %}{{ c.model }}{% if c.stationtype %}, {{ c.stationtype }}{% endif %}
       {%- if c.interval_s is defined %}; reports every {{ c.interval_s|int }} s{% endif %}
       {%- if c.clock_skew_s is defined %}; clock {{ c.clock_skew_s|abs|duration }} off{% endif %}
-      {%- if c.freq %}; {{ c.freq }}{% endif %}.{% endif %}
+      {%- if c.freq %}; {{ c.freq|band }}{% endif %}.{% endif %}
   </p>
   {% if station.unmapped %}
   <div class="warning">
