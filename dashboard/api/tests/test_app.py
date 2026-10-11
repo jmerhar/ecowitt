@@ -336,3 +336,48 @@ def test_the_default_reader_comes_from_the_store_settings(tmp_path: Path) -> Non
         "weather",
         "apiv3_read",
     )
+
+
+@pytest.fixture
+def web(settings: Settings, tmp_path: Path) -> Path:
+    """Built pages: an index and one hashed asset."""
+    directory = tmp_path / "web"
+    (directory / "assets").mkdir(parents=True)
+    (directory / "index.html").write_text("<!doctype html><title>Weather</title>")
+    (directory / "assets" / "index-abc123.js").write_text("console.log(1)")
+    (directory / "favicon.svg").write_text("<svg/>")
+    settings.web_dir = directory
+    return directory
+
+
+def test_the_pages_are_served_once_set_up(
+    settings: Settings, reader: MemoryReader, web: Path
+) -> None:
+    settings.config_path.write_text(CONFIG, encoding="utf-8")
+    with TestClient(build_app(settings, make_reader=lambda *_: reader)) as client:
+        page = client.get("/")
+        assert page.text.startswith("<!doctype html>")
+        assert page.headers["cache-control"] == "no-cache"
+        script = client.get("/assets/index-abc123.js")
+        assert script.text == "console.log(1)"
+        assert script.headers["cache-control"] == "public, max-age=31536000, immutable"
+        assert client.get("/favicon.svg").status_code == 200
+        assert client.get("/assets/missing.js").status_code == 404
+        assert "cache-control" not in client.get("/assets/missing.js").headers
+        assert client.get("/api/v1/meta").status_code == 200, "the API still answers beneath"
+
+
+def test_setup_comes_before_the_pages(settings: Settings, web: Path) -> None:
+    with TestClient(build_app(settings), follow_redirects=False) as client:
+        assert client.get("/").headers["location"] == "/setup"
+
+
+def test_the_pages_files_do_not_spend_a_visitors_budget(
+    settings: Settings, reader: MemoryReader, web: Path
+) -> None:
+    settings.rate, settings.burst = 0.001, 1
+    settings.config_path.write_text(CONFIG, encoding="utf-8")
+    with TestClient(build_app(settings, make_reader=lambda *_: reader)) as client:
+        assert [client.get("/assets/index-abc123.js").status_code for _ in range(3)] == [200] * 3
+        assert client.get("/").status_code == 200
+        assert client.get("/api/v1/meta").status_code == 429
