@@ -105,6 +105,17 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: "Rooms" })).not.toBeInTheDocument();
   });
 
+  it("fetches the charts and records again on each refresh", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const api = fakeApi();
+    render(App, { api, storage: memory(), refreshMs: 1000 });
+    await waitFor(() => expect(api.series).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(api.extremes).toHaveBeenCalledTimes(1));
+    await vi.advanceTimersByTimeAsync(1100);
+    await waitFor(() => expect(api.series).toHaveBeenCalledTimes(2));
+    expect(api.extremes).toHaveBeenCalledTimes(2);
+  });
+
   it("works without any storage", async () => {
     render(App, { api: fakeApi() });
     expect(await screen.findByText("18.0 °C")).toBeInTheDocument();

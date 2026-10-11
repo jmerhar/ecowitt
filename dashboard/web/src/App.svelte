@@ -34,6 +34,8 @@
   let now = $state<Now | null>(null);
   let error = $state("");
   let clock = $state(new Date());
+  /** Counts the refreshes, so the charts and records fetch again on each as well. */
+  let tick = $state(0);
   let timer: ReturnType<typeof setInterval> | undefined;
 
   const station = $derived(
@@ -61,6 +63,7 @@
     await refresh();
     timer = setInterval(() => {
       clock = new Date();
+      tick += 1;
       void refresh();
     }, refreshMs);
   }
@@ -147,11 +150,12 @@
       station={station.id}
       units={prefs.units}
       {timezone}
+      {tick}
       bind:view={prefs.view}
       bind:range={prefs.range}
     />
 
-    <Records {api} {meta} station={station.id} units={prefs.units} {timezone} bind:period={prefs.period} />
+    <Records {api} {meta} station={station.id} units={prefs.units} {timezone} {tick} bind:period={prefs.period} />
 
     {#if now.sensors.length}<Sensors sensors={now.sensors} />{/if}
   {/if}
