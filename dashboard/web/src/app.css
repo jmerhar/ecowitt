@@ -158,6 +158,11 @@ th {
   flex-wrap: wrap;
   gap: 0.25rem;
 }
+.tabs button {
+  display: inline-flex;
+  gap: 0.3rem;
+  align-items: center;
+}
 .tabs button,
 button.link {
   font: inherit;

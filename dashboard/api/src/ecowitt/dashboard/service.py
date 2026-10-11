@@ -745,10 +745,17 @@ def _notices(
             speed = values.metric(
                 Kind.SPEED, latest.wind.last.get(field_name("speed", Kind.SPEED, stored))
             )
-        if temp is not None and temp <= weather.FREEZING_C:
-            warn("outdoor", "Freezing: watch for ice.")
+        words = []
+        if temp is not None and temp <= weather.COLD_C:
+            words.append("Cold: frost is possible on clear nights.")
         elif temp is not None and weather.feels_like(temp, humidity, speed) >= weather.HEAT_FEELS_C:
-            warn("outdoor", "Heat: take care outdoors.")
+            words.append("Heat: take care outdoors.")
+        if humidity is not None and humidity >= weather.HUMID_AIR_PCT:
+            words.append("Very humid: fog and condensation likely.")
+        elif humidity is not None and humidity <= weather.DRY_AIR_PCT:
+            words.append("Very dry air: fire risk.")
+        if words:
+            warn("outdoor", " ".join(words))
     if latest.wind is not None:
         gust = values.metric(
             Kind.SPEED, latest.wind.last.get(field_name("gust", Kind.SPEED, stored))

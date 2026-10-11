@@ -4,6 +4,7 @@
   import { ApiError } from "../lib/api";
   import { align, VIEWS, viewFor } from "../lib/chart";
   import Chart from "./Chart.svelte";
+  import { viewIcon } from "../lib/icons";
 
   type Props = {
     api: Api;
@@ -68,7 +69,9 @@
   <div class="toolbar">
     <div class="tabs" role="tablist" aria-label="Chart">
       {#each VIEWS as v (v.id)}
-        <button role="tab" aria-selected={v.id === current.id} onclick={() => (view = v.id)}>{v.label}</button>
+        {@const Icon = viewIcon(v.id)}
+        <button role="tab" aria-selected={v.id === current.id} onclick={() => (view = v.id)}>
+          <Icon size={14} aria-hidden="true" /> {v.label}</button>
       {/each}
     </div>
     <div class="tabs" role="tablist" aria-label="Range">

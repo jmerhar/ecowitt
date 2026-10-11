@@ -461,7 +461,7 @@ async def test_weather_worth_a_warning_is_flagged(reader: MemoryReader) -> None:
     later = LAST + timedelta(seconds=30)
     reader.rows += [
         row("station", later, {"interval_s": 60.0}),
-        row("outdoor", later, {"temp_c": -1.0, "humidity_pct": 50.0}, sensor="outdoor"),
+        row("outdoor", later, {"temp_c": 5.0, "humidity_pct": 95.0}, sensor="outdoor"),
         row("wind", later, {"speed_kmh": 40.0, "gust_kmh": 61.0, "dir_deg": 0.0}),
         row("rain", later, {"rate_mm_h": 10.5}, gauge="bucket"),
         # 1015 hPa at the start of the three hours, 1011.5 at their end: 3.5 hPa down.
@@ -479,7 +479,8 @@ async def test_weather_worth_a_warning_is_flagged(reader: MemoryReader) -> None:
     ]
     notices = (await Dashboard(reader, clock=lambda: NOW).now("example")).notices
     assert {card: n.text for card, n in notices.items() if card not in {"sensors", "airing"}} == {
-        "outdoor": "Freezing: watch for ice.",
+        "outdoor": "Cold: frost is possible on clear nights. "
+        "Very humid: fog and condensation likely.",
         "wind": "Strong gusts.",
         "rain": "Heavy rain.",
         "pressure": "Falling fast: a front or a storm is likely.",
@@ -488,14 +489,24 @@ async def test_weather_worth_a_warning_is_flagged(reader: MemoryReader) -> None:
     }
 
 
-async def test_heat_is_judged_by_what_it_feels_like(reader: MemoryReader) -> None:
+@pytest.mark.parametrize(
+    ("temp", "humidity", "text"),
+    [
+        (31.0, 60.0, "Heat: take care outdoors."),
+        (20.0, 25.0, "Very dry air: fire risk."),
+        (5.1, 94.0, None),
+    ],
+)
+async def test_heat_is_judged_by_what_it_feels_like_and_air_by_its_humidity(
+    reader: MemoryReader, temp: float, humidity: float, text: str | None
+) -> None:
     later = LAST + timedelta(seconds=30)
     reader.rows += [
         row("station", later, {"interval_s": 60.0}),
-        row("outdoor", later, {"temp_c": 31.0, "humidity_pct": 60.0}, sensor="outdoor"),
+        row("outdoor", later, {"temp_c": temp, "humidity_pct": humidity}, sensor="outdoor"),
     ]
     notices = (await Dashboard(reader, clock=lambda: NOW).now("example")).notices
-    assert notices["outdoor"].text == "Heat: take care outdoors."
+    assert (notices["outdoor"].text if "outdoor" in notices else None) == text
 
 
 async def test_a_calm_dry_day_has_no_weather_notices(reader: MemoryReader) -> None:

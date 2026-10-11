@@ -6,6 +6,8 @@
   import type { Api, Extreme, ExtremesOut, Meta, UnitChoice } from "../lib/api";
   import { ApiError } from "../lib/api";
   import { clock, moment, number, quantity } from "../lib/format";
+  import { metricIcon } from "../lib/icons";
+  import TrophyIcon from "@lucide/svelte/icons/trophy";
 
   type Props = {
     api: Api;
@@ -82,7 +84,7 @@
 
 <section class="card wide">
   <div class="toolbar">
-    <h2>Records</h2>
+    <h2><TrophyIcon size={16} aria-hidden="true" /> Records</h2>
     <div class="tabs" role="tablist" aria-label="Period">
       {#each meta.periods as p (p)}
         <button role="tab" aria-selected={p === period} onclick={() => (period = p)}>{PERIODS[p] ?? p}</button>
@@ -94,8 +96,9 @@
   {:else if answer}
     <div class="tiles">
       {#each outdoor as record (`${record.metric}/${record.sensor}`)}
+        {@const Icon = metricIcon(record.metric)}
         <div class="tile">
-          <div class="label">{labels[record.metric] ?? record.metric}</div>
+          <div class="label"><Icon size={14} aria-hidden="true" /> {labels[record.metric] ?? record.metric}</div>
           <dl>
             {#if record.min}
               <dt>Low</dt>
@@ -158,6 +161,9 @@
     font-variant-numeric: tabular-nums;
   }
   .label {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
     color: var(--muted);
     font-size: 0.85rem;
     margin-bottom: 0.2rem;

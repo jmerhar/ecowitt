@@ -60,8 +60,12 @@ ROOM_HOT_C = 32.0
 ROOM_DAMP_PCT = 70.0
 #: A room dry enough to be uncomfortable, in %.
 ROOM_DRY_PCT = 30.0
-#: Freezing outdoors, in °C.
-FREEZING_C = 0.0
+#: Cold enough outdoors for frost on a clear night, in °C: the ground cools below the air, so frost
+#: forms while the air at sensor height is still a few degrees above zero.
+COLD_C = 5.0
+#: Outdoor air humid enough for fog and condensation, or dry enough for fire risk, in %.
+HUMID_AIR_PCT = 95.0
+DRY_AIR_PCT = 25.0
 #: Heat: a feels-like temperature at or above the US National Weather Service's "extreme
 #: caution" level for the heat index (90 °F), in °C.
 HEAT_FEELS_C = 32.0

@@ -2,6 +2,7 @@
   /** The headline: outdoor temperature, what it feels like, the day's range and one line in words. */
   import type { Notice, Now } from "../lib/api";
   import { clock, quantity } from "../lib/format";
+  import ThermometerIcon from "@lucide/svelte/icons/thermometer";
 
   type Props = {
     notice?: Notice;
@@ -19,6 +20,7 @@
 </script>
 
 <button class="card hero {notice?.level ?? ''}" onclick={() => onselect("temperature")}>
+  <h2><ThermometerIcon size={16} aria-hidden="true" /> Outdoors</h2>
   {#if outdoor}
     <div class="temperature">{quantity(outdoor.temperature, t, symbols)}</div>
     {#if outdoor.feels_like !== null && outdoor.feels_like !== outdoor.temperature}
