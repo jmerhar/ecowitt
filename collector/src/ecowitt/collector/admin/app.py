@@ -31,6 +31,7 @@ from starlette.responses import PlainTextResponse, RedirectResponse, Response
 from ecowitt.collector.admin import auth, lookups, timezones
 from ecowitt.collector.admin.calibration import CalibrationMonitor
 from ecowitt.collector.admin.configstore import ConfigStore
+from ecowitt.collector.admin.modelcompare import judge
 from ecowitt.collector.admin.modelfeed import ModelFeed
 from ecowitt.collector.admin.stationconfig import (
     AdminLogin,
@@ -518,7 +519,7 @@ def _station_view(context: AdminContext, name: str) -> dict[str, object]:
         if latest
         else None,
         "sensors": _summarise(latest.points) if latest else [],
-        "weather": _weather(latest.points) if latest else [],
+        "weather": [*_weather(latest.points), *_pressure_group(latest.points)] if latest else [],
         "others": _others(latest.points) if latest else [],
         "batteries": _loose_batteries(latest.points) if latest else [],
         "pressure": _pressure(latest.points) if latest else {},
@@ -568,8 +569,9 @@ def _model_view(
         return None
     items: list[dict[str, object]] = []
     if isinstance(code := row.fields.get("weather_code"), int):
-        items.append({"label": "Sky", "text": weathermodel.describe(code), "difference": None})
+        items.append(_model_item("Sky", weathermodel.describe(code)))
     by_base = {str(_item(key, value)["field"]): key for key, value in row.fields.items()}
+    speed = row.fields.get(by_base.get("speed", ""))
     for base, label, table, sensor in MODEL_COMPARED:
         if base not in by_base:
             continue
@@ -585,29 +587,55 @@ def _model_view(
             ),
             None,
         )
-        difference = None
+        item = _model_item(label, str(_item(key, model_value)["text"]))
         if isinstance(own, float) and isinstance(model_value, float):
-            difference = _difference(key, own - model_value)
-        text = _item(key, model_value)["text"]
-        items.append({"label": label, "text": text, "difference": difference})
+            difference = _wrapped(key, own - model_value)
+            verdict = judge(
+                base,
+                own,
+                model_value,
+                difference,
+                speed if isinstance(speed, float) else None,
+                station.preferences.units,
+            )
+            item |= {
+                "difference": _difference(key, difference),
+                "ok": verdict.ok,
+                "note": verdict.note,
+            }
+        items.append(item)
     for base, label in MODEL_ONLY.items():
         if base in by_base:
-            text = _item(by_base[base], row.fields[by_base[base]])["text"]
-            items.append({"label": label, "text": text, "difference": None})
+            items.append(
+                _model_item(label, str(_item(by_base[base], row.fields[by_base[base]])["text"]))
+            )
     return {
         "model": station.model,
         "label": weathermodel.MODELS.get(station.model, station.model),
         "age_seconds": max(0, round(time.time() - row.timestamp)),
         "items": items,
+        "off": [item["label"] for item in items if item["ok"] is False],
     }
 
 
+def _model_item(label: str, text: str) -> dict[str, object]:
+    """A row of the model table with nothing to compare: no difference, and no verdict."""
+    return {"label": label, "text": text, "difference": None, "ok": None, "note": None}
+
+
+def _wrapped(key: str, difference: float) -> float:
+    """A difference as it is shown and judged: rounded as its unit is displayed, so "+3.0 °C" is
+    never called more than 3 °C off; directions take the short way round, within ±180°."""
+    if key.endswith("_deg"):
+        difference = (difference + 180) % 360 - 180
+    digits = next((d for suffix, _, d in UNITS if key.endswith("_" + suffix)), 1)
+    return round(difference, digits)
+
+
 def _difference(key: str, difference: float) -> str:
-    """A station-minus-model difference in the field's unit, signed; directions wrap to ±180°."""
+    """A station-minus-model difference in the field's unit, signed."""
     for suffix, label, digits in UNITS:
         if key.endswith("_" + suffix):
-            if suffix == "deg":
-                difference = (difference + 180) % 360 - 180
             gap = "" if label in ("°", "%") else " "
             return f"{difference:+.{digits}f}{gap}{label}".rstrip()
     return f"{difference:+.1f}"
@@ -764,6 +792,18 @@ def _pressure(points: list[Any]) -> dict[str, object]:
                 out["unit"] = matched.group(2)
         return out
     return {}
+
+
+def _pressure_group(points: list[Any]) -> list[dict[str, object]]:
+    """The pressure row as a weather group, absolute first; empty without a barometer."""
+    pressure = _pressure(points)
+    unit = pressure.get("unit")
+    items = [
+        {"field": key, "label": label, "text": _item(f"{key}_{unit}", pressure[key])["text"]}
+        for key, label in (("abs", "Absolute"), ("rel", "Relative"), ("sea", "Sea level"))
+        if key in pressure
+    ]
+    return [{"title": "Pressure", "items": items}] if items else []
 
 
 def _field(fields: dict[str, Any], prefix: str) -> dict[str, object] | None:

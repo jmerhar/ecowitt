@@ -31,7 +31,7 @@
   </style>
   <form method="post" action="/setup/database" class="database">
     <input type="hidden" name="csrf" value="{{ csrf }}">
-    <div class="row">
+    <div class="fields">
       <div><label for="db-kind">Type of database</label>
         <select id="db-kind" name="kind">
         {% for kind in kinds %}<option value="{{ kind.name }}" {% if kind.name == chosen %}selected{% endif %}>{{ kind.label }}</option>{% endfor %}
@@ -39,7 +39,7 @@
     </div>
     {% for kind in kinds %}
     <fieldset class="kind" data-kind="{{ kind.name }}">
-      <div class="row">
+      <div class="fields">
       {% for setting in kind.settings %}
         {% set key = kind.name ~ "." ~ setting.name %}
         {% set typed = db_draft["values"].get(setting.name) if db_draft and db_draft.kind == kind.name else none %}
@@ -105,43 +105,49 @@
   <form method="post" action="/setup/station">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <input type="hidden" name="original" value="{{ entry.name }}">
-    <div class="row">
+    <div class="fields">
       <div><label for="name-{{ loop.index }}">Name</label>
         <input id="name-{{ loop.index }}" name="name" value="{{ value(entry, 'name') }}" required></div>
     </div>
-    <div class="row">
+
+    <h3 class="sub">Location</h3>
+    <div class="fields">
       <div><label for="lat-{{ loop.index }}">Latitude</label>
         <input id="lat-{{ loop.index }}" name="latitude" inputmode="decimal" value="{{ value(entry, 'latitude') }}"></div>
       <div><label for="lon-{{ loop.index }}">Longitude</label>
         <input id="lon-{{ loop.index }}" name="longitude" inputmode="decimal" value="{{ value(entry, 'longitude') }}"></div>
-      <div><label for="alt-{{ loop.index }}">Altitude of the barometer (m)</label>
+      <div><label for="alt-{{ loop.index }}">Altitude (m)</label>
         <input id="alt-{{ loop.index }}" name="altitude_m" inputmode="decimal" value="{{ value(entry, 'altitude_m') }}"></div>
       <div><label for="tz-{{ loop.index }}">Time zone</label>
         <input id="tz-{{ loop.index }}" name="timezone" list="zones" autocomplete="off"
                value="{{ value(entry, 'timezone') }}"
                placeholder="{{ item.derived_zone or 'from the coordinates' }}"></div>
-      {% set chosen_model = value(entry, 'weather_model') %}
-      <div><label for="model-{{ loop.index }}">Weather model</label>
+    </div>
+    <button class="secondary" type="button" data-geolocate data-lat="lat-{{ loop.index }}"
+            data-lon="lon-{{ loop.index }}" data-status="geo-{{ loop.index }}">Use this device's location</button>
+    <button class="secondary" type="submit" name="action" value="lookup">Look up altitude</button>
+    <p class="muted" id="geo-{{ loop.index }}" role="status" aria-live="polite">Only useful when you are at the station.</p>
+    <p class="muted">Optional. With coordinates the altitude can be looked up, from OpenTopoData or
+      Open-Elevation, which receive them. The altitude is the barometer's: usually the console's,
+      not the outdoor sensors'. The time zone decides where the station's day begins on the
+      dashboard, and is taken from the coordinates offline unless you enter one.</p>
+
+    <h3 class="sub">Weather model</h3>
+    {% set chosen_model = value(entry, 'weather_model') %}
+    <div class="fields">
+      <div><label for="model-{{ loop.index }}">Model</label>
         <select id="model-{{ loop.index }}" name="weather_model">
         {% for code, label in models.items() %}<option value="{{ code }}" {% if code == chosen_model %}selected{% endif %}>{{ label }}</option>{% endfor %}
         {% if chosen_model not in models and chosen_model != model_off %}<option value="{{ chosen_model }}" selected>{{ chosen_model }}</option>{% endif %}
           <option value="{{ model_off }}" {% if chosen_model == model_off %}selected{% endif %}>Off</option>
         </select></div>
     </div>
-    <p class="muted">Coordinates are optional. With them the altitude can be looked up, and a
-      weather model's values for the location are stored beside the station's every 15 minutes
-      (from Open-Meteo) and absolute pressure is checked against them; both send the coordinates
-      to a public service (OpenTopoData or Open-Elevation, and Open-Meteo). Turning the weather
-      model off also turns off that pressure check. The time zone, which decides where the
-      station's day begins on the dashboard, is taken from the coordinates offline unless you
-      enter one.</p>
-    <button class="secondary" type="button" data-geolocate data-lat="lat-{{ loop.index }}"
-            data-lon="lon-{{ loop.index }}" data-status="geo-{{ loop.index }}">Use this device's location</button>
-    <button class="secondary" type="submit" name="action" value="lookup">Look up altitude</button>
-    <p class="muted" id="geo-{{ loop.index }}" role="status" aria-live="polite">Only useful when you are at the station.</p>
+    <p class="muted">With coordinates, a weather model's values for the location are stored beside
+      the station's every 15 minutes, from Open-Meteo, which receives them. The status page compares
+      the two, and absolute pressure is checked against the model; Off turns both off.</p>
 
-    <h3 style="margin-top:1.2rem">Sensor names</h3>
-    <div class="row">
+    <h3 class="sub">Sensor names</h3>
+    <div class="fields">
     {% for sid in item.sensor_ids %}
       <div><label for="s-{{ loop.index }}-{{ sid }}">{{ sid }}</label>
         <input id="s-{{ loop.index }}-{{ sid }}" name="sensor_{{ sid }}"
@@ -149,7 +155,7 @@
     {% endfor %}
     </div>
     {% if not item.sensor_ids %}<p class="muted">Sensors appear here once the station has reported.</p>{% endif %}
-    <div class="row">
+    <div class="fields">
       <div><label>Another sensor's identifier</label><input name="new_sensor_id" placeholder="ch3"></div>
       <div><label>Its name</label><input name="new_sensor_name" placeholder="Kitchen"></div>
     </div>
@@ -165,7 +171,7 @@
   <p class="muted">Usually easier: let the console report, then adopt it above.</p>
   <form method="post" action="/setup/station">
     <input type="hidden" name="csrf" value="{{ csrf }}">
-    <div class="row">
+    <div class="fields">
       <div><label for="new-name">Name</label><input id="new-name" name="name" required></div>
       <div><label for="new-passkey">PASSKEY</label><input id="new-passkey" name="passkey" required autocomplete="off"></div>
     </div>
@@ -179,7 +185,7 @@
     starts new fields rather than mixing units; dashboards need updating to match.</p>
   <form method="post" action="/setup/units">
     <input type="hidden" name="csrf" value="{{ csrf }}">
-    <div class="row">
+    <div class="fields">
     {% for field, choices in [("temperature", [("c","°C"),("f","°F")]),
                               ("pressure", [("hpa","hPa"),("inhg","inHg"),("mmhg","mmHg")]),
                               ("rain", [("mm","mm"),("in","in")]),
@@ -210,7 +216,7 @@
     <label class="inline"><input id="a-enabled" name="enabled" type="checkbox" {% if login_set %}checked{% endif %}>
       Require a login</label>
     <div class="login-fields">
-      <div class="row">
+      <div class="fields">
         <div><label for="a-user">Username</label><input id="a-user" name="username" autocomplete="username"
               value="{{ document.admin.username if document.admin else '' }}"></div>
         <div><label for="a-pass">Password{% if login_set %} (leave empty to keep it){% endif %}</label>

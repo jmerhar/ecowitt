@@ -576,6 +576,11 @@ def with_model(rig: Rig, fields: dict[str, object], *, age: int = 600) -> None:
     rig.context.model = feed
 
 
+def item(label: str, text: str) -> dict[str, object]:
+    """A model table row with nothing to compare."""
+    return {"label": label, "text": text, "difference": None, "ok": None, "note": None}
+
+
 def locate(rig: Rig, weather_model: str = "best_match") -> None:
     """Give the adopted station Home coordinates, and a weather model."""
     response = rig.post(
@@ -616,23 +621,45 @@ class TestWeatherModel:
         page = rig.client.get("/").text
         view = rig.client.get("/api/readings").json()["stations"][0]["model"]
 
-        assert "<h3>Weather model</h3>" in page
-        assert "Best for this location (best_match), from Open-Meteo,\n    for 10 min ago" in page
+        assert '<div class="part">\n  <h3>Weather model</h3>' in page
+        assert "Best for this location (best_match), from Open-Meteo,\n    as of 10 min ago" in page
         assert view["items"] == [
-            {"label": "Sky", "text": "Overcast", "difference": None},
+            item("Sky", "Overcast"),
             # No outdoor sensor on this console, so the temperature has nothing to compare; nor
             # has the dew point, though the indoor sensor's is stored under the same name.
-            {"label": "Temperature", "text": "18.4 °C", "difference": None},
-            {"label": "Dew point", "text": "10.0 °C", "difference": None},
+            item("Temperature", "18.4 °C"),
+            item("Dew point", "10.0 °C"),
             {
                 "label": "Absolute pressure",
                 "text": f"{own - 1.25:.1f} hPa",
                 "difference": "+1.2 hPa",
+                "ok": True,
+                "note": "within 3 hPa",
             },
-            {"label": "Cloud cover", "text": "90%", "difference": None},
-            {"label": "Precipitation, past 15 min", "text": "0.2 mm", "difference": None},
+            item("Cloud cover", "90%"),
+            item("Precipitation, past 15 min", "0.2 mm"),
         ]
-        assert "+1.2 hPa" in page
+        assert view["off"] == []
+        assert '<td class="num good">+1.2 hPa</td>' in page
+        assert "by more than usual" not in page
+
+    async def test_a_difference_beyond_its_bound_is_marked(self, rig: Rig) -> None:
+        await rig.report()
+        adopt(rig)
+        await rig.report()
+        locate(rig)
+        own = next(
+            p.fields["abs_hpa"] for p in rig.handler.latest["Home"].points if p.table == "pressure"
+        )
+        with_model(rig, {"abs_hpa": own + 4.0})
+
+        page = rig.client.get("/").text
+        view = rig.client.get("/api/readings").json()["stations"][0]["model"]
+
+        assert view["off"] == ["Absolute pressure"]
+        assert "Absolute pressure differs from the model by more than usual." in page
+        assert '<td class="num bad">-4.0 hPa</td>' in page
+        assert '<td class="bad">more than 3 hPa off</td>' in page
 
     async def test_a_model_named_by_hand_is_shown_by_its_name(self, rig: Rig) -> None:
         await rig.report()
@@ -670,9 +697,19 @@ class TestWeatherModel:
         assert admin._difference("humidity_pct", 7.0) == "+7%"
         assert admin._difference("abs_inhg", 0.031) == "+0.03 inHg"
         assert admin._difference("uv_index", 1.25) == "+1.2"
+        assert admin._difference("dir_deg", -20.0) == "-20°"
+
+    def test_directions_take_the_short_way_round(self) -> None:
         # A vane reading 10° against a model's 350° is 20° clockwise of it, not 340° anticlockwise.
-        assert admin._difference("dir_deg", 10.0 - 350.0) == "+20°"
-        assert admin._difference("dir_deg", 350.0 - 10.0) == "-20°"
+        assert admin._wrapped("dir_deg", 10.0 - 350.0) == 20.0
+        assert admin._wrapped("dir_deg", 350.0 - 10.0) == -20.0
+        assert admin._wrapped("temp_c", -340.0) == -340.0
+
+    def test_a_difference_is_judged_as_it_is_shown(self) -> None:
+        """3.04 °C reads "+3.0 °C", which a 3 °C bound must not call more than 3 °C off."""
+        assert admin._wrapped("temp_c", 3.04) == 3.0
+        assert admin._wrapped("abs_inhg", 0.0314) == 0.03
+        assert admin._wrapped("uv_index", 1.26) == 1.3
 
     async def test_setup_offers_the_models_and_off(self, rig: Rig) -> None:
         await rig.report()
@@ -721,6 +758,11 @@ class TestWeatherModel:
 
 
 class TestStatus:
+    @staticmethod
+    def weather(rig: Rig) -> list[dict[str, object]]:
+        """The first station's weather boxes, as the readings API gives them."""
+        return rig.client.get("/api/readings").json()["stations"][0]["weather"]
+
     async def test_a_station_with_readings_and_warnings(self, rig: Rig) -> None:
         await rig.report()
         adopt(rig)
@@ -731,7 +773,12 @@ class TestStatus:
 
         assert "<h2>Home</h2>" in page
         assert "Altitude not set" in page
-        assert "Pressure: absolute 1009.0 hPa, relative 1009.0 hPa</p>" in page
+        pressure = next(g for g in readings["weather"] if g["title"] == "Pressure")
+        assert [(i["label"], i["text"]) for i in pressure["items"]] == [
+            ("Absolute", "1009.0 hPa"),
+            ("Relative", "1009.0 hPa"),
+        ]
+        assert "<h3>Pressure</h3>" in page
         assert readings["name"] == "Home"
         assert [s["sensor"] for s in readings["sensors"]][:2] == ["indoor", "ch1"]
         assert readings["sensors"][0]["temp"] == {"value": 23.2222, "unit": "c"}
@@ -740,9 +787,7 @@ class TestStatus:
         # `sea_temp_source`), and a prefix match once put "standard" where sea-level pressure goes.
         assert readings["pressure"] == {"abs": 1009.0084, "rel": 1009.0084, "unit": "hpa"}
 
-    async def test_the_pressure_line_shows_every_value_in_the_operators_unit(
-        self, rig: Rig
-    ) -> None:
+    async def test_the_pressure_box_shows_every_value_in_the_operators_unit(self, rig: Rig) -> None:
         from ecowitt.core.units import Units
 
         rig.store.replace(
@@ -759,6 +804,9 @@ class TestStatus:
         assert pressure["abs"] == 29.796 and pressure["rel"] == 29.796
         assert isinstance(pressure["sea"], float) and pressure["sea"] > 29.796
         assert isinstance(pressure["rel_error"], float) and pressure["rel_error"] < 0
+        box = rig.client.get("/api/readings").json()["stations"][0]["weather"][-1]
+        assert [i["label"] for i in box["items"]] == ["Absolute", "Relative", "Sea level"]
+        assert box["items"][0]["text"] == "29.80 inHg"
 
     async def test_the_climate_table_shows_readings_and_health_not_airing_advice(
         self, rig: Rig
@@ -801,7 +849,7 @@ class TestStatus:
         )
 
         assert rig.client.get("/api/readings").json()["stations"][0]["pressure"] == {}
-        assert "Pressure:" not in rig.client.get("/").text
+        assert "<h3>Pressure</h3>" not in rig.client.get("/").text
 
     @pytest.mark.parametrize("key", ["baromrelin", "baromabsin"])
     async def test_a_report_with_one_pressure_shows_that_one(self, rig: Rig, key: str) -> None:
@@ -811,8 +859,9 @@ class TestStatus:
         page = rig.client.get("/")
 
         assert page.status_code == 200
-        assert ("relative 1012" in page.text) is (key == "baromrelin")
-        assert ("absolute 1012" in page.text) is (key == "baromabsin")
+        box = next(g for g in self.weather(rig) if g["title"] == "Pressure")
+        label = "Relative" if key == "baromrelin" else "Absolute"
+        assert [(i["label"], i["text"]) for i in box["items"]] == [(label, "1012.5 hPa")]
 
     def test_a_name_with_quotes_keeps_the_remove_confirmation(self, rig: Rig) -> None:
         """The name is JSON-encoded into the handler, so a quote neither breaks it nor runs."""
@@ -1003,7 +1052,7 @@ class TestStatus:
 
         page = rig.client.get("/").text
 
-        assert "Every value in the latest report, as stored" in page
+        assert "Every value, as stored" in page
         assert "interval_s=10.0" in page and "sensor=ch1" in page
 
     async def test_a_station_that_stopped_reporting_is_called_out(self, rig: Rig) -> None:

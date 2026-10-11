@@ -148,37 +148,38 @@
   </p>
   {% endif %}
 
-  {% if station.pressure %}
-  {% set p = station.pressure %}{% set digits = 2 if p.unit == "inhg" else 1 %}
-  {% set unit = {"hpa": "hPa", "inhg": "inHg", "mmhg": "mmHg"}.get(p.unit, p.unit) %}
-  {% set parts = [] %}
-  {% for label, key in [("absolute", "abs"), ("relative", "rel"), ("sea level", "sea")] if p[key] is defined %}
-    {% set _ = parts.append(label ~ " " ~ "%.*f"|format(digits, p[key]) ~ " " ~ unit) %}
-  {% endfor %}
-  <p>Pressure: {{ parts|join(", ") }}</p>
-  {% endif %}
 
   {% if station.model %}
   {% set m = station.model %}
+  <div class="part">
   <h3>Weather model</h3>
   <p class="muted">{{ m.label }}{% if m.label != m.model %} ({{ m.model }}){% endif %}, from Open-Meteo,
-    for {{ m.age_seconds|ago }}. The last column is the station's reading minus the model's.</p>
+    as of {{ m.age_seconds|ago }}. A model describes a grid cell kilometres wide, so some
+    difference from one sensor is normal; beyond the bound in the last column it says more about
+    the sensor or where it stands.</p>
+  {% if m.off %}
+  <div class="warning">{{ m.off|join(", ") }} {{ "differs" if m.off|length == 1 else "differ" }} from the model by more than usual.</div>
+  {% endif %}
   <div class="table-wrap">
   <table>
-    <thead><tr><th></th><th class="num">Model</th><th class="num">Station − model</th></tr></thead>
+    <thead><tr><th></th><th class="num">Model</th><th class="num">Station − model</th><th>Verdict</th></tr></thead>
     <tbody>
     {% for item in m["items"] %}
       <tr><td class="muted">{{ item.label }}</td><td class="num">{{ item.text }}</td>
-        <td class="num">{% if item.difference %}{{ item.difference }}{% endif %}</td></tr>
+        <td class="num{% if item.ok is false %} bad{% elif item.ok %} good{% endif %}">{% if item.difference %}{{ item.difference }}{% endif %}</td>
+        <td class="{{ 'bad' if item.ok is false else 'muted' }}">{% if item.note %}{{ item.note }}{% endif %}</td></tr>
     {% endfor %}
     </tbody>
   </table>
   </div>
+  </div>
   {% endif %}
 
   {% if station.rows %}
+  <div class="part">
+  <h3>Latest report</h3>
   <details>
-    <summary class="muted">Every value in the latest report, as stored</summary>
+    <summary class="muted">Every value, as stored</summary>
     <div class="table-wrap">
     <table>
       <thead><tr><th>Table</th><th>Tags</th><th>Fields</th></tr></thead>
@@ -194,6 +195,7 @@
     </table>
     </div>
   </details>
+  </div>
   {% endif %}
 </section>
 {% endfor %}

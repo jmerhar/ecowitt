@@ -52,6 +52,15 @@
                     border-radius: .3rem; padding: .3rem .5rem; width: 100%; max-width: 22rem; }
     .row { display: flex; gap: 1rem; flex-wrap: wrap; }
     .sections { margin-top: 1.75rem; }
+    /* A heading inside a form, with room above it to start a new group of fields. */
+    h3.sub { margin-top: 1.75rem; }
+    /* A part of a card about something else than what precedes it, set off by a rule. */
+    .part { border-top: 1px solid var(--line); margin-top: 1.75rem; padding-top: 1.25rem; }
+    /* Form fields on a shared grid, so fields line up from row to row; a label that wraps
+       leaves its field level with its neighbours'. */
+    .fields { display: grid; gap: 0 1rem; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+              align-items: end; }
+    .fields input, .fields select { max-width: none; }
     .sections h3 { margin-bottom: .3rem; }
     .row > div { flex: 1 1 10rem; }
     button { font: inherit; padding: .35rem .9rem; border-radius: .3rem; border: 1px solid var(--accent);
