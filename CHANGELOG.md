@@ -5,6 +5,24 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 [Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
 says what under *Upgrading*.
 
+## 2.2.0 — 2026-10-11
+
+### Added
+
+- The dashboard leads with airing advice for the whole house, and the rooms table shows the
+  humidity each room would settle at if aired.
+- Cards are edged and labelled when something deserves attention: frost risk from 5 °C, heat,
+  very humid or dry air, strong gusts, heavy rain, pressure falling fast, very high UV, rooms that
+  are cold, hot, damp or dry, and sensors needing attention. Cards, charts and highs and lows have
+  icons.
+- The status page is about whether everything works: the health of reports, writes, the spool,
+  the heartbeat and the settings sent for the dashboard, with each console's model, firmware,
+  radio band, interval and clock, and every value of its latest report.
+
+### Changed
+
+- The dashboard's extremes are called *Highs and lows*, with a tile per room.
+
 ## 2.1.0 — 2026-10-11
 
 ### Added
