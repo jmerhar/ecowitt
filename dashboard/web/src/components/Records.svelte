@@ -1,13 +1,14 @@
 <script lang="ts">
   /**
    * The lowest and highest of each metric today, this month or this year: a tile per outdoor
-   * metric, and the rooms in a folded table of ranges.
+   * metric, and the rooms folded beneath, a tile each.
    */
   import type { Api, Extreme, ExtremesOut, Meta, UnitChoice } from "../lib/api";
   import { ApiError } from "../lib/api";
-  import { clock, moment, number, quantity } from "../lib/format";
+  import { clock, moment, quantity } from "../lib/format";
   import { metricIcon } from "../lib/icons";
   import ArrowUpDownIcon from "@lucide/svelte/icons/arrow-up-down";
+  import HouseIcon from "@lucide/svelte/icons/house";
 
   type Props = {
     api: Api;
@@ -69,18 +70,21 @@
   function when(iso: string): string {
     return period === "today" ? clock(iso, timezone) : moment(iso, timezone);
   }
-
-  /** A room's range, "20.1–20.4 °C", with when each end was reached on hover. */
-  function range(e: Extreme | undefined): { text: string; title: string } {
-    if (!e?.min || !e.max) return { text: "–", title: "" };
-    const symbol = meta.symbols[e.unit] ?? "";
-    const space = symbol === "%" ? "" : " ";
-    return {
-      text: `${number(e.min.value, e.unit)}–${number(e.max.value, e.unit)}${symbol ? space + symbol : ""}`,
-      title: `Lowest at ${when(e.min.time)}, highest at ${when(e.max.time)}`,
-    };
-  }
 </script>
+
+{#snippet sides(record: Extreme)}
+  {@const Icon = metricIcon(record.metric)}
+  {#if record.min}
+    <dt><Icon size={13} aria-hidden="true" /> Low</dt>
+    <dd class="value">{quantity(record.min.value, record.unit, meta.symbols)}</dd>
+    <dd class="when">{when(record.min.time)}</dd>
+  {/if}
+  {#if record.max}
+    <dt><Icon size={13} aria-hidden="true" /> High</dt>
+    <dd class="value">{quantity(record.max.value, record.unit, meta.symbols)}</dd>
+    <dd class="when">{when(record.max.time)}</dd>
+  {/if}
+{/snippet}
 
 <section class="card wide">
   <div class="toolbar">
@@ -116,22 +120,17 @@
     </div>
     {#if rooms.length}
       <details class="rooms">
-        <summary>Rooms</summary>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Room</th><th class="num">Temperature</th><th class="num">Humidity</th></tr></thead>
-            <tbody>
-              {#each rooms as room (room.name)}
-                {@const t = range(room.temperature)}
-                {@const h = range(room.humidity)}
-                <tr>
-                  <td>{room.name}</td>
-                  <td class="num" title={t.title}>{t.text}</td>
-                  <td class="num" title={h.title}>{h.text}</td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
+        <summary><HouseIcon size={14} aria-hidden="true" /> Rooms</summary>
+        <div class="tiles">
+          {#each rooms as room (room.name)}
+            <div class="tile">
+              <div class="label">{room.name}</div>
+              <dl>
+                {#if room.temperature}{@render sides(room.temperature)}{/if}
+                {#if room.humidity}{@render sides(room.humidity)}{/if}
+              </dl>
+            </div>
+          {/each}
         </div>
       </details>
     {/if}
@@ -177,6 +176,9 @@
     align-items: baseline;
   }
   dt {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
     color: var(--muted);
   }
   .value {
@@ -192,8 +194,13 @@
   .rooms {
     margin-top: 1rem;
   }
+  /* Still a list item, so it keeps its disclosure triangle; the icon sits on the text line. */
+  .rooms summary :global(svg) {
+    vertical-align: -2px;
+  }
   .rooms summary {
     cursor: pointer;
     color: var(--muted);
+    margin-bottom: 0.75rem;
   }
 </style>

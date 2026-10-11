@@ -85,7 +85,7 @@ describe("Records", () => {
     expect(screen.queryByText("Rain today")).not.toBeInTheDocument();
   });
 
-  it("folds the rooms into a table of ranges, with when on hover", async () => {
+  it("folds the rooms beneath, a tile each with temperature and humidity", async () => {
     const api = fakeApi();
     api.extremes.mockResolvedValue(extremes({
       extremes: [
@@ -99,13 +99,14 @@ describe("Records", () => {
       ],
     }));
     render(Records, { ...base, api, period: "month" });
-    const bathroom = (await screen.findByText("Bathroom")).closest("tr")!;
-    expect(bathroom).toHaveTextContent("17.2–22.0 °C");
-    expect(bathroom).toHaveTextContent("60–75%");
-    expect(bathroom.querySelector("td[title]")).toHaveAttribute(
-      "title", "Lowest at 10 Oct, 06:00, highest at 10 Oct, 13:00",
-    );
-    expect(screen.getByText("ch2").closest("tr")).toHaveTextContent("ch2––");
+    const bathroom = (await screen.findByText("Bathroom", { selector: ".label" })).closest(".tile")!;
+    expect(bathroom).toHaveTextContent("Low 17.2 °C 10 Oct, 06:00");
+    expect(bathroom).toHaveTextContent("High 22.0 °C 10 Oct, 13:00");
+    expect(bathroom).toHaveTextContent("Low 60% 10 Oct, 06:00");
+    expect(bathroom).toHaveTextContent("High 75% 10 Oct, 13:00");
+    expect(bathroom).not.toHaveTextContent("9.0 °C");
+    // A room whose humidity record came back empty has a tile with nothing in it to show.
+    expect(screen.getByText("ch2", { selector: ".label" }).closest(".tile")!.querySelectorAll("dd")).toHaveLength(0);
     expect(screen.getByText("Temperature", { selector: ".label" }).closest(".tile")).toHaveTextContent(
       "Low 9.5 °C 10 Oct, 07:00",
     );
