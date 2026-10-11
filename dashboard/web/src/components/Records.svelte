@@ -13,9 +13,11 @@
     station: string;
     units: UnitChoice;
     timezone: string;
+    /** Changes whenever the page refreshes, which fetches the answer again. */
+    tick?: number;
     period: string;
   };
-  let { api, meta, station, units, timezone, period = $bindable() }: Props = $props();
+  let { api, meta, station, units, timezone, tick = 0, period = $bindable() }: Props = $props();
 
   const PERIODS: Record<string, string> = { today: "Today", month: "This month", year: "This year" };
 
@@ -46,7 +48,7 @@
   });
 
   $effect(() => {
-    const wanted = { station, period, units: $state.snapshot(units) };
+    const wanted = { tick, station, period, units: $state.snapshot(units) };
     let stale = false;
     api
       .extremes(wanted.station, wanted.period, wanted.units)

@@ -11,11 +11,21 @@
     station: string;
     units: UnitChoice;
     timezone: string;
+    /** Changes whenever the page refreshes, which fetches the answer again. */
+    tick?: number;
     view: string;
     range: string;
   };
-  let { api, meta, station, units, timezone, view = $bindable(), range = $bindable() }: Props =
-    $props();
+  let {
+    api,
+    meta,
+    station,
+    units,
+    timezone,
+    tick = 0,
+    view = $bindable(),
+    range = $bindable(),
+  }: Props = $props();
 
   const RANGES: Record<string, string> = { "24h": "Day", "7d": "Week", "30d": "Month", "1y": "Year" };
 
@@ -30,7 +40,7 @@
   const data = $derived(answer && answered === current.id ? align(current, answer, labels) : null);
 
   $effect(() => {
-    const wanted = { station, view: current, range, units: $state.snapshot(units) };
+    const wanted = { tick, station, view: current, range, units: $state.snapshot(units) };
     loading = true;
     let stale = false;
     api

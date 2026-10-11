@@ -8,7 +8,8 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-lockfile="dashboard/web/package-lock.json"
+# The dashboard page's lockfile, or the one named, which is how its test checks fixtures.
+lockfile="${1:-dashboard/web/package-lock.json}"
 public="https://registry.npmjs.org/"
 
 if [ ! -f "$lockfile" ]; then
