@@ -100,6 +100,28 @@ describe("Chart", () => {
     expect(direction.points.fill).not.toBe(direction.points.stroke);
   });
 
+  it("picks out a line on a legend click, keeping its band with it", () => {
+    const view = viewFor("temperature");
+    render(Chart, { view, data: align(view, series(), {}), symbols: SYMBOLS, timezone: "UTC" });
+    const { options } = made[0];
+    expect(options.legend.isolate).toBe(true);
+    // Series 1 and 2 are the temperature band's edges, 3 its line, 4 the dew point.
+    const shown = [true, false, false, true, false];
+    const plot = {
+      series: shown.map((show) => ({ show })),
+      setSeries: vi.fn((i: number, { show }: { show: boolean }) => (plot.series[i].show = show)),
+    };
+    options.hooks.setSeries[0](plot);
+    expect(plot.series.map((s) => s.show)).toEqual([true, true, true, true, false]);
+    expect(plot.setSeries).toHaveBeenCalledWith(1, { show: true }, false);
+    plot.series[3].show = false;
+    plot.setSeries.mockClear();
+    options.hooks.setSeries[0](plot);
+    expect(plot.series.slice(1, 3).map((s) => s.show)).toEqual([false, false]);
+    options.hooks.setSeries[0](plot);
+    expect(plot.setSeries).toHaveBeenCalledTimes(2);
+  });
+
   it("redraws when its data changes, and cleans up when it goes", async () => {
     const view = viewFor("temperature");
     const first = align(view, series(), {});

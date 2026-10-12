@@ -3,7 +3,7 @@
   import { onDestroy } from "svelte";
   import uPlot from "uplot";
   import "uplot/dist/uPlot.min.css";
-  import type { ChartData, View } from "../lib/chart";
+  import type { ChartData, PlotSpec, View } from "../lib/chart";
   import { spec } from "../lib/chart";
   import { axisLabels, LOCALE, moment } from "../lib/format";
 
@@ -82,7 +82,11 @@
         })),
       ],
       bands: built.bands,
-      legend: { live: true },
+      // A click on a legend entry shows that line alone (again: all of them), and Cmd or Ctrl
+      // with it hides or shows just that one: a tablet has no modifier key, and picking out one
+      // room is the common case.
+      legend: { live: true, isolate: true },
+      hooks: { setSeries: [(u: uPlot) => followLines(u, built.series)] },
       cursor: { drag: { x: false, y: false } },
     };
     plot = new uPlot(options, built.data as uPlot.AlignedData, element);
@@ -90,6 +94,19 @@
     const rows = element.querySelectorAll<HTMLElement>(".u-legend .u-series");
     built.series.forEach((s, i) => {
       if (s.edge && rows[i + 1]) rows[i + 1].style.display = "none";
+    });
+  }
+
+  /**
+   * Show a band's edges exactly when its line is shown. They are series of their own, so a
+   * legend click that picks out the line would otherwise hide its band.
+   */
+  function followLines(u: uPlot, series: PlotSpec["series"]): void {
+    series.forEach((s, i) => {
+      if (!s.edge) return;
+      const line = series.findIndex((t, j) => j > i && !t.edge);
+      const show = u.series[line + 1].show;
+      if (u.series[i + 1].show !== show) u.setSeries(i + 1, { show }, false);
     });
   }
 
