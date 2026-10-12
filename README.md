@@ -328,10 +328,10 @@ wind on a compass, rain, pressure and its three-hour trend, sunrise and sunset, 
 whether airing it would help, and any sensor that needs attention — then charts over a day, a
 week, a month or a year, and the highs and lows of today, this month or this year. A card with
 something to act on is edged in colour and says what: cold (5 °C or below) or heat, very humid or
-very dry air, strong gusts, heavy rain,
-pressure falling fast, very high UV, a room that is cold, hot, damp or dry, whether to air the
-house (and not to only when airing would leave the rooms damp, 65% or more, and damper), a sensor that needs attention — the thresholds of the [Grafana alerts](#grafana-alerts)
-where there is one. Visitors choose their own units; times are in the station's time zone.
+very dry air, strong gusts, heavy rain, pressure falling fast, very high UV, a room that is cold,
+hot, damp or dry, a good time to air the house or one to keep its windows closed (when airing
+would leave the rooms at 65% or more and damper than they are), a sensor that needs attention —
+the thresholds of the [Grafana alerts](#grafana-alerts) where there is one. Visitors choose their own units; times are in the station's time zone.
 
 For a station with a [weather model](#weather-model), the page shows the sky it gives — clear,
 overcast, rain, fog — with an icon from [Meteocons](https://meteocons.com), and the charts can
