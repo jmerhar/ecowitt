@@ -307,9 +307,8 @@ describe("highlights", () => {
 describe("AiringCard", () => {
   it.each([
     [{ advice: "open", rooms: ["Bathroom", "Kitchen"] }, "Good time to air", "airing would dry Bathroom, Kitchen."],
-    [{ advice: "keep_closed", rooms: [] }, "Keep the windows closed", "airing would take them from about 70% to 58%."],
-    [{ advice: "keep_closed", rooms: [], humidity_after: null }, "Keep the windows closed", "or more."],
-    [{ advice: "no_need", rooms: [] }, "No need to air", "dry enough, at about 70%."],
+    [{ advice: "keep_closed", rooms: [] }, "Keep the windows closed", "or more."],
+    [{ advice: "no_need", rooms: [] }, "No need to air", "dry enough."],
   ] as const)("says what to do: %#", async (overrides, headline, words) => {
     const onselect = vi.fn();
     const { container } = render(AiringCard, {
@@ -320,6 +319,22 @@ describe("AiringCard", () => {
     expect(container.querySelector(".airing")).toHaveClass(overrides.advice);
     await fireEvent.click(screen.getByRole("button"));
     expect(onselect).toHaveBeenCalledWith("rooms-humidity");
+  });
+
+  it("shows what airing would do to the rooms' humidity in large numbers, coloured", () => {
+    const shown = (humidity: number, humidity_after: number | null) => {
+      const card = render(AiringCard, {
+        airing: { ...now().airing!, humidity, humidity_after }, symbols: SYMBOLS, onselect: vi.fn(),
+      });
+      const values = [...card.container.querySelectorAll(".value")].map((v) => [v.textContent, v.className.replace(/\s*svelte-\S+/g, "").trim()]);
+      card.unmount();
+      return values;
+    };
+    // Drier: good. Damper: bad. Under a point either way: plain. Unknown: only the present.
+    expect(shown(70, 58)).toEqual([["70%", "value"], ["58%", "value good"]]);
+    expect(shown(53, 63)).toEqual([["53%", "value"], ["63%", "value bad"]]);
+    expect(shown(60, 60.6)).toEqual([["60%", "value"], ["61%", "value"]]);
+    expect(shown(60, null)).toEqual([["60%", "value"]]);
   });
 });
 
