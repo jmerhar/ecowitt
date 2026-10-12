@@ -5,6 +5,23 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 [Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
 says what under *Upgrading*.
 
+## 2.4.0 — 2026-10-12
+
+### Added
+
+- The dashboard can be added to a phone's or tablet's home screen as an app.
+- The rooms table sorts by any column, remembering the order.
+- A plain click on a chart's legend entry picks out that line; Cmd or Ctrl and a click shows or
+  hides it.
+
+### Changed
+
+- The airing card shows the rooms' humidity now and after airing in large numbers.
+
+### Fixed
+
+- On Safari before 17, charts answered 422 and the cards were misaligned.
+
 ## 2.3.0 — 2026-10-11
 
 ### Added
