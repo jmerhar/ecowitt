@@ -62,6 +62,9 @@ STATIONS_TTL = 300.0
 LATEST_WITHIN = timedelta(days=7)
 #: How much of the time before its latest report a station's current values are taken from.
 CURRENT_WINDOW = timedelta(minutes=15)
+#: How far back the strongest gust and heaviest rain are taken for the wind and rain notices: the
+#: Strong wind and Heavy rain alert rules' window, so a gusty spell stays marked between gusts.
+GUSTS_WITHIN = timedelta(minutes=10)
 PRESSURE_TREND = timedelta(hours=3)
 #: A trend needs readings from nearly the whole of its three hours.
 PRESSURE_TREND_COVERAGE = timedelta(hours=2, minutes=50)
@@ -105,6 +108,9 @@ class _Latest:
     battery: list[Span] = field(default_factory=list)
     temperature_today: Extremes | None = None
     wind_today: Extremes | None = None
+    #: The strongest gust and each gauge's heaviest rain rate within GUSTS_WITHIN of the report.
+    recent_wind: Extremes | None = None
+    recent_rain: list[Extremes] = field(default_factory=list)
     #: The station's weather model's newest sky, if it has a model and the values are fresh.
     sky: Span | None = None
     #: When it was read.
@@ -388,6 +394,7 @@ class Dashboard:
         report = reports[0]
         end = report.last_time
         start = end - CURRENT_WINDOW
+        recent = end - GUSTS_WITHIN
         units = info.units
         midnight = _midnight(now, _zone(info))
 
@@ -402,10 +409,11 @@ class Dashboard:
         T, H, P, R, S = Kind.TEMPERATURE, Kind.HUMIDITY, Kind.PRESSURE, Kind.RAIN, Kind.SPEED
         D = Kind.TEMPERATURE_DELTA
         rain_fields = [f(b, R) for b in ("event", "hourly", "daily", "last24h", "weekly")]
-        rain_fields += [f(b, R) for b in ("monthly", "yearly")] + [f("rate", Kind.RAIN_RATE)]
+        rate = f("rate", Kind.RAIN_RATE)
+        rain_fields += [f(b, R) for b in ("monthly", "yearly")] + [rate]
         (
             outdoor, derived, wind, rain, pressure, solar, indoor, channel, ventilation,
-            battery, temperature_today, wind_today, sky,
+            battery, temperature_today, wind_today, sky, recent_wind, recent_rain,
         ) = await asyncio.gather(
             span("outdoor", f("temp", T), f("humidity", H), sensors=["outdoor"]),
             span("derived", f("dewpoint", T), "unchanged_s"),
@@ -422,6 +430,8 @@ class Dashboard:
             ),
             self.reader.extremes(station, "wind", [f("gust", S)], start=midnight, end=now),
             self._sky(station, info, now),
+            self.reader.extremes(station, "wind", [f("gust", S)], start=recent, end=end),
+            self.reader.extremes(station, "rain", [rate], start=recent, end=end),
         )  # fmt: skip
         return _Latest(
             report=report,
@@ -436,6 +446,8 @@ class Dashboard:
             battery=battery,
             temperature_today=_first(temperature_today),
             wind_today=_first(wind_today),
+            recent_wind=_first(recent_wind),
+            recent_rain=recent_rain,
             sky=sky,
             at=now,
         )
@@ -822,17 +834,18 @@ def _notices(
             words.append("Very dry air: fire risk.")
         if words:
             warn("outdoor", " ".join(words))
-    if latest.wind is not None:
-        gust = values.metric(
-            Kind.SPEED, latest.wind.last.get(field_name("gust", Kind.SPEED, stored))
-        )
-        if gust is not None and gust > weather.STRONG_GUST_KMH:
-            warn("wind", "Strong gusts.")
-    if latest.rain:
-        R = Kind.RAIN_RATE
-        rates = [values.metric(R, s.last.get(field_name("rate", R, stored))) for s in latest.rain]
-        if any(r is not None and r > weather.HEAVY_RAIN_MM_H for r in rates):
-            warn("rain", "Heavy rain.")
+
+    def strongest(groups: list[Extremes], base: str, kind: Kind) -> float:
+        """The highest of the groups' maxima of a field, in metric units; 0 without one."""
+        name = field_name(base, kind, stored)
+        found = [g.maximum[name].value for g in groups if name in g.maximum]
+        return convert(kind, max(found), stored, METRIC) if found else 0.0
+
+    wind = [latest.recent_wind] if latest.recent_wind else []
+    if strongest(wind, "gust", Kind.SPEED) > weather.STRONG_GUST_KMH:
+        warn("wind", "Strong gusts.")
+    if strongest(latest.recent_rain, "rate", Kind.RAIN_RATE) > weather.HEAVY_RAIN_MM_H:
+        warn("rain", "Heavy rain.")
     change = _pressure_change(latest, values, stored)
     if change is not None and -change > weather.FAST_FALL_HPA:
         warn("pressure", "Falling fast: a front or a storm is likely.")

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import dataclasses
 from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from ecowitt.core.stationinfo import StationInfo
 from ecowitt.core.store.query import ReadError
+from ecowitt.core.units import Units
 from ecowitt.dashboard.service import RANGES, Dashboard, UnknownStation
 
 from .conftest import INFO, LAST, MIDNIGHT, NOW, readings, row
@@ -487,6 +489,35 @@ async def test_weather_worth_a_warning_is_flagged(reader: MemoryReader) -> None:
         "sun": "Very high UV: seek shade at midday.",
         "rooms": "Cold: Bathroom. Dry: Bathroom.",
     }
+
+
+@pytest.mark.parametrize(("minutes", "flagged"), [(9, True), (11, False)])
+async def test_a_gust_or_downpour_counts_for_ten_minutes(
+    reader: MemoryReader, minutes: int, flagged: bool
+) -> None:
+    """As the Strong wind and Heavy rain rules count them: the latest report alone would leave
+    a gusty spell marked only on the reports that caught a gust."""
+    earlier = LAST - timedelta(minutes=minutes)
+    reader.rows += [
+        row("wind", earlier, {"speed_kmh": 40.0, "gust_kmh": 61.0, "dir_deg": 0.0}),
+        row("rain", earlier, {"rate_mm_h": 10.5}, gauge="piezo"),
+    ]
+    notices = (await Dashboard(reader, clock=lambda: NOW).now("example")).notices
+    assert ("wind" in notices, "rain" in notices) == (flagged, flagged)
+
+
+async def test_gusts_are_judged_in_metric_whatever_is_stored(reader: MemoryReader) -> None:
+    """38 mph is 61 km/h, over the 60 km/h line; 0.42 in/h is 10.7 mm/h, over 10 mm/h."""
+    reader.infos["example"] = dataclasses.replace(
+        reader.infos["example"], units=Units(wind="mph", rain="in")
+    )
+    reader.rows += [
+        row("wind", LAST, {"gust_mph": 38.0}),
+        row("rain", LAST, {"rate_in_h": 0.42}, gauge="bucket"),
+    ]
+    notices = (await Dashboard(reader, clock=lambda: NOW).now("example")).notices
+    assert notices["wind"].text == "Strong gusts."
+    assert notices["rain"].text == "Heavy rain."
 
 
 @pytest.mark.parametrize(

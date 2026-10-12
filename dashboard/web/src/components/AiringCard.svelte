@@ -23,13 +23,20 @@
 
   const now = $derived(quantity(airing.humidity, "pct", symbols));
   const after = $derived(quantity(airing.humidity_after, "pct", symbols));
-  /** Whether airing would dry the rooms (good) or dampen them (bad), by a point or more. */
-  const effect = $derived.by(() => {
+  /** The humidity where a room starts to be damp: the API's AIRING_HUMIDITY_PCT. */
+  const DAMP_PCT = 65;
+
+  /** How airing would change the rooms' humidity: down, up, or by under a point. */
+  const change = $derived.by(() => {
     const later = airing.humidity_after;
-    if (later === null) return "";
-    if (later <= airing.humidity - 1) return "good";
-    return later >= airing.humidity + 1 ? "bad" : "";
+    if (later === null) return null;
+    if (later <= airing.humidity - 1) return "down";
+    return later >= airing.humidity + 1 ? "up" : "same";
   });
+  /** Green when airing would dry the rooms; red only when it would make them damp. */
+  const colour = $derived(
+    change === "down" ? "good" : airing.advice === "keep_closed" ? "bad" : "",
+  );
 </script>
 
 <button class="card airing {airing.advice} {notice?.level ?? ''}" onclick={() => onselect("rooms-humidity")}>
@@ -40,18 +47,20 @@
     <div><span class="value">{now}</span><span class="label">indoors now</span></div>
     {#if airing.humidity_after !== null}
       <span class="arrow" aria-hidden="true">→</span>
-      <div><span class="value {effect}">{after}</span><span class="label">after airing</span></div>
+      <div><span class="value {colour}">{after}</span><span class="label">after airing</span></div>
     {/if}
   </div>
   <p>
     {#if airing.advice === "open"}
       The outside air is drier: airing would dry {airing.rooms.join(", ")}.
     {:else if airing.advice === "keep_closed"}
-      The outside air is moister: airing would leave the rooms damp.
-    {:else if effect === "bad"}
-      The outside air is a little moister, but airing would not leave the rooms damp.
-    {:else if effect === "" && airing.humidity_after !== null}
-      The outside air is about as moist as the rooms: airing would make little difference.
+      The outside air is more humid: airing would take the rooms to {DAMP_PCT}% or more, where
+      damp starts.
+    {:else if change === "up"}
+      Airing would make the rooms a little more humid, but not enough to matter: they would stay
+      under {DAMP_PCT}%.
+    {:else if change === "same"}
+      Airing would make little difference: the outside air is about as humid as the rooms.
     {:else}
       The rooms are dry enough.
     {/if}

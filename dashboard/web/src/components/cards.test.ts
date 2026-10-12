@@ -307,11 +307,11 @@ describe("highlights", () => {
 describe("AiringCard", () => {
   it.each([
     [{ advice: "open", rooms: ["Bathroom", "Kitchen"] }, "Good time to air", "airing would dry Bathroom, Kitchen."],
-    [{ advice: "keep_closed", rooms: [] }, "Keep the windows closed", "airing would leave the rooms damp."],
+    [{ advice: "keep_closed", rooms: [] }, "Keep the windows closed", "take the rooms to 65% or more, where damp starts."],
     [{ advice: "no_need", rooms: [] }, "No need to air", "dry enough."],
     [{ advice: "no_need", rooms: [], humidity_after: null }, "No need to air", "dry enough."],
-    [{ advice: "no_need", rooms: [], humidity: 60, humidity_after: 59.5 }, "No need to air", "would make little difference."],
-    [{ advice: "no_need", rooms: [], humidity: 55, humidity_after: 62 }, "No need to air", "would not leave the rooms damp."],
+    [{ advice: "no_need", rooms: [], humidity: 60, humidity_after: 59.5 }, "No need to air", "would make little difference"],
+    [{ advice: "no_need", rooms: [], humidity: 62, humidity_after: 63 }, "No need to air", "they would stay under 65%."],
   ] as const)("says what to do: %#", async (overrides, headline, words) => {
     const onselect = vi.fn();
     const { container } = render(AiringCard, {
@@ -333,11 +333,16 @@ describe("AiringCard", () => {
       card.unmount();
       return values;
     };
-    // Drier: good. Damper: bad. Under a point either way: plain. Unknown: only the present.
+    // Drier: good. Under a point either way: plain. Unknown: only the present.
     expect(shown(70, 58)).toEqual([["70%", "value"], ["58%", "value good"]]);
-    expect(shown(53, 63)).toEqual([["53%", "value"], ["63%", "value bad"]]);
+    // A rise is red only when it is the reason to keep the windows closed.
+    expect(shown(53, 63)).toEqual([["53%", "value"], ["63%", "value"]]);
     expect(shown(60, 60.6)).toEqual([["60%", "value"], ["61%", "value"]]);
     expect(shown(60, null)).toEqual([["60%", "value"]]);
+    const closed = render(AiringCard, {
+      airing: { ...now().airing!, advice: "keep_closed", humidity: 61, humidity_after: 66 }, symbols: SYMBOLS, onselect: vi.fn(),
+    });
+    expect(closed.container.querySelectorAll(".value")[1]).toHaveClass("bad");
   });
 });
 
