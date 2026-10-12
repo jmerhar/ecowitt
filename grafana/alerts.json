@@ -90,7 +90,7 @@
               "datasourceUid": "weather",
               "model": {
                 "refId": "A",
-                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(dewpoint_delta_c ORDER BY time) AS delta\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station, median(vent.delta) AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor\nGROUP BY rh.station",
+                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(predicted_humidity_pct ORDER BY time) AS after\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station, median(vent.after) AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor\nGROUP BY rh.station",
                 "rawQuery": true,
                 "editorMode": "code",
                 "format": "table",
@@ -106,7 +106,7 @@
               "datasourceUid": "weather",
               "model": {
                 "refId": "B",
-                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(dewpoint_delta_c ORDER BY time) AS delta\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station, median(rh.rh) AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor\nGROUP BY rh.station",
+                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(predicted_humidity_pct ORDER BY time) AS after\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station, median(rh.rh) AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor\nGROUP BY rh.station",
                 "rawQuery": true,
                 "editorMode": "code",
                 "format": "table",
@@ -123,7 +123,7 @@
               "model": {
                 "refId": "C",
                 "type": "math",
-                "expression": "$A < 1 && $B >= 65"
+                "expression": "$A >= 65 && $A >= $B + 1"
               }
             }
           ],
@@ -132,8 +132,8 @@
           "for": "30m",
           "keep_firing_for": "30m",
           "annotations": {
-            "summary": "Airing won't dry the house: {{ if lt $values.A.Value 0.0 }}the outside air is more humid than the rooms{{ else }}the rooms' dew point is only {{ printf \"%.1f\" $values.A.Value }} °C above the outside air's{{ end }}, and they are at {{ humanize $values.B.Value }}% humidity. Keep the windows closed.",
-            "description": "The rooms at a median of 65% humidity or more, with their median dew point less than 1 °C above the outdoor one, for 30 minutes: outside air brought in holds about as much moisture as the air it replaces."
+            "summary": "Airing would leave the house damp: the rooms, at {{ humanize $values.B.Value }}% humidity, would settle at {{ humanize $values.A.Value }}% with the outside air. Keep the windows closed.",
+            "description": "Airing would leave the rooms at a median of 65% humidity or more, and at least a point damper than they are, for 30 minutes: the outside air holds more moisture than theirs."
           },
           "labels": {
             "app": "ecowitt",

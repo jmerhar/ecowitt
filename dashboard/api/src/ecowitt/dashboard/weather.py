@@ -40,11 +40,9 @@ AIRING_DEWPOINT_DELTA_C = 2.0
 #: ...and the room is at least this humid. The Good time to air alert rule in
 #: grafana/alerts.json uses the same two numbers.
 AIRING_HUMIDITY_PCT = 65.0
-#: The Close the windows alert rule's: a house this humid whose dew point is less than this much
-#: above the outdoor one gains nothing from airing, so windows left open may as well be closed.
-CLOSING_DEWPOINT_DELTA_C = 1.0
 #: Airing is advised against only when it would do harm: leave a room at least
-#: AIRING_HUMIDITY_PCT humid and this many points damper than it is.
+#: AIRING_HUMIDITY_PCT humid and this many points damper than it is. The Close the windows alert
+#: rule applies the same to the house's median room.
 DAMPER_BY_PCT = 1.0
 
 # What deserves a visitor's attention. Each threshold with an alert rule in grafana/alerts.json is

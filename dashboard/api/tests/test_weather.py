@@ -148,7 +148,7 @@ def test_the_thresholds_match_the_alert_rules() -> None:
         f"$A > {weather.AIRING_DEWPOINT_DELTA_C:g} && $B >= {weather.AIRING_HUMIDITY_PCT:g}"
     )
     assert condition("Close the windows")["expression"] == (
-        f"$A < {weather.CLOSING_DEWPOINT_DELTA_C:g} && $B >= {weather.AIRING_HUMIDITY_PCT:g}"
+        f"$A >= {weather.AIRING_HUMIDITY_PCT:g} && $A >= $B + {weather.DAMPER_BY_PCT:g}"
     )
     assert threshold("Sensor not updating") == weather.STALE_AFTER_S
     silent = next(d for d in rules["Sensor not updating"]["data"] if d["refId"] == "A")
