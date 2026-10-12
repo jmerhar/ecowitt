@@ -523,6 +523,8 @@ async def test_a_calm_dry_day_has_no_weather_notices(reader: MemoryReader) -> No
 
 async def test_closed_windows_are_a_warning(reader: MemoryReader) -> None:
     reader.rows = [r for r in reader.rows if r.table != "ventilation"]
-    reader.rows.append(row("ventilation", LAST, {"dewpoint_delta_c": -2.0}, sensor="indoor"))
+    # Airing would take the lounge from 55% to 70%: damp, and damper.
+    vent = {"dewpoint_delta_c": -2.0, "predicted_humidity_pct": 70.0}
+    reader.rows.append(row("ventilation", LAST, vent, sensor="indoor"))
     notices = (await Dashboard(reader, clock=lambda: NOW).now("example")).notices
     assert notices["airing"].level == "warning"

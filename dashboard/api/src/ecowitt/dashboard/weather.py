@@ -40,10 +40,12 @@ AIRING_DEWPOINT_DELTA_C = 2.0
 #: ...and the room is at least this humid. The Good time to air alert rule in
 #: grafana/alerts.json uses the same two numbers.
 AIRING_HUMIDITY_PCT = 65.0
-#: A room this humid whose dew point is less than this much above the outdoor one gains nothing
-#: from airing: the air brought in holds about as much moisture as the air it replaces. The
-#: Close the windows alert rule applies it to the house as a whole.
+#: The Close the windows alert rule's: a house this humid whose dew point is less than this much
+#: above the outdoor one gains nothing from airing, so windows left open may as well be closed.
 CLOSING_DEWPOINT_DELTA_C = 1.0
+#: Airing is advised against only when it would do harm: leave a room at least
+#: AIRING_HUMIDITY_PCT humid and this many points damper than it is.
+DAMPER_BY_PCT = 1.0
 
 # What deserves a visitor's attention. Each threshold with an alert rule in grafana/alerts.json is
 # that rule's, and a test holds them together.
@@ -158,31 +160,39 @@ class Airing(Enum):
     NO_NEED = "no_need"
 
 
-def airing(humidity_pct: float, dewpoint_delta_c: float) -> Airing:
-    """Advice for one room, from its humidity and how far its dew point is above outdoors'."""
-    if humidity_pct < AIRING_HUMIDITY_PCT:
-        return Airing.NO_NEED
-    if dewpoint_delta_c > AIRING_DEWPOINT_DELTA_C:
+def airing(humidity_pct: float, dewpoint_delta_c: float, after_pct: float | None) -> Airing:
+    """Advice for one room, from its humidity, how far its dew point is above outdoors', and
+    the humidity it would settle at once aired (None when that is unknown)."""
+    if humidity_pct >= AIRING_HUMIDITY_PCT and dewpoint_delta_c > AIRING_DEWPOINT_DELTA_C:
         return Airing.OPEN
-    if dewpoint_delta_c < CLOSING_DEWPOINT_DELTA_C:
+    if _dampens(humidity_pct, after_pct):
         return Airing.KEEP_CLOSED
     return Airing.NO_NEED
 
 
-def house_airing(rooms: list[tuple[float, float]]) -> Airing:
-    """Advice for the whole house, from each room's humidity and dew-point difference.
+def house_airing(rooms: list[tuple[float, float, float | None]]) -> Airing:
+    """Advice for the whole house, from each room's humidity, dew-point difference and humidity
+    once aired.
 
-    Air when any room would be dried by it. Otherwise keep the windows closed when the median
-    room's dew point is less than CLOSING_DEWPOINT_DELTA_C above the outdoor one: the outside air
-    would bring in as much moisture as it let out, or more. Unlike the Close the windows alert
-    rule this does not wait for the rooms to be damp -- a page can say "airing would not help"
-    when a notification would only be noise.
+    Air when any room would be dried by it. Keep the windows closed only when airing would leave
+    the median room damp and damper than it is: when it would merely not help, or dampen dry
+    rooms a little, nothing is lost by opening them.
     """
-    if any(airing(humidity, delta) is Airing.OPEN for humidity, delta in rooms):
+    if any(airing(*room) is Airing.OPEN for room in rooms):
         return Airing.OPEN
-    if rooms and statistics.median(delta for _, delta in rooms) < CLOSING_DEWPOINT_DELTA_C:
+    afters = [after for _, _, after in rooms if after is not None]
+    if afters and _dampens(statistics.median(h for h, _, _ in rooms), statistics.median(afters)):
         return Airing.KEEP_CLOSED
     return Airing.NO_NEED
+
+
+def _dampens(humidity_pct: float, after_pct: float | None) -> bool:
+    """Whether airing would leave a room damp, and damper than it is."""
+    return (
+        after_pct is not None
+        and after_pct >= AIRING_HUMIDITY_PCT
+        and after_pct >= humidity_pct + DAMPER_BY_PCT
+    )
 
 
 def room_flags(temp_c: float | None, humidity_pct: float | None) -> list[str]:

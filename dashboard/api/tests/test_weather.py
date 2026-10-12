@@ -108,20 +108,26 @@ def test_tendency(change: float, words: str) -> None:
 
 
 @pytest.mark.parametrize(
-    ("humidity", "delta", "advice"),
+    ("humidity", "delta", "after", "advice"),
     [
-        (70, 2.1, Airing.OPEN),
-        (65, 2.1, Airing.OPEN),
-        (64.9, 5, Airing.NO_NEED),
-        (90, 2.0, Airing.NO_NEED),
-        (90, 1.0, Airing.NO_NEED),
-        (90, 0.9, Airing.KEEP_CLOSED),
-        (65, -3, Airing.KEEP_CLOSED),
-        (64.9, -3, Airing.NO_NEED),
+        (70, 2.1, 58, Airing.OPEN),
+        (65, 2.1, 55, Airing.OPEN),
+        (64.9, 5, 40, Airing.NO_NEED),
+        (90, 2.0, 80, Airing.NO_NEED),
+        # Airing would not help a damp room, but would not hurt it either.
+        (90, 0.5, 89, Airing.NO_NEED),
+        (60, 0.2, 59, Airing.NO_NEED),
+        # It would leave a room damp and damper than it is.
+        (70, -0.5, 73, Airing.KEEP_CLOSED),
+        (64, -0.2, 65, Airing.KEEP_CLOSED),
+        (64.5, -0.2, 65, Airing.NO_NEED),
+        # Damper, but not damp: nothing to warn of.
+        (50, -2, 62, Airing.NO_NEED),
+        (70, -0.5, None, Airing.NO_NEED),
     ],
 )
-def test_airing(humidity: float, delta: float, advice: Airing) -> None:
-    assert weather.airing(humidity, delta) is advice
+def test_airing(humidity: float, delta: float, after: float | None, advice: Airing) -> None:
+    assert weather.airing(humidity, delta, after) is advice
 
 
 def test_the_thresholds_match_the_alert_rules() -> None:
@@ -153,13 +159,17 @@ def test_the_thresholds_match_the_alert_rules() -> None:
 @pytest.mark.parametrize(
     ("rooms", "advice"),
     [
-        ([(70, 3.0), (50, -2.0), (50, -2.0)], Airing.OPEN),
-        ([(50, -2.0), (55, 0.5), (60, 3.0)], Airing.KEEP_CLOSED),
-        ([(50, 1.0), (55, 3.0)], Airing.NO_NEED),
+        ([(70, 3.0, 55), (50, -2.0, 62), (50, -2.0, 62)], Airing.OPEN),
+        # The median room, 60%, would settle at 66%.
+        ([(58, -1.0, 64), (60, -1.0, 66), (64, -0.5, 70)], Airing.KEEP_CLOSED),
+        # 60% to 59%: no help, and no harm.
+        ([(58, 0.2, 57), (60, 0.2, 59), (62, 0.3, 61)], Airing.NO_NEED),
+        ([(50, 1.0, 48), (55, 3.0, 45)], Airing.NO_NEED),
+        ([(60, -1.0, None)], Airing.NO_NEED),
         ([], Airing.NO_NEED),
     ],
 )
-def test_house_airing(rooms: list[tuple[float, float]], advice: Airing) -> None:
+def test_house_airing(rooms: list[tuple[float, float, float | None]], advice: Airing) -> None:
     assert weather.house_airing(rooms) is advice
 
 

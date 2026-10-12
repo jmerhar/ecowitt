@@ -709,12 +709,16 @@ def _house(air: list[_RoomAir], values: _Values) -> models.HouseAiring | None:
     """The whole house's airing advice, from its rooms'."""
     if not air:
         return None
-    advice = weather.house_airing([(r.humidity, r.delta) for r in air])
+    advice = weather.house_airing([(r.humidity, r.delta, r.after) for r in air])
     afters = [r.after for r in air if r.after is not None]
     H = Kind.HUMIDITY
     return models.HouseAiring(
         advice=advice.value,
-        rooms=[r.name for r in air if weather.airing(r.humidity, r.delta) is weather.Airing.OPEN],
+        rooms=[
+            r.name
+            for r in air
+            if weather.airing(r.humidity, r.delta, r.after) is weather.Airing.OPEN
+        ],
         humidity=values.from_metric(H, statistics.median(r.humidity for r in air)),
         humidity_after=values.from_metric(H, statistics.median(afters)) if afters else None,
         dew_point_difference=values.from_metric(
@@ -737,7 +741,7 @@ def _rooms(
         advice = None
         if room is not None:
             advice = models.AiringAdvice(
-                advice=weather.airing(room.humidity, room.delta).value,
+                advice=weather.airing(room.humidity, room.delta, room.after).value,
                 humidity_after=None if room.after is None else values.from_metric(H, room.after),
                 dew_point_difference=values.from_metric(Kind.TEMPERATURE_DELTA, room.delta),
             )

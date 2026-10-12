@@ -47,7 +47,11 @@
     {#if airing.advice === "open"}
       The outside air is drier: airing would dry {airing.rooms.join(", ")}.
     {:else if airing.advice === "keep_closed"}
-      The outside air holds as much moisture as the rooms, or more.
+      The outside air is moister: airing would leave the rooms damp.
+    {:else if effect === "bad"}
+      The outside air is a little moister, but airing would not leave the rooms damp.
+    {:else if effect === "" && airing.humidity_after !== null}
+      The outside air is about as moist as the rooms: airing would make little difference.
     {:else}
       The rooms are dry enough.
     {/if}

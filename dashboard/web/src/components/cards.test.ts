@@ -307,8 +307,11 @@ describe("highlights", () => {
 describe("AiringCard", () => {
   it.each([
     [{ advice: "open", rooms: ["Bathroom", "Kitchen"] }, "Good time to air", "airing would dry Bathroom, Kitchen."],
-    [{ advice: "keep_closed", rooms: [] }, "Keep the windows closed", "or more."],
+    [{ advice: "keep_closed", rooms: [] }, "Keep the windows closed", "airing would leave the rooms damp."],
     [{ advice: "no_need", rooms: [] }, "No need to air", "dry enough."],
+    [{ advice: "no_need", rooms: [], humidity_after: null }, "No need to air", "dry enough."],
+    [{ advice: "no_need", rooms: [], humidity: 60, humidity_after: 59.5 }, "No need to air", "would make little difference."],
+    [{ advice: "no_need", rooms: [], humidity: 55, humidity_after: 62 }, "No need to air", "would not leave the rooms damp."],
   ] as const)("says what to do: %#", async (overrides, headline, words) => {
     const onselect = vi.fn();
     const { container } = render(AiringCard, {
