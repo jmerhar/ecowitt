@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ecowitt-dashboard"
-version = "2.4.0"
+version = "2.4.1"
 description = "Ecowitt Server's public dashboard: a read-only API over what the collector stored"
 requires-python = ">=3.14"
 dependencies = [

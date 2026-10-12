@@ -5,6 +5,21 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 [Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
 says what under *Upgrading*.
 
+## 2.4.1 — 2026-10-12
+
+### Fixed
+
+- Keeping the windows closed was advised whenever airing would not help, even with the rooms at
+  60% and airing taking them to 59%. It is advised only when airing would leave the rooms at 65% or
+  more and damper than they are; the *Close the windows* alert asks the same.
+- The wind and rain cards are marked by the strongest gust and heaviest rain of the last ten
+  minutes, as the alerts are, instead of flickering with each report.
+- The airing card says plainly what airing would do to the rooms' humidity.
+
+### Upgrading
+
+- Import `grafana/alerts.json` again.
+
 ## 2.4.0 — 2026-10-12
 
 ### Added
