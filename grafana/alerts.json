@@ -463,7 +463,7 @@
               "datasourceUid": "weather",
               "model": {
                 "refId": "A",
-                "rawSql": "SELECT station, max(gust_kmh) AS value\nFROM wind\nWHERE time >= now() - interval '10 minutes'\nGROUP BY station",
+                "rawSql": "SELECT station, max(gust_kmh) AS value\nFROM wind_10m\nWHERE time >= now() - interval '10 minutes'\nGROUP BY station",
                 "rawQuery": true,
                 "editorMode": "code",
                 "format": "table",
@@ -499,8 +499,8 @@
           "for": "0s",
           "keep_firing_for": "30m",
           "annotations": {
-            "summary": "Gusts of {{ humanize $values.A.Value }} km/h at {{ $labels.station }}.",
-            "description": "A gust above 60 km/h in the last 10 minutes."
+            "summary": "Gusts of {{ humanize $values.A.Value }} km/h at 10 m at {{ $labels.station }}.",
+            "description": "A gust above 60 km/h at 10 m (the estimate the wind_10m table holds) in the last 10 minutes."
           },
           "labels": {
             "app": "ecowitt",

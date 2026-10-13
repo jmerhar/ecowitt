@@ -388,7 +388,8 @@
         "textMode": "value",
         "justifyMode": "center",
         "wideLayout": true
-      }
+      },
+      "description": "At the standard 10 m: the measured wind scaled for the anemometer's height, or the weather model's while the cups are too slow to turn (see the README's Wind at 10 m)."
     },
     {
       "id": 7,
@@ -451,7 +452,8 @@
         "textMode": "value",
         "justifyMode": "center",
         "wideLayout": true
-      }
+      },
+      "description": "At the standard 10 m: the measured wind scaled for the anemometer's height, or the weather model's while the cups are too slow to turn (see the README's Wind at 10 m)."
     },
     {
       "id": 8,
@@ -2090,7 +2092,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT $__dateBin(time) AS time, avg(speed_kmh) AS \"Speed\", max(gust_kmh) AS \"Gust\"\nFROM wind\nWHERE station = '${station}' AND $__timeFilter(time)\nGROUP BY 1 ORDER BY 1",
+          "rawSql": "SELECT $__dateBin(time) AS time, avg(speed_kmh) AS \"Speed\", max(gust_kmh) AS \"Gust\"\nFROM wind_10m\nWHERE station = '${station}' AND $__timeFilter(time)\nGROUP BY 1 ORDER BY 1",
           "refId": "A"
         },
         {
@@ -2104,6 +2106,18 @@
           "rawQuery": true,
           "rawSql": "SELECT $__dateBin(time) AS time, avg(speed_kmh) AS \"Speed (model)\"\nFROM model\nWHERE station = '${station}' AND model = '${model}' AND $__timeFilter(time)\nGROUP BY 1 ORDER BY 1",
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__dateBin(time) AS time, avg(speed_kmh) AS \"Speed, measured\"\nFROM wind\nWHERE station = '${station}' AND $__timeFilter(time)\nGROUP BY 1 ORDER BY 1",
+          "refId": "C"
         }
       ],
       "fieldConfig": {
@@ -2182,6 +2196,25 @@
                 "value": 2
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Speed, measured"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#73BF6966"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
           }
         ]
       },
@@ -2196,7 +2229,7 @@
           "sort": "desc"
         }
       },
-      "description": "Wind speed, and the strongest gust in each interval. Dashed blue: the weather model's speed for the location (see the README's Weather model), for comparison."
+      "description": "Wind speed and the strongest gust in each interval at the standard 10 m (see the README's Wind at 10 m). Faint: the speed the anemometer measured, at its own height. Dashed blue: the weather model's speed for the location, for comparison."
     },
     {
       "id": 27,

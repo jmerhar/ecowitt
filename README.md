@@ -311,7 +311,7 @@ one alert per room or station (*Close the windows* is one per station):
 | Sensor not updating | a room or outdoor sensor's readings have not changed, or not arrived, for 3 hours of the station's reports | warning |
 | Battery low | a sensor's low-battery flag has been set for an hour | warning |
 | Room too cold / too hot | a room is below 8 °C or above 32 °C for 15 minutes | warning |
-| Strong wind | a gust above 60 km/h in the last 10 minutes | info |
+| Strong wind | a gust above 60 km/h at 10 m (see [Wind at 10 m](#wind-at-10-m)) in the last 10 minutes | info |
 | Heavy rain | a rain rate above 10 mm/h in the last 10 minutes | info |
 | Pressure falling fast | sea-level pressure more than 3 hPa lower than 3 hours ago | info |
 

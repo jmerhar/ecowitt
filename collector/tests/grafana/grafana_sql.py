@@ -41,9 +41,11 @@ FUNCTIONS = {
 IDENTIFIER = re.compile(r"\b[a-z][a-z0-9_]*\b")
 #: Quoted strings and Grafana's macros and variables, which hold no column names.
 NOT_SQL = re.compile(r"'[^']*'|\"[^\"]*\"|\$__[A-Za-z]+|\$\{[^}]*\}")
-ALIAS = re.compile(r"\bAS\s+([a-z_]+)|\b(?:FROM|JOIN)\s+[a-z_]+\s+([a-z])\b")
-SOURCE = re.compile(r"\b(?:FROM|JOIN)\s+([a-z_]+)", re.IGNORECASE)
-CTE = re.compile(r"(?:\bWITH|,)\s*([a-z_]+)\s+AS\s*\(", re.IGNORECASE)
+#: A name as tables, CTEs and aliases are written: `wind_10m` as well as `wind`.
+NAME = r"[a-z_][a-z0-9_]*"
+ALIAS = re.compile(rf"\bAS\s+({NAME})|\b(?:FROM|JOIN)\s+{NAME}\s+([a-z])\b")
+SOURCE = re.compile(rf"\b(?:FROM|JOIN)\s+({NAME})", re.IGNORECASE)
+CTE = re.compile(rf"(?:\bWITH|,)\s*({NAME})\s+AS\s*\(", re.IGNORECASE)
 #: Line protocol: measurement and tags, a space, the fields, a space, the timestamp.
 LINE = re.compile(r"((?:[^ \\]|\\.)+) ((?:[^ \\]|\\.)+) \d+")
 
