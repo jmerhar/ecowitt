@@ -17,7 +17,7 @@ describe("History", () => {
     expect(screen.getByText("Loading…")).toBeInTheDocument();
     expect(await screen.findByText("Temperature", { selector: "li" })).toBeInTheDocument();
     expect(screen.getByText("Dew point", { selector: "li" })).toBeInTheDocument();
-    await fireEvent.click(screen.getByRole("tab", { name: "Week" }));
+    await fireEvent.change(screen.getByRole("combobox", { name: "Range" }), { target: { value: "7d" } });
     await waitFor(() => expect(api.series).toHaveBeenLastCalledWith("Home", ["outdoor.temperature", "outdoor.dew_point"], "7d", {}, false));
     await fireEvent.click(screen.getByRole("tab", { name: "Pressure" }));
     await waitFor(() => expect(api.series).toHaveBeenLastCalledWith("Home", ["pressure.sea_level"], "7d", {}, false));
@@ -27,18 +27,14 @@ describe("History", () => {
   it("offers the short ranges first, by their length", async () => {
     const api = fakeApi();
     render(History, { ...base, api, view: "temperature", range: "24h" });
-    const ranges = screen.getByRole("tablist", { name: "Range" });
-    expect([...ranges.querySelectorAll("button")].map((b) => b.textContent)).toEqual([
+    const ranges = screen.getByRole("combobox", { name: "Range" }) as HTMLSelectElement;
+    expect([...ranges.options].map((o) => o.textContent)).toEqual([
       "1 h", "3 h", "6 h", "12 h", "Day", "Week", "Month", "Year",
     ]);
-    await fireEvent.click(screen.getByRole("tab", { name: "3 h" }));
-    await waitFor(() => expect(api.series).toHaveBeenLastCalledWith("Home", ["outdoor.temperature", "outdoor.dew_point"], "3h", {}, false));
-    // The phone's folded choice follows, and chooses too.
-    const folded = screen.getByRole("combobox", { name: "Range" }) as HTMLSelectElement;
-    expect(folded.value).toBe("3h");
-    await fireEvent.change(folded, { target: { value: "12h" } });
+    expect(ranges.value).toBe("24h");
+    await fireEvent.change(ranges, { target: { value: "12h" } });
     await waitFor(() => expect(api.series).toHaveBeenLastCalledWith("Home", ["outdoor.temperature", "outdoor.dew_point"], "12h", {}, false));
-    expect(screen.getByRole("tab", { name: "12 h" })).toHaveAttribute("aria-selected", "true");
+    expect(ranges.value).toBe("12h");
   });
 
   it("offers the weather model where the station has one and the chart has a metric it covers", async () => {
@@ -56,7 +52,7 @@ describe("History", () => {
     await fireEvent.click(screen.getByRole("tab", { name: "Rooms °" }));
     await waitFor(() => expect(api.series).toHaveBeenLastCalledWith("Home", ["rooms.temperature"], "24h", {}, false));
     expect(screen.queryByRole("button", { name: "Model" })).not.toBeInTheDocument();
-    // Hidden in place, so the range tabs beside it do not move.
+    // Hidden in place, so the range beside it does not move.
     const hidden = document.querySelector<HTMLButtonElement>("button.toggle")!;
     expect(hidden.style.visibility).toBe("hidden");
     expect(hidden).toBeDisabled();
@@ -105,9 +101,9 @@ describe("History", () => {
     api.series.mockImplementationOnce(() => new Promise((r) => (release = r)));
     api.series.mockImplementationOnce(() => new Promise((_, reject) => (fail = reject)));
     render(History, { ...base, api, view: "temperature", range: "24h" });
-    await fireEvent.click(screen.getByRole("tab", { name: "Year" }));
+    await fireEvent.change(screen.getByRole("combobox", { name: "Range" }), { target: { value: "1y" } });
     await waitFor(() => expect(api.series).toHaveBeenCalledTimes(2));
-    await fireEvent.click(screen.getByRole("tab", { name: "Month" }));
+    await fireEvent.change(screen.getByRole("combobox", { name: "Range" }), { target: { value: "30d" } });
     await waitFor(() => expect(api.series).toHaveBeenCalledTimes(3));
     // The day's and the year's answers arrive after the month was chosen, and are dropped.
     release(series({ series: [] }));

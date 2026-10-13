@@ -97,8 +97,8 @@
       {/each}
     </div>
     <div class="controls">
-      <!-- Hidden rather than absent on a chart the model does not cover, so that the range tabs
-           stay where they are when the chart changes. -->
+      <!-- Hidden rather than absent on a chart the model does not cover, so that the range stays
+           where it is when the chart changes. -->
       {#if weatherModel}
         <button
           class="toggle"
@@ -109,13 +109,7 @@
           title="The weather model's values for this location, dashed: {weatherModel.label}, from Open-Meteo"
           onclick={() => (model = !model)}>Model</button>
       {/if}
-      <div class="tabs wide-ranges" role="tablist" aria-label="Range">
-        {#each meta.ranges as r (r)}
-          <button role="tab" aria-selected={r === range} onclick={() => (range = r)}>{RANGES[r] ?? r}</button>
-        {/each}
-      </div>
-      <!-- A phone has no room for eight tabs beside the chart tabs: the same choice, folded. -->
-      <label class="narrow-ranges">
+      <label>
         <span class="visually-hidden">Range</span>
         <select value={range} onchange={(e) => (range = e.currentTarget.value)}>
           {#each meta.ranges as r (r)}<option value={r}>{RANGES[r] ?? r}</option>{/each}
@@ -145,18 +139,9 @@
   .loading {
     opacity: 0.6;
   }
-  .narrow-ranges {
-    display: none;
-  }
-  @media (max-width: 36rem) {
-    .wide-ranges {
-      display: none;
-    }
-    .narrow-ranges {
-      display: block;
-    }
-  }
+  /* At the right, on the chart tabs' row or beneath it. */
   .controls {
+    margin-left: auto;
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
