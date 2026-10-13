@@ -153,6 +153,7 @@ export type Now = {
 };
 
 export type ForecastHour = {
+  /** The hour's start. Rain and gusts are for the hour from it; the rest for that moment. */
   time: string;
   temperature: number | null;
   humidity: number | null;
@@ -182,6 +183,8 @@ export type ForecastDay = {
   wind_direction: number | null;
   compass: string | null;
   uv_index_max: number | null;
+  /** The day's mean relative humidity, in %. */
+  humidity: number | null;
 };
 
 export type ForecastOut = {

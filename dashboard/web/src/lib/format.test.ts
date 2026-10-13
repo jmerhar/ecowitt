@@ -111,6 +111,16 @@ describe("coming and dayLabel", () => {
     expect(dayLabel("2026-10-12T10:00:00Z", "Europe/Lisbon", now)).toBe("Mon 12 Oct");
   });
 
+  it("name tomorrow by the calendar on the days the clocks change", () => {
+    // 23:30 on Saturday 28 Mar: 24 hours on is Monday, since Sunday is 23 hours long.
+    const spring = new Date("2026-03-28T23:30:00Z");
+    expect(dayLabel("2026-03-29T12:00:00Z", "Europe/Lisbon", spring)).toBe("Tomorrow");
+    expect(dayLabel("2026-03-30T12:00:00Z", "Europe/Lisbon", spring)).toBe("Mon 30 Mar");
+    // 00:30 on Sunday 25 Oct: 24 hours on is still Sunday, which is 25 hours long.
+    const autumn = new Date("2026-10-24T23:30:00Z");
+    expect(dayLabel("2026-10-26T12:00:00Z", "Europe/Lisbon", autumn)).toBe("Tomorrow");
+  });
+
   it("give a time to come with its day when it is not today", () => {
     expect(coming("2026-10-10T17:00:00Z", "Europe/Lisbon", now)).toBe("18:00");
     expect(coming("2026-10-11T05:00:00Z", "Europe/Lisbon", now)).toBe("tomorrow 06:00");

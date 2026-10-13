@@ -159,10 +159,10 @@ export function forecast(overrides: Partial<ForecastOut> = {}): ForecastOut {
     days: [
       { date: "2026-10-09T23:00:00Z", weather_code: 61, description: "Light rain", temperature_max: 21.4,
         temperature_min: 12.6, precipitation: 2.4, precipitation_probability: 70, wind_speed_max: 20,
-        wind_gust_max: 41.3, wind_direction: 350, compass: "N", uv_index_max: 5 },
+        wind_gust_max: 41.3, wind_direction: 350, compass: "N", uv_index_max: 5, humidity: 78 },
       { date: "2026-10-10T23:00:00Z", weather_code: 3, description: "Overcast", temperature_max: 19,
         temperature_min: 11, precipitation: 0, precipitation_probability: 5, wind_speed_max: 12,
-        wind_gust_max: 20, wind_direction: 10, compass: "N", uv_index_max: 4 },
+        wind_gust_max: 20, wind_direction: 10, compass: "N", uv_index_max: 4, humidity: null },
     ],
     ...overrides,
   };

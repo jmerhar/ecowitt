@@ -97,10 +97,15 @@
       {/each}
     </div>
     <div class="controls">
-      {#if offersModel && weatherModel}
+      <!-- Hidden rather than absent on a chart the model does not cover, so that the range tabs
+           stay where they are when the chart changes. -->
+      {#if weatherModel}
         <button
           class="toggle"
           aria-pressed={model}
+          aria-hidden={!offersModel}
+          disabled={!offersModel}
+          style:visibility={offersModel ? null : "hidden"}
           title="The weather model's values for this location, dashed: {weatherModel.label}, from Open-Meteo"
           onclick={() => (model = !model)}>Model</button>
       {/if}

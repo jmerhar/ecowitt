@@ -146,8 +146,11 @@ export function coming(iso: string, timezone: string, now: Date = new Date()): s
 export function dayLabel(iso: string, timezone: string, now: Date = new Date()): string {
   const date = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(d);
   const day = date(new Date(iso));
-  if (day === date(now)) return "Today";
-  if (day === date(new Date(now.getTime() + 86_400_000))) return "Tomorrow";
+  const today = date(now);
+  if (day === today) return "Today";
+  // The calendar's next date, not the date a day from now: a day can be 23 or 25 hours long.
+  const [y, m, d] = today.split("-").map(Number);
+  if (day === new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10)) return "Tomorrow";
   return new Intl.DateTimeFormat(LOCALE, {
     weekday: "short",
     day: "numeric",

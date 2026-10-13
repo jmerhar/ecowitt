@@ -134,6 +134,8 @@ dd {
 }
 .table-wrap {
   overflow-x: auto;
+  /* Holds the visually hidden labels in its cells, which would otherwise widen the page. */
+  position: relative;
 }
 table {
   border-collapse: collapse;

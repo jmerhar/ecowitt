@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/svelte";
 import { describe, expect, it, vi } from "vitest";
 import History from "./History.svelte";
 import Records from "./Records.svelte";
@@ -56,6 +56,10 @@ describe("History", () => {
     await fireEvent.click(screen.getByRole("tab", { name: "Rooms °" }));
     await waitFor(() => expect(api.series).toHaveBeenLastCalledWith("Home", ["rooms.temperature"], "24h", {}, false));
     expect(screen.queryByRole("button", { name: "Model" })).not.toBeInTheDocument();
+    // Hidden in place, so the range tabs beside it do not move.
+    const hidden = document.querySelector<HTMLButtonElement>("button.toggle")!;
+    expect(hidden.style.visibility).toBe("hidden");
+    expect(hidden).toBeDisabled();
   });
 
   it("does not offer a model the station does not have", async () => {
@@ -194,7 +198,7 @@ describe("Forecast", () => {
     const hours = await screen.findByRole("list", { name: "The next 24 hours" });
     const items = [...hours.querySelectorAll("[role=listitem]")].map((i) => i.textContent!.replace(/\s+/g, " ").trim());
     // 14:00 UTC is 15:00 in Lisbon; whole degrees and km/h in the strip.
-    expect(items[0]).toBe("15:00 18 °C 0% 15 km/h N");
+    expect(items[0]).toBe("15:00 18 °C 70% 0% 15 km/h N");
     expect(items[1]).toContain("70%");
     expect(screen.getByText(/Best for this location, made 14:00/)).toBeInTheDocument();
     const cells = (row: HTMLElement) =>
@@ -202,8 +206,11 @@ describe("Forecast", () => {
     const [first, second] = screen.getAllByRole("row").slice(1);
     // The day that began at 23:00 UTC on 9 Oct is 10 Oct in Lisbon; a chance of rain worth
     // showing comes after the amount, a small one not at all.
-    expect(cells(first)).toEqual(["Sat 10 Oct", "Light rain", "13 °C", "21 °C", "2.4 mm 70%", "41 km/h N"]);
-    expect(cells(second)).toEqual(["Sun 11 Oct", "Overcast", "11 °C", "19 °C", "0.0 mm", "20 km/h N"]);
+    expect(cells(first)).toEqual(["Sat 10 Oct", "Light rain", "13 °C", "21 °C", "2.4 mm 70%", "78%", "41 km/h N"]);
+    expect(cells(second)).toEqual(["Sun 11 Oct", "Overcast", "11 °C", "19 °C", "0.0 mm", "–", "20 km/h N"]);
+    // The sky is named once to a screen reader: by the icon, whose column has a header.
+    expect(within(screen.getByRole("table")).getByRole("img", { name: "Light rain" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Sky" })).toBeInTheDocument();
   });
 
   it("marks only the chances of rain worth showing", async () => {
@@ -230,6 +237,67 @@ describe("Forecast", () => {
     expect(container.querySelectorAll("img")).toHaveLength(0);
     expect(screen.getByText(/Weather model, made/)).toBeInTheDocument();
     expect(container.querySelector(".hour .wind")!.textContent!.trim()).toBe("15 km/h");
+  });
+
+  it("gives an hour's rain as an amount from a model without a chance of it", async () => {
+    const api = fakeApi();
+    const base = forecast();
+    api.forecast.mockResolvedValue(forecast({
+      hours: [
+        { ...base.hours[0], precipitation_probability: null, precipitation: 0.6 },
+        { ...base.hours[1], precipitation_probability: null, precipitation: 0 },
+      ],
+    }));
+    const { container } = render(Forecast, { ...props, api });
+    await screen.findByRole("list", { name: "The next 24 hours" });
+    const rain = [...container.querySelectorAll(".hour .rain")];
+    expect(rain.map((r) => [r.textContent!.trim(), r.classList.contains("dry")])).toEqual([
+      ["0.6 mm", false], ["0.0 mm", true],
+    ]);
+  });
+
+  it("shows only the station asked for last, whichever answer comes first", async () => {
+    const api = fakeApi();
+    let release: (f: ReturnType<typeof forecast>) => void = () => {};
+    api.forecast
+      .mockReturnValueOnce(new Promise((resolve) => (release = resolve)))
+      .mockResolvedValueOnce(forecast({ station: "Cabin", model: { id: "icon", label: "ICON" } }));
+    const view = render(Forecast, { ...props, api });
+    await view.rerender({ ...props, api, station: "Cabin" });
+    expect(await screen.findByText(/ICON, made/)).toBeInTheDocument();
+    release(forecast());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.getByText(/ICON, made/)).toBeInTheDocument();
+    expect(screen.queryByText(/Best for this location/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the forecast shown when a refresh fails, and drops it for another station", async () => {
+    const api = fakeApi();
+    let fail: (e: Error) => void = () => {};
+    const view = render(Forecast, { ...props, api });
+    await screen.findByText(/Best for this location, made/);
+    api.forecast.mockReturnValueOnce(new Promise((_, reject) => (fail = reject)));
+    await view.rerender({ ...props, api, tick: 1 });
+    fail(new ApiError(503, "the database could not be read"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.getByText(/Best for this location, made/)).toBeInTheDocument();
+    expect(screen.queryByText("the database could not be read")).not.toBeInTheDocument();
+    api.forecast.mockReturnValueOnce(new Promise(() => {}));
+    await view.rerender({ ...props, api, tick: 1, station: "Cabin" });
+    expect(screen.queryByText(/Best for this location, made/)).not.toBeInTheDocument();
+  });
+
+  it("does not show another station's failure while this one's forecast loads", async () => {
+    const api = fakeApi();
+    let fail: (e: Error) => void = () => {};
+    api.forecast
+      .mockReturnValueOnce(new Promise((_, reject) => (fail = reject)))
+      .mockReturnValueOnce(new Promise(() => {}));
+    const view = render(Forecast, { ...props, api });
+    await view.rerender({ ...props, api, station: "Cabin" });
+    fail(new ApiError(503, "the database could not be read"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByText("the database could not be read")).not.toBeInTheDocument();
   });
 
   it("asks again on each refresh and in the units chosen", async () => {
