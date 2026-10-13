@@ -4,7 +4,8 @@ Every sensor reporting both temperature and humidity -- indoor, outdoor, each ch
 quality combo -- gets its dew point, absolute humidity, mixing ratio and vapour pressure
 deficit. Every indoor one also gets a comparison with the outdoor air, which is what answers
 whether opening a window would dry that room. Pressure is reduced to sea level from the
-operator's altitude, and the console's own relative pressure is checked against it.
+operator's altitude, and the console's own relative pressure is checked against it. Wind is
+estimated at the standard 10 m from the anemometer's height (`windheight`).
 
 Derivations are computed afresh for every report, never taken from fields the console may also
 send: a console's dew point uses its own formula, and mixing the two in one series would put a
@@ -17,7 +18,7 @@ from collections import defaultdict
 from collections.abc import Hashable, Iterable
 
 from ecowitt.collector.ingest.staleness import StalenessTracker
-from ecowitt.core import psychro
+from ecowitt.core import psychro, windheight
 from ecowitt.core.preferences import Preferences
 from ecowitt.core.readings import Reading
 from ecowitt.core.units import Kind
@@ -35,8 +36,13 @@ def derive(
     *,
     station: str,
     timestamp: int,
+    model_wind: windheight.ModelWind | None = None,
 ) -> list[Reading]:
-    """Return the derived readings for one report's parsed readings."""
+    """Return the derived readings for one report's parsed readings.
+
+    `model_wind` is the station's weather model's latest wind, which stands in for the 10 m
+    estimate while the cups have stalled.
+    """
     readings = list(readings)
     climate = _climate(readings)
     pressure = {r.field: float(r.value) for r in readings if r.table == "pressure"}
@@ -54,8 +60,49 @@ def derive(
     if preferences.altitude_m is not None and "abs" in pressure:
         derived += _sea_level(pressure, preferences.altitude_m, climate)
 
+    derived += _wind_10m(readings, preferences.wind_factor, model_wind, timestamp)
     derived += _staleness(readings, tracker, station, timestamp)
     return derived
+
+
+#: The wind fields estimated at 10 m, each under the same name in `wind_10m`.
+WIND_FIELDS = ("speed", "gust", "speed_avg10m", "max_daily_gust")
+
+
+def _wind_10m(
+    readings: list[Reading],
+    wind_factor: float,
+    model: windheight.ModelWind | None,
+    timestamp: int,
+) -> list[Reading]:
+    """The report's wind estimated at 10 m, and where the estimate came from.
+
+    From the sensor, scaled by the height factor; but while the cups have stalled and the weather
+    model has a recent value, from the model, since scaling a stalled reading only scales zero.
+    The day's strongest gust is always the sensor's, scaled: it is a maximum, not a present value
+    the model could stand in for.
+    """
+    wind = {
+        r.field: float(r.value)
+        for r in readings
+        if r.table == "wind" and r.field in WIND_FIELDS and r.kind is Kind.SPEED
+    }
+    if "speed" not in wind:
+        return []
+    values = {field: value * wind_factor for field, value in wind.items()}
+    source = "sensor"
+    usable = model is not None and abs(timestamp - model.timestamp) <= windheight.MODEL_WITHIN_S
+    if wind["speed"] < windheight.STALL_MS and usable:
+        source = "model"
+        values["speed"] = model.speed_ms  # type: ignore[union-attr]
+        values["speed_avg10m"] = model.speed_ms  # type: ignore[union-attr]
+        if model.gust_ms is not None:  # type: ignore[union-attr]
+            values["gust"] = model.gust_ms  # type: ignore[union-attr]
+    table = windheight.TABLE
+    return [
+        *(Reading(table, field, Kind.SPEED, value) for field, value in values.items()),
+        Reading(table, "source", Kind.TEXT, source),
+    ]
 
 
 #: The air temperatures derivations are made from, in °C: a margin beyond the lowest and highest

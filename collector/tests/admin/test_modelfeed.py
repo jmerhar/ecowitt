@@ -19,6 +19,7 @@ from ecowitt.core.preferences import Preferences
 from ecowitt.core.store.base import Row
 from ecowitt.core.testing import StubInflux, serving
 from ecowitt.core.units import Units
+from ecowitt.core.windheight import ModelWind
 
 DEAD = "http://127.0.0.1:1/nothing"
 
@@ -147,8 +148,11 @@ async def test_rows_land_in_the_model_table_in_the_operators_units() -> None:
     ]
     # The pressure check gets the latest surface pressure, at the time it is valid for.
     assert calibration._tracks["Home"].reference == (NOON + 900, 1009.1)
-    # The status page compares the latest row with the readings.
+    # The status page compares the latest row with the readings, and stalled cups take the
+    # latest wind, in m/s as fetched.
     assert model.latest == {"Home": sink.rows[-1]}
+    assert model.wind("Home") == ModelWind(NOON + 900, 3.0, None)
+    assert model.wind("Cabin") is None
     assert state.last_model_ok_at is not None
     assert state.model_failures == 0
 
@@ -205,11 +209,13 @@ async def test_a_station_with_the_model_off_is_not_fetched_and_its_row_is_forgot
         )
         await model.refresh()
         assert "Home" in model.latest
+        assert model.wind("Home") is not None
         stations[0] = replace(HOME, weather_model="off")
         assert await model.refresh() == 0
 
     assert len(stub.requests) == 1
     assert model.latest == {}
+    assert model.wind("Home") is None
 
 
 async def test_a_failed_fetch_stores_nothing_and_the_next_one_fills_the_gap() -> None:
@@ -306,3 +312,14 @@ async def test_waking_refreshes_without_waiting_out_the_interval() -> None:
                 await task
 
     assert len(refreshes) == 2
+
+
+async def test_the_models_gust_comes_with_its_wind() -> None:
+    reply = json.dumps(
+        {"minutely_15": {"time": [NOON], "wind_speed_10m": [3.0], "wind_gusts_10m": [7.5]}}
+    )
+    async with serving(StubInflux(status=200, reply=reply)) as stub, httpx2.AsyncClient() as client:
+        model = feed(stub.url, client, [HOME])
+        await model.refresh()
+
+    assert model.wind("Home") == ModelWind(NOON, 3.0, 7.5)

@@ -757,6 +757,83 @@ class TestWeatherModel:
         assert saved.weather_model == "best_match"
 
 
+class TestWindSensor:
+    async def test_setup_saves_the_height_and_surroundings_and_shows_the_factor(
+        self, rig: Rig
+    ) -> None:
+        await rig.report()
+        adopt(rig)
+        page = rig.client.get("/setup").text
+        assert '<option value="none" selected>No correction: at 10 m or above</option>' in page
+        assert "Saved, these give" not in page
+
+        response = rig.post(
+            "/setup/station",
+            {
+                "original": "Home",
+                "name": "Home",
+                "anemometer_height_m": "2",
+                "wind_surroundings": "sheltered",
+            },
+        )
+
+        assert response.status_code == 303, response.text
+        saved = load_document(rig.context.settings.config_file).stations[0]
+        assert (saved.anemometer_height_m, saved.wind_surroundings) == (2.0, "sheltered")
+        assert rig.store.stations.get("Home").preferences.wind_factor == pytest.approx(
+            2.161, abs=1e-3
+        )
+        page = rig.client.get("/setup").text
+        assert "Saved, these give <strong>×2.16</strong>." in page
+        assert '<option value="sheltered" selected>Sheltered' in page
+
+    async def test_a_form_without_the_wind_fields_keeps_them(self, rig: Rig) -> None:
+        await rig.report()
+        adopt(rig)
+        rig.post(
+            "/setup/station",
+            {
+                "original": "Home",
+                "name": "Home",
+                "anemometer_height_m": "3",
+                "wind_surroundings": "open",
+            },
+        )
+
+        response = rig.post("/setup/station", {"original": "Home", "name": "Home"})
+
+        assert response.status_code == 303
+        saved = load_document(rig.context.settings.config_file).stations[0]
+        assert (saved.anemometer_height_m, saved.wind_surroundings) == (3.0, "open")
+
+    @pytest.mark.parametrize(
+        ("height", "message"),
+        [
+            ("two", "must be numbers"),
+            ("0.5", "anemometer_height_m"),
+            ("300", "anemometer_height_m"),
+        ],
+    )
+    async def test_an_impossible_height_is_refused(
+        self, rig: Rig, height: str, message: str
+    ) -> None:
+        await rig.report()
+        adopt(rig)
+
+        response = rig.post(
+            "/setup/station",
+            {
+                "original": "Home",
+                "name": "Home",
+                "anemometer_height_m": height,
+                "wind_surroundings": "open",
+            },
+        )
+
+        assert response.status_code == 400
+        assert message in response.text
+
+
 class TestStatus:
     @staticmethod
     def weather(rig: Rig) -> list[dict[str, object]]:

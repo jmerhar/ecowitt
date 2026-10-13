@@ -13,6 +13,7 @@ from ecowitt.collector.ingest.staleness import StalenessTracker
 from ecowitt.core.preferences import Preferences
 from ecowitt.core.readings import Reading
 from ecowitt.core.store.base import Row
+from ecowitt.core.windheight import ModelWind
 
 
 @dataclass(frozen=True)
@@ -33,11 +34,17 @@ def process_report(
     station: str,
     preferences: Preferences,
     tracker: StalenessTracker,
+    model_wind: ModelWind | None = None,
 ) -> Processed:
     """Parse, derive and render one report, keeping the canonical readings."""
     report = parse(raw, received_at)
     derived = derive(
-        report.readings, preferences, tracker, station=station, timestamp=report.timestamp
+        report.readings,
+        preferences,
+        tracker,
+        station=station,
+        timestamp=report.timestamp,
+        model_wind=model_wind,
     )
     readings = [*report.readings, *derived]
     points = render(readings, preferences, station=station, timestamp=report.timestamp)

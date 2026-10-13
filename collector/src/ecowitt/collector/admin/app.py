@@ -47,7 +47,7 @@ from ecowitt.collector.http import BodyTooLarge, read_capped_body
 from ecowitt.collector.ingest.handler import StationHandler
 from ecowitt.collector.ingest.pending import PendingStations
 from ecowitt.collector.state import State
-from ecowitt.core import weathermodel
+from ecowitt.core import weathermodel, windheight
 from ecowitt.core.ratelimit import RateLimiter
 from ecowitt.core.store import settings as store_settings
 from ecowitt.core.units import Units
@@ -835,7 +835,15 @@ def _setup_view(
         seen = [str(s["sensor"]) for s in _summarise(latest.points)] if latest else []
         sensor_ids = sorted(set(seen) | set(entry.sensors), key=_natural)
         derived = timezones.zone_at(entry.latitude, entry.longitude)
-        stations.append({"entry": entry, "sensor_ids": sensor_ids, "derived_zone": derived})
+        wind_factor = windheight.factor(entry.anemometer_height_m, entry.wind_surroundings)
+        stations.append(
+            {
+                "entry": entry,
+                "sensor_ids": sensor_ids,
+                "derived_zone": derived,
+                "wind_factor": wind_factor,
+            }
+        )
     return {
         "document": document,
         "stations": stations,
@@ -847,6 +855,8 @@ def _setup_view(
         "units": Units(),
         "zones": timezones.all_zones(),
         "models": weathermodel.MODELS,
+        "surroundings": windheight.SURROUNDINGS,
+        "height_range": (windheight.MIN_HEIGHT_M, windheight.MAX_HEIGHT_M),
         "model_off": weathermodel.OFF,
         "kinds": list(store_settings.KINDS.values()),
         "database": _database_status(context),
@@ -951,8 +961,17 @@ async def _station_action(
         latitude = _optional_float(form.get("latitude"))
         longitude = _optional_float(form.get("longitude"))
         altitude = _optional_float(form.get("altitude_m"))
+        # A form without the wind fields -- adopting a station, adding one by PASSKEY -- keeps
+        # what is set.
+        height = (
+            _optional_float(form.get("anemometer_height_m"))
+            if "anemometer_height_m" in form
+            else (existing.anemometer_height_m if existing else None)
+        )
     except ValueError:
-        return _setup_error(request, context, "Coordinates and altitude must be numbers.")
+        return _setup_error(
+            request, context, "Coordinates, altitude and the anemometer's height must be numbers."
+        )
 
     if action == "lookup":
         draft = dict(form)
@@ -1008,6 +1027,9 @@ async def _station_action(
             timezone=form.get("timezone", "").strip() or None,
             weather_model=form.get("weather_model")
             or (existing.weather_model if existing else weathermodel.DEFAULT_MODEL),
+            anemometer_height_m=height,
+            wind_surroundings=form.get("wind_surroundings")
+            or (existing.wind_surroundings if existing else windheight.NONE),
             sensors=sensors,
             dismissed=existing.dismissed if existing else {},
         )

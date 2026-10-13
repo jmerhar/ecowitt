@@ -17,6 +17,7 @@ core/src/ecowitt/core/   shared by the collector and the dashboard
   stationinfo.py  a station's published settings: the station_info row the collector writes and
                   the dashboard reads
   weathermodel.py the `model` table: Open-Meteo's variables and the fields they are stored as
+  windheight.py   wind estimated at 10 m: the anemometer-height factor, the `wind_10m` table
   ratelimit.py    the public listeners' per-address token bucket
   testing.py      a stand-in HTTP server every project's tests use for InfluxDB and lookups
   store/          where rows are written, behind one interface
@@ -49,7 +50,7 @@ collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init_
     pipeline.py   report fields -> rows: parse, derive, render   <- the data path
     fields.py     the declarative table: which key is stored where, in what unit
     parse.py      fields -> readings in canonical units (°C, hPa, mm, m/s, km); never raises
-    derive.py     moisture, ventilation, sea-level pressure, staleness
+    derive.py     moisture, ventilation, sea-level pressure, wind at 10 m, staleness
     points.py     readings -> rows in the operator's units, with tags
     staleness.py  how long each sensor's values have gone unchanged
 

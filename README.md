@@ -173,6 +173,23 @@ series.
 The status page shows each station's latest model values beside its own readings, with the
 difference: a vane pointing the wrong way or a thermometer in the sun stands out there first.
 
+### Wind at 10 m
+
+Forecasts, weather models and official stations give wind at 10 m above open ground. A garden
+anemometer lower down reads less, often half as much, so beside every measured wind the server
+stores an estimate at 10 m in the `wind_10m` table, which the dashboards show first.
+
+Set each station's *Anemometer height* (above the ground, a roof's height included) and
+*Surroundings* on the setup page; the page shows the factor they give. Measured wind is scaled
+by the neutral logarithmic wind profile, ln(10 / z0) / ln(h / z0), with roughness length z0 of
+0.1 m in the open, 0.3 m among gardens and 0.5 m where buildings and trees are close: ×1.54,
+×1.85 and ×2.16 at 2 m. *No correction*, the default, stores the measured wind unchanged.
+
+The estimate holds in daylight and in a breeze. On still nights the air near the ground
+decouples from the wind above and cups below about 1 m/s stop turning; while they do, and the
+station has a [weather model](#weather-model), the estimate is the model's 10 m wind, and the
+row's `source` is `model`. A changed height or surroundings applies to readings from then on.
+
 ## Two ports, and why it matters
 
 The station speaks **plain HTTP and follows no redirects**, so its endpoint cannot sit behind
@@ -231,6 +248,7 @@ tables) and `name` (its display name).
 | `indoor`, `outdoor`, `channel` | temperature and humidity, as reported |
 | `pressure` | absolute and relative pressure as reported; sea-level pressure and the console's calibration error, derived |
 | `wind`, `rain`, `solar` | as reported; `rain` is tagged `gauge=bucket` or `gauge=piezo` |
+| `wind_10m` | the wind estimated at the standard 10 m (see [Wind at 10 m](#wind-at-10-m)): speed, gust, 10-minute average speed and the day's strongest gust, and `source`, `sensor` or `model` |
 | `derived` | per sensor: dew point, absolute humidity, mixing ratio, vapour pressure deficit, and how long its values have been unchanged |
 | `ventilation` | per indoor sensor: dew-point difference from outdoors, and the humidity the room would settle at after airing |
 | `battery` | per sensor, in whichever form that sensor reports: a low flag, a voltage or a level |

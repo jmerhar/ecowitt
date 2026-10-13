@@ -41,6 +41,8 @@ class StationInfo:
     #: The weather model whose rows the `model` table holds for this station now, or None when
     #: it has none. Earlier models' rows stay, under their own `model` tag.
     weather_model: str | None = None
+    #: What measured wind is multiplied by for the `wind_10m` table's estimate at 10 m.
+    wind_factor: float = 1.0
 
     def to_row(self, timestamp: int) -> Row:
         """The `station_info` row for these settings, leaving out what is not set."""
@@ -56,6 +58,8 @@ class StationInfo:
             values["timezone"] = self.timezone
         if self.weather_model:
             values["weather_model"] = self.weather_model
+        if self.wind_factor != 1.0:
+            values["wind_factor"] = float(self.wind_factor)
         for unit in fields(Units):
             values[UNITS_PREFIX + unit.name] = getattr(self.units, unit.name)
         for sensor, name in self.sensors.items():
@@ -99,4 +103,5 @@ class StationInfo:
                 if k.startswith(SENSOR_PREFIX) and isinstance(v, str)
             },
             weather_model=model if isinstance(model, str) and model else None,
+            wind_factor=number("wind_factor") or 1.0,
         )

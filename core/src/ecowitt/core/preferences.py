@@ -24,6 +24,8 @@ class Preferences:
     #: Height of the barometer above sea level, in metres. Without it there is no sea-level
     #: pressure and no check of the console's own calibration.
     altitude_m: float | None = None
+    #: What measured wind is multiplied by to estimate it at 10 m (`windheight.factor`).
+    wind_factor: float = 1.0
 
     def name_for(self, sensor: str) -> str:
         """The display name for a sensor, falling back to its identifier.

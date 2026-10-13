@@ -15,6 +15,7 @@ FULL = StationInfo(
     units=Units(temperature="f", wind="ms"),
     sensors={"ch1": "Study", "indoor": "Lounge"},
     weather_model="icon_seamless",
+    wind_factor=2.161,
 )
 
 
@@ -35,6 +36,7 @@ def test_the_row_carries_every_setting_with_units_in_the_field_names() -> None:
         "units_temperature": "f",
         "units_wind": "ms",
         "weather_model": "icon_seamless",
+        "wind_factor": 2.161,
     }
 
 
@@ -80,6 +82,7 @@ def test_values_of_the_wrong_type_are_ignored() -> None:
             "sensor_ch1": 1.0,
             "units_rain": 2.0,
             "weather_model": 1.0,
+            "wind_factor": "x",
         },
     )
 

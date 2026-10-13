@@ -13,6 +13,8 @@ environment variables. It is plain YAML so it can be written by hand:
         latitude: 52.37        # optional; enables the weather model and absolute-pressure check
         longitude: 4.90
         weather_model: best_match   # or off, or any model Open-Meteo serves
+        anemometer_height_m: 2      # optional; with wind_surroundings, wind is estimated at 10 m
+        wind_surroundings: gardens  # none, open, gardens or sheltered
         sensors:
           indoor: Lounge
           ch1: Bathroom
@@ -31,7 +33,7 @@ import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Self
+from typing import Literal, Self
 
 import yaml
 from pydantic import (
@@ -44,7 +46,7 @@ from pydantic import (
 )
 
 from ecowitt.collector.admin import timezones
-from ecowitt.core import weathermodel
+from ecowitt.core import weathermodel, windheight
 from ecowitt.core.preferences import Preferences
 from ecowitt.core.store import settings
 from ecowitt.core.units import Units
@@ -73,6 +75,12 @@ class StationEntry(BaseModel):
     timezone: str | None = None
     #: The Open-Meteo model stored beside the readings while there are coordinates, or `off`.
     weather_model: str = Field(default=weathermodel.DEFAULT_MODEL, pattern=r"^[a-z0-9_]{1,64}$")
+    #: The anemometer's height above the ground, and what surrounds it: together they give the
+    #: factor wind is scaled by to estimate it at the standard 10 m (`windheight`).
+    anemometer_height_m: float | None = Field(
+        default=None, ge=windheight.MIN_HEIGHT_M, le=windheight.MAX_HEIGHT_M
+    )
+    wind_surroundings: Literal["none", "open", "gardens", "sheltered"] = windheight.NONE
     sensors: dict[str, str] = Field(default_factory=dict)
     #: Calibration warnings the operator has acknowledged, by kind, with the error at the time.
     #: A warning stays hidden only while the error stays close to that value.
@@ -257,7 +265,12 @@ def build(document: ConfigDocument) -> StationConfig:
             Station(
                 name=entry.name,
                 preferences=Preferences(
-                    units=document.units, names=dict(entry.sensors), altitude_m=entry.altitude_m
+                    units=document.units,
+                    names=dict(entry.sensors),
+                    altitude_m=entry.altitude_m,
+                    wind_factor=windheight.factor(
+                        entry.anemometer_height_m, entry.wind_surroundings
+                    ),
                 ),
                 _passkey=entry.passkey,
                 latitude=entry.latitude,

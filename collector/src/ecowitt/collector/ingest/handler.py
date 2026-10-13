@@ -14,6 +14,7 @@ from ecowitt.collector.ingest.pending import PendingStations
 from ecowitt.collector.ingest.pipeline import process_report
 from ecowitt.collector.ingest.staleness import StalenessTracker
 from ecowitt.core.store.base import Row
+from ecowitt.core.windheight import ModelWind
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +54,11 @@ class StationHandler:
         pending: PendingStations | None = None,
         calibration: CalibrationMonitor | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        model_wind: Callable[[str], ModelWind | None] = lambda _: None,
     ) -> None:
         self.config = config
+        #: A station's weather model's latest wind, by station name.
+        self._model_wind = model_wind
         self._sink = sink
         self._pending = pending or PendingStations()
         self._calibration = calibration or CalibrationMonitor()
@@ -83,6 +87,7 @@ class StationHandler:
             station=station.name,
             preferences=station.preferences,
             tracker=self._tracker,
+            model_wind=self._model_wind(station.name),
         )
         self.latest[station.name] = LatestReport(processed.timestamp, received, processed.points)
         self._calibration.observe(station.name, processed.timestamp, processed.readings)

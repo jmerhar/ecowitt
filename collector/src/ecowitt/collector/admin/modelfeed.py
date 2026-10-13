@@ -33,6 +33,7 @@ from ecowitt.collector.state import State
 from ecowitt.core import weathermodel
 from ecowitt.core.readings import Reading
 from ecowitt.core.store.base import Row
+from ecowitt.core.windheight import ModelWind
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,8 @@ class ModelFeed:
         self._fetched: dict[str, _Fetched] = {}
         #: Each station's most recent model row, in its stored units.
         self.latest: dict[str, Row] = {}
+        #: Each station's most recent model wind, in m/s, for the 10 m wind while cups stall.
+        self._wind: dict[str, ModelWind] = {}
         self._wake = asyncio.Event()
 
     def wake(self) -> None:
@@ -90,6 +93,8 @@ class ModelFeed:
         with_model = {s.name for s in stations if s.model is not None}
         for name in set(self.latest) - with_model:
             del self.latest[name]
+        for name in set(self._wind) - with_model:
+            del self._wind[name]
         for station in stations:
             if station.model is not None and await self._refresh(station, station.model):
                 answered += 1
@@ -132,6 +137,14 @@ class ModelFeed:
         await self._sink.submit(rows)
         if rows:
             self.latest[station.name] = rows[-1]
+        winds = [s for s in samples if isinstance(s.values.get("wind_speed_10m"), float)]
+        if winds:
+            gust = winds[-1].values.get("wind_gusts_10m")
+            self._wind[station.name] = ModelWind(
+                winds[-1].timestamp,
+                float(winds[-1].values["wind_speed_10m"]),
+                float(gust) if isinstance(gust, float) else None,
+            )
         pressures = [s for s in samples if "surface_pressure" in s.values]
         if pressures:
             latest = pressures[-1]
@@ -140,6 +153,10 @@ class ModelFeed:
             )
         self._fetched[station.name] = _Fetched(place, end)
         return True
+
+    def wind(self, station: str) -> ModelWind | None:
+        """A station's latest model wind, or None while it has none."""
+        return self._wind.get(station)
 
     @staticmethod
     def _readings(sample: lookups.ModelSample, model: str) -> list[Reading]:

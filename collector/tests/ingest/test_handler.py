@@ -13,6 +13,7 @@ from ecowitt.collector.ingest.handler import MAX_ANNOUNCED_UNKNOWN, StationHandl
 from ecowitt.core.preferences import Preferences
 from ecowitt.core.store.base import Row
 from ecowitt.core.store.lineprotocol import encode
+from ecowitt.core.windheight import ModelWind
 
 from ..conftest import FIXTURE_PASSKEY, payload
 
@@ -149,3 +150,25 @@ async def test_a_replaced_configuration_takes_effect_on_the_next_report() -> Non
     handler.config = CONFIG
 
     assert await handler.handle(report(), "192.0.2.9") is True
+
+
+async def test_stalled_cups_take_the_stations_weather_model_wind() -> None:
+    """The handler asks for the reporting station's model wind, which fills the 10 m estimate."""
+    fields = dict(urllib.parse.parse_qsl(payload("hp2551_ws69"), keep_blank_values=True))
+    fields |= {"windspeedmph": "0.0"}
+    asked: list[str] = []
+
+    def model_wind(station: str) -> ModelWind:
+        asked.append(station)
+        # A quarter-hour before the report's own time, 2026-10-09 14:09:31 UTC.
+        return ModelWind(1791554971 - 571, 4.0, 8.0)
+
+    writer = MemorySink()
+    clock = lambda: datetime(2026, 10, 9, 14, 9, 40, tzinfo=UTC)  # noqa: E731
+    handler = StationHandler(CONFIG, writer, clock=clock, model_wind=model_wind)
+
+    await handler.handle(fields, "192.0.2.9")
+
+    assert asked == ["Home"]
+    (line,) = [line for line in writer.bodies[0].splitlines() if line.startswith("wind_10m")]
+    assert 'source="model"' in line and "speed_kmh=14.4" in line

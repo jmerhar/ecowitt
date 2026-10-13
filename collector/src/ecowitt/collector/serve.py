@@ -202,18 +202,6 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
         )
         secret = auth.load_secret(settings.secret_file)
         pending, calibration = PendingStations(key=secret), CalibrationMonitor()
-        station_handler = StationHandler(
-            store.stations,
-            delivery,
-            pending=pending,
-            calibration=calibration,
-        )
-        store.subscribe(lambda stations: setattr(station_handler, "config", stations))
-        # Subscribing delivers the current configuration at once, so every station's settings
-        # are published at startup, then again only when a change alters them.
-        metadata = MetadataPublisher(delivery, state=state)
-        store.subscribe(metadata.update)
-        handler = station_handler
         model = ModelFeed(
             lambda: store.stations,
             delivery,
@@ -223,6 +211,19 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
             interval_seconds=settings.model_interval_seconds,
             state=state,
         )
+        station_handler = StationHandler(
+            store.stations,
+            delivery,
+            pending=pending,
+            calibration=calibration,
+            model_wind=model.wind,
+        )
+        store.subscribe(lambda stations: setattr(station_handler, "config", stations))
+        # Subscribing delivers the current configuration at once, so every station's settings
+        # are published at startup, then again only when a change alters them.
+        metadata = MetadataPublisher(delivery, state=state)
+        store.subscribe(metadata.update)
+        handler = station_handler
         context = AdminContext(
             settings,
             state,

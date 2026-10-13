@@ -37,6 +37,7 @@ def info_for(station: Station) -> StationInfo:
         units=prefs.units,
         sensors=dict(prefs.names),
         weather_model=station.model,
+        wind_factor=round(prefs.wind_factor, 4),
     )
 
 

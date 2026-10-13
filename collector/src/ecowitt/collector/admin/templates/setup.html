@@ -146,6 +146,26 @@
       the station's every 15 minutes, from Open-Meteo, which receives them. The status page compares
       the two, and absolute pressure is checked against the model; Off turns both off.</p>
 
+    <h3 class="sub">Wind sensor</h3>
+    {% set chosen_surroundings = value(entry, 'wind_surroundings') %}
+    <div class="fields">
+      <div><label for="anemo-{{ loop.index }}">Anemometer height (m)</label>
+        <input id="anemo-{{ loop.index }}" name="anemometer_height_m" inputmode="decimal"
+               value="{{ value(entry, 'anemometer_height_m') }}" placeholder="10"></div>
+      <div><label for="surr-{{ loop.index }}">Surroundings</label>
+        <select id="surr-{{ loop.index }}" name="wind_surroundings">
+          <option value="none" {% if chosen_surroundings == "none" %}selected{% endif %}>No correction: at 10 m or above</option>
+        {% for code, kind in surroundings.items() %}<option value="{{ code }}" {% if code == chosen_surroundings %}selected{% endif %}>{{ kind.label }}</option>{% endfor %}
+        </select></div>
+    </div>
+    <p class="muted">Forecasts and weather models give wind at 10 m above open ground, where it blows
+      harder than lower down. With the anemometer's height above the ground (a roof's height
+      included) and what surrounds it, wind is also stored as an estimate at 10 m, which the
+      dashboards show first.
+      {% if item.wind_factor != 1 %}Saved, these give <strong>×{{ "%.2f"|format(item.wind_factor) }}</strong>.{% endif %}
+      A change applies to readings from then on; earlier ones keep the factor they were stored with.
+      While the cups are too slow to turn, below 1 m/s, the estimate is the weather model's wind.</p>
+
     <h3 class="sub">Sensor names</h3>
     <div class="fields">
     {% for sid in item.sensor_ids %}

@@ -61,6 +61,13 @@ def test_a_station_publishes_its_settings_and_its_zone_from_the_coordinates() ->
     )
 
 
+def test_a_station_publishes_its_wind_factor() -> None:
+    entry = HOME.model_copy(update={"anemometer_height_m": 2.0, "wind_surroundings": "sheltered"})
+    (station,) = config(entry).stations
+
+    assert info_for(station).wind_factor == 2.161
+
+
 def test_a_station_without_a_model_publishes_none() -> None:
     """Off, or no coordinates: the dashboards then read no model rows for it."""
     (off,) = config(HOME.model_copy(update={"weather_model": "off"})).stations
