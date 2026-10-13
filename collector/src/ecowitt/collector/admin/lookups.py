@@ -99,13 +99,63 @@ async def weather_model(
     if altitude_m is not None:
         params["elevation"] = str(altitude_m)
     data = await _get_json(client, open_meteo_url, params)
-    block = data.get("minutely_15") if isinstance(data, dict) else None
+    return _block(data, "minutely_15", weathermodel.VARIABLES)
+
+
+@dataclass(frozen=True)
+class Forecast:
+    """A weather model's forecast: hour by hour, and day by day (each day's local midnight)."""
+
+    hours: list[ModelSample]
+    days: list[ModelSample]
+
+
+async def weather_forecast(
+    client: httpx2.AsyncClient,
+    latitude: float,
+    longitude: float,
+    altitude_m: float | None,
+    *,
+    model: str,
+    timezone: str | None,
+    open_meteo_url: str,
+) -> Forecast | None:
+    """A weather model's forecast at a point for `weathermodel.FORECAST_DAYS` days, from the
+    start of today in `timezone` (UTC without one), whose days the daily values cover."""
+    params: dict[str, str] = {
+        "latitude": str(latitude),
+        "longitude": str(longitude),
+        "models": model,
+        "hourly": ",".join(weathermodel.FORECAST_HOURLY),
+        "daily": ",".join(weathermodel.FORECAST_DAILY),
+        "forecast_days": str(weathermodel.FORECAST_DAYS),
+        "timezone": timezone or "UTC",
+        "wind_speed_unit": "ms",
+        "timeformat": "unixtime",
+    }
+    if altitude_m is not None:
+        params["elevation"] = str(altitude_m)
+    data = await _get_json(client, open_meteo_url, params)
+    hours = _block(data, "hourly", weathermodel.FORECAST_HOURLY)
+    days = _block(data, "daily", weathermodel.FORECAST_DAILY)
+    if hours is None or days is None:
+        return None
+    return Forecast(hours, days)
+
+
+def _block(data: Any, key: str, variables: dict[str, tuple[str, Kind]]) -> list[ModelSample] | None:
+    """One of an Open-Meteo answer's time blocks as samples, or None if it is malformed.
+
+    A column of the wrong length, and any value that is not a number, is left out; a time left
+    with nothing is dropped.
+    """
+    block = data.get(key) if isinstance(data, dict) else None
     times = block.get("time") if isinstance(block, dict) else None
     if not isinstance(times, list):
         return None
     columns = {
         name: column
-        for name in weathermodel.VARIABLES
+        for name in variables
         if isinstance(column := block.get(name), list) and len(column) == len(times)
     }
     samples = []
@@ -115,7 +165,7 @@ async def weather_model(
         values = {
             name: value
             for name, column in columns.items()
-            if (value := _typed(weathermodel.VARIABLES[name][1], column[index])) is not None
+            if (value := _typed(variables[name][1], column[index])) is not None
         }
         if values:
             samples.append(ModelSample(timestamp, values))

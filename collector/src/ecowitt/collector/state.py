@@ -54,6 +54,9 @@ class State:
     #: The weather model's fetches: the last that answered, and how many failed since it did.
     last_model_ok_at: float | None = None
     model_failures: int = 0
+    #: The weather forecast's fetches, likewise.
+    last_forecast_ok_at: float | None = None
+    forecast_failures: int = 0
 
     @property
     def uptime_seconds(self) -> float:
@@ -118,6 +121,19 @@ class State:
             self.model_failures = 0
         else:
             self.model_failures += 1
+
+    def record_forecast(self, ok: bool) -> None:
+        """Note the outcome of one station's forecast fetch."""
+        if ok:
+            self.last_forecast_ok_at = time.monotonic()
+            self.forecast_failures = 0
+        else:
+            self.forecast_failures += 1
+
+    @property
+    def seconds_since_last_forecast(self) -> float | None:
+        """Age of the last forecast fetch that answered, or None if none has."""
+        return _age(self.last_forecast_ok_at)
 
     @property
     def seconds_since_last_model(self) -> float | None:

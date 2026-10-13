@@ -1259,6 +1259,7 @@ class TestStatus:
         state.record_settings(1)
         state.record_model(True)
         state.record_model(False)
+        state.record_forecast(True)
 
         page = rig.client.get("/").text
         status = rig.client.get("/api/status").json()
@@ -1276,6 +1277,7 @@ class TestStatus:
         assert status["settings"]["published"] == 1
         assert "Open-Meteo: last fetched 0 s ago" in page
         assert '<span class="bad">1 failed since</span>' in page
+        assert status["forecast"] == {"seconds_since_last_ok": 0.0, "failures": 0}
         assert status["model"] == {
             "seconds_since_last_ok": 0.0,
             "failures": 1,
@@ -1288,6 +1290,7 @@ class TestStatus:
 
         assert "not configured" in page and "not sent since this server started" in page
         assert "nothing fetched yet; stations with coordinates are" in page
+        assert "nothing fetched yet; stations with a weather model are" in page
 
     async def test_the_console_describes_itself(self, rig: Rig) -> None:
         await rig.report()

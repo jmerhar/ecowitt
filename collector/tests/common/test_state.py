@@ -16,3 +16,13 @@ def test_a_model_fetch_that_answers_clears_the_failures_before_it() -> None:
 
     assert state.model_failures == 0
     assert state.seconds_since_last_model is not None
+
+
+def test_a_forecast_that_answers_clears_the_failures_before_it() -> None:
+    state = State()
+    state.record_forecast(False)
+    assert (state.forecast_failures, state.seconds_since_last_forecast) == (1, None)
+
+    state.record_forecast(True)
+
+    assert state.forecast_failures == 0 and state.seconds_since_last_forecast is not None

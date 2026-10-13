@@ -16,7 +16,8 @@ core/src/ecowitt/core/   shared by the collector and the dashboard
   preferences.py  units, sensor names, altitude
   stationinfo.py  a station's published settings: the station_info row the collector writes and
                   the dashboard reads
-  weathermodel.py the `model` table: Open-Meteo's variables and the fields they are stored as
+  weathermodel.py the `model`, `forecast` and `forecast_daily` tables: Open-Meteo's variables and
+                  the fields they are stored as
   windheight.py   wind estimated at 10 m: the anemometer-height factor, the `wind_10m` table
   ratelimit.py    the public listeners' per-address token bucket
   testing.py      a stand-in HTTP server every project's tests use for InfluxDB and lookups
@@ -68,6 +69,8 @@ collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init_
     modelfeed.py  each located station's weather model (chosen on the setup page), every 15 min:
                   written to the `model` table, kept for the status page's comparison, and the
                   reference the absolute-pressure check reads
+    forecastfeed.py  each station's weather forecast from its model, hourly: `forecast` and
+                  `forecast_daily`, tagged with how far ahead (`lead`) each row was made
     timezones.py  a station's time zone from its coordinates (offline, tzfpy), and validation
 
   delivery/       getting rows into the database (through a core Store)

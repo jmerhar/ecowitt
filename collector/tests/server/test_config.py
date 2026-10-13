@@ -87,6 +87,7 @@ NOT_FORWARDED = {
     "open_elevation_url",
     "open_meteo_url",
     "model_interval_seconds",
+    "forecast_interval_seconds",
 }
 
 

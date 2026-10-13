@@ -51,6 +51,10 @@
       <td>{% if status.model.seconds_since_last_ok is not none or status.model.failures %}Open-Meteo: last fetched {{ status.model.seconds_since_last_ok|ago }}
         {%- if status.model.failures %}, <span class="bad">{{ status.model.failures }} failed since</span>{% endif %}
         {%- else %}<span class="muted">nothing fetched yet; stations with coordinates are</span>{% endif %}</td></tr>
+    <tr><td class="muted">Weather forecast</td>
+      <td>{% if status.forecast.seconds_since_last_ok is not none or status.forecast.failures %}Open-Meteo: last fetched {{ status.forecast.seconds_since_last_ok|ago }}
+        {%- if status.forecast.failures %}, <span class="bad">{{ status.forecast.failures }} failed since</span>{% endif %}
+        {%- else %}<span class="muted">nothing fetched yet; stations with a weather model are</span>{% endif %}</td></tr>
     {% set r = status.recompute %}
     {% if r %}
     <tr><td class="muted">Wind recompute</td>

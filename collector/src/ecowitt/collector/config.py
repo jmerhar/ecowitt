@@ -72,6 +72,8 @@ class Settings(BaseSettings):
     open_meteo_url: str = "https://api.open-meteo.com/v1/forecast"
     #: How often a located station's model values are fetched; the model's resolution is 15 min.
     model_interval_seconds: int = 900
+    #: How often each station's weather forecast is fetched; models are rerun about hourly.
+    forecast_interval_seconds: int = 3600
 
     #: The console's "Path" field. Ecowitt firmware sends it with a trailing slash; both
     #: spellings are served, so either value works here.

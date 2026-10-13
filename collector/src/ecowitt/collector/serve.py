@@ -21,6 +21,7 @@ from ecowitt.collector.admin import auth
 from ecowitt.collector.admin.app import AdminContext
 from ecowitt.collector.admin.calibration import CalibrationMonitor
 from ecowitt.collector.admin.configstore import ConfigStore
+from ecowitt.collector.admin.forecastfeed import ForecastFeed
 from ecowitt.collector.admin.modelfeed import ModelFeed
 from ecowitt.collector.config import Settings, get_settings
 from ecowitt.collector.delivery.database import ConfiguredStore
@@ -227,6 +228,15 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
         metadata = MetadataPublisher(delivery, state=state)
         store.subscribe(metadata.update)
         handler = station_handler
+        forecast = ForecastFeed(
+            lambda: store.stations,
+            delivery,
+            lookup_client,
+            url=settings.open_meteo_url,
+            interval_seconds=settings.forecast_interval_seconds,
+            state=state,
+        )
+        store.subscribe(lambda _: forecast.wake())
         recompute = WindRecompute(delivery, lambda: _reader(store))
         closers.append(recompute.aclose)
         context = AdminContext(
@@ -251,6 +261,7 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
         background += [
             asyncio.create_task(delivery.run(), name="spool-replay"),
             asyncio.create_task(model.run(), name="weather-model"),
+            asyncio.create_task(forecast.run(), name="weather-forecast"),
             asyncio.create_task(metadata.run(), name="station-metadata"),
         ]
         if heartbeat is not None:

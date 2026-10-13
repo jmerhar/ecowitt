@@ -29,7 +29,15 @@ TIMEOUT_SECONDS = 10.0
 #: Tables the collector writes itself rather than from a station's report.
 #: The 10 m wind is one: a live report writes it beside the station's readings, which beat, and a
 #: recompute writes it alone, which must not.
-OWN_TABLES = frozenset({stationinfo.TABLE, weathermodel.TABLE, windheight.TABLE})
+OWN_TABLES = frozenset(
+    {
+        stationinfo.TABLE,
+        weathermodel.TABLE,
+        weathermodel.FORECAST_TABLE,
+        weathermodel.FORECAST_DAILY_TABLE,
+        windheight.TABLE,
+    }
+)
 
 
 class Heartbeat:
@@ -70,7 +78,8 @@ class Heartbeat:
     def written(self, rows: list[Row]) -> None:
         """Beat if a write carried a station's readings.
 
-        The collector writes rows of its own as well -- station settings, the weather model --
+        The collector writes rows of its own as well -- station settings, the weather model and
+        its forecast --
         and those must not keep the monitor happy while the console has stopped uploading.
         """
         if any(row.table not in OWN_TABLES for row in rows):

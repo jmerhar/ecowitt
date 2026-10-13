@@ -475,6 +475,10 @@ def _status(context: AdminContext) -> dict[str, object]:
             "seconds_since_last_ok": _rounded(state.seconds_since_last_model),
             "failures": state.model_failures,
         },
+        "forecast": {
+            "seconds_since_last_ok": _rounded(state.seconds_since_last_forecast),
+            "failures": state.forecast_failures,
+        },
         "recompute": _recompute_status(context),
     }
 

@@ -183,6 +183,7 @@ async def test_calls_are_counted_in_the_state_the_status_page_reads() -> None:
         (["model", "station_info"], False),
         # A recompute writes the 10 m wind alone; a live report writes it with the readings.
         (["wind_10m"], False),
+        (["forecast", "forecast_daily"], False),
         (["wind_10m", "wind"], True),
     ],
 )

@@ -88,3 +88,42 @@ WEATHER_CODES: dict[int, str] = {
 def describe(code: int) -> str:
     """A weather code in words, or the number itself for one the table does not know."""
     return WEATHER_CODES.get(code, f"Weather code {code}")
+
+
+#: The weather model's forecast for each station, hour by hour and day by day. A row's time is the
+#: hour or local day it forecasts; its `lead` tag says how far ahead it was made (hours, or days),
+#: so each fetch replaces the previous one's row for the same lead, and forecasts made at every
+#: distance ahead are kept to be compared with what the station then measured.
+FORECAST_TABLE = "forecast"
+FORECAST_DAILY_TABLE = "forecast_daily"
+FORECAST_DAYS = 7
+
+#: Open-Meteo's hourly forecast variables, and the base field and kind each is stored as.
+#: Precipitation is the hour's total, ending at the row's time.
+FORECAST_HOURLY: dict[str, tuple[str, Kind]] = {
+    "temperature_2m": ("temp", Kind.TEMPERATURE),
+    "relative_humidity_2m": ("humidity", Kind.HUMIDITY),
+    "dew_point_2m": ("dewpoint", Kind.TEMPERATURE),
+    "precipitation": ("precip_1h", Kind.RAIN),
+    "precipitation_probability": ("precip_probability", Kind.PERCENT),
+    "weather_code": ("weather_code", Kind.CODE),
+    "wind_speed_10m": ("speed", Kind.SPEED),
+    "wind_gusts_10m": ("gust", Kind.SPEED),
+    "wind_direction_10m": ("dir", Kind.ANGLE),
+    "cloud_cover": ("cloud_cover", Kind.PERCENT),
+    "uv_index": ("uv_index", Kind.UV_INDEX),
+    "is_day": ("is_day", Kind.FLAG),
+}
+
+#: Open-Meteo's daily forecast variables, for the station's local days.
+FORECAST_DAILY: dict[str, tuple[str, Kind]] = {
+    "weather_code": ("weather_code", Kind.CODE),
+    "temperature_2m_max": ("temp_max", Kind.TEMPERATURE),
+    "temperature_2m_min": ("temp_min", Kind.TEMPERATURE),
+    "precipitation_sum": ("precip", Kind.RAIN),
+    "precipitation_probability_max": ("precip_probability", Kind.PERCENT),
+    "wind_speed_10m_max": ("speed_max", Kind.SPEED),
+    "wind_gusts_10m_max": ("gust_max", Kind.SPEED),
+    "wind_direction_10m_dominant": ("dir", Kind.ANGLE),
+    "uv_index_max": ("uv_index_max", Kind.UV_INDEX),
+}

@@ -266,6 +266,7 @@ tables) and `name` (its display name).
 | `battery` | per sensor, in whichever form that sensor reports: a low flag, a voltage or a level |
 | `station` | the console's model, firmware, uptime, upload interval and clock skew |
 | `model` | per located station, a weather model's values every 15 minutes, tagged `source` and `model`; see [Weather model](#weather-model). Precipitation (`precip_15m_mm`) is the 15 minutes ending at the row's time |
+| `forecast`, `forecast_daily` | per station with a weather model, its forecast for the next 7 days, hour by hour and by local day, fetched hourly. Each row's time is the hour or day forecast; its `lead` tag says how many hours (or days) ahead it was made, so the newest forecast for a time has the smallest lead, and forecasts made at each distance ahead are kept |
 | `station_info` | each station's settings: coordinates, altitude, time zone, stored units, sensor names and the weather model it uses. Written at startup and when the configuration changes them, never otherwise; read the newest row as a whole |
 | `soil`, `soil_ec`, `pm`, `air`, `lightning`, `leak`, `probe`, `leaf`, `depth` | only when those sensors report |
 | `unmapped` | any field this server does not recognise, under its original name |
@@ -434,6 +435,7 @@ optional:
 | `HEARTBEAT_INTERVAL_SECONDS` | `60` | the least time between two heartbeat calls |
 | `LOG_LEVEL` | `INFO` | |
 | `MODEL_INTERVAL_SECONDS` | `900` | how often a located station's model values are fetched |
+| `FORECAST_INTERVAL_SECONDS` | `3600` | how often a station's weather forecast is fetched |
 | `OPEN_METEO_URL`, `OPENTOPODATA_URL`, `OPEN_ELEVATION_URL` | the public services | the weather model and elevation lookups, for a mirror or an air-gapped host |
 
 The shipped compose file passes all of these through except the last two rows, the listeners'
