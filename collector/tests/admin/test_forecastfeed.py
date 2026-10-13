@@ -85,6 +85,8 @@ async def test_hours_from_now_and_days_from_today_are_stored_with_their_lead() -
         "ms",
         "unixtime",
     )
+    # At the station's altitude, as the model values beside the readings are.
+    assert query["elevation"] == "180.0"
     hours = [r for r in sink.rows if r.table == "forecast"]
     days = [r for r in sink.rows if r.table == "forecast_daily"]
     # The hour already begun when it was fetched is lead 0; the one before is past, not stored.
@@ -112,14 +114,13 @@ async def test_hours_from_now_and_days_from_today_are_stored_with_their_lead() -
 
 
 async def test_the_stations_model_is_asked_for_and_utc_without_a_time_zone() -> None:
-    station = replace(HOME, weather_model="icon_seamless", timezone=None)
+    station = replace(HOME, weather_model="icon_seamless", timezone=None, preferences=Preferences())
     async with serving(StubInflux(status=200, reply=REPLY)) as stub, httpx2.AsyncClient() as client:
         await feed(stub.url, client, [station]).refresh()
 
-    assert (stub.requests[0].query["models"], stub.requests[0].query["timezone"]) == (
-        "icon_seamless",
-        "UTC",
-    )
+    query = stub.requests[0].query
+    assert (query["models"], query["timezone"]) == ("icon_seamless", "UTC")
+    assert "elevation" not in query
 
 
 async def test_a_station_without_a_model_is_not_fetched() -> None:

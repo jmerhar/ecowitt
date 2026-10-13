@@ -398,6 +398,7 @@ the file and restart the container.
 | `/stations` | each station shown, with its location, time zone, stored units and weather model |
 | `/stations/{id}/now` | current conditions, the sky from the weather model, today's range, rooms with airing advice, sensor health, a one-line summary |
 | `/stations/{id}/series?metrics=…&range=24h` | metrics over `1h`, `3h`, `6h`, `12h`, `24h`, `7d`, `30d` or `1y`, in buckets that start at the station's midnight; `&model=true` adds the weather model's series (`source: model`) |
+| `/stations/{id}/forecast` | the latest forecast from the station's weather model: the next 24 hours and the days it reaches |
 | `/stations/{id}/extremes?period=today` | the lowest and highest of each metric `today`, this `month` or this `year` |
 
 Every answer is in the station's stored units unless the request asks otherwise, per quantity:

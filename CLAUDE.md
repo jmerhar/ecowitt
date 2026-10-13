@@ -78,7 +78,8 @@ collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init_
     delivery.py   write now or spool; the replay loop that drains the spool
     spool.py      the bounded on-disk queue, one atomically written file per report
     heartbeat.py  calls a push monitor's URL after a station's readings are written, at most once
-                  per interval (the collector's own rows -- settings, the model -- do not count)
+                  per interval (the collector's own rows -- settings, the model, the forecast, the
+                  10 m wind -- do not count)
     metadata.py   publishes each station's settings as station_info, only when they change
     recompute.py  the setup page's opt-in recompute of a station's 10 m wind over its history
 collector/tests/  one folder per subpackage (ingest/, admin/, delivery/), plus
@@ -98,6 +99,8 @@ dashboard/api/src/ecowitt/dashboard/   the public dashboard's read-only API
   catalogue.py    the metrics served: table, base field, kind, aggregates, which sensors, and
                   the weather model's field for the same quantity
   weather.py      compass, Beaufort, feels-like, pressure tendency, airing advice
+  forecast.py     the stored forecast read back (the newest row per hour and day), and what the
+                  cards warn of from it: rain, frost, heat, gusts, a drier spell for airing
   sun.py          sunrise, solar noon and sunset (NOAA's equations)
   siteconfig.py   /data/dashboard.yaml, written once by setup; edited or deleted by hand after
   cache.py        a TTL cache whose concurrent requests share one computation

@@ -130,7 +130,8 @@
     <p class="muted">Optional. With coordinates the altitude can be looked up, from OpenTopoData or
       Open-Elevation, which receive them. The altitude is the barometer's: usually the console's,
       not the outdoor sensors'. The time zone decides where the station's day begins on the
-      dashboard, and is taken from the coordinates offline unless you enter one.</p>
+      dashboard and which hours make up each forecast day, and is taken from the coordinates offline
+      unless you enter one.</p>
 
     <h3 class="sub">Weather model</h3>
     {% set chosen_model = value(entry, 'weather_model') %}
@@ -142,9 +143,11 @@
           <option value="{{ model_off }}" {% if chosen_model == model_off %}selected{% endif %}>Off</option>
         </select></div>
     </div>
-    <p class="muted">With coordinates, a weather model's values for the location are stored beside
-      the station's every 15 minutes, from Open-Meteo, which receives them. The status page compares
-      the two, and absolute pressure is checked against the model; Off turns both off.</p>
+    <p class="muted">With coordinates, the model's values for the location are stored beside the
+      station's every 15 minutes, and its forecast for the next 7 days every hour, from Open-Meteo,
+      which receives the coordinates. The status page compares the model with the station, absolute
+      pressure is checked against it, and the dashboard shows its forecast; a model that reaches
+      fewer days ahead gives a shorter forecast. Off turns all of these off.</p>
 
     <h3 class="sub">Wind sensor</h3>
     {% set chosen_surroundings = value(entry, 'wind_surroundings') %}

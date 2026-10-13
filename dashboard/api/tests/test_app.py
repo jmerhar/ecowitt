@@ -150,7 +150,7 @@ def test_every_api_route_goes_through_access(client: TestClient) -> None:
         raise HTTPException(403, "no")
 
     paths = client.get("/api/v1/openapi.json").json()["paths"]
-    assert len(paths) == 5
+    assert len(paths) == 6
     client.app.dependency_overrides[app_module.access] = deny  # type: ignore[attr-defined]
     for path in paths:
         url = path.replace("{station}", "example") + "?metrics=wind.gust"

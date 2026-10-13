@@ -19,7 +19,7 @@ from ecowitt.core import weathermodel, windheight
 from ecowitt.core.stationinfo import StationInfo
 from ecowitt.core.store.query import Buckets, Extreme, Extremes, Reader, Span
 from ecowitt.core.units import Kind, Units, convert, field_name
-from ecowitt.dashboard import models, weather
+from ecowitt.dashboard import forecast, models, weather
 from ecowitt.dashboard.cache import TtlCache
 from ecowitt.dashboard.catalogue import (
     CHOICES,
@@ -64,6 +64,8 @@ RANGES = {
 PERIODS = {"today": 60.0, "month": 600.0, "year": 1800.0}
 
 NOW_TTL = 30.0
+#: The collector fetches a forecast hourly, so a few minutes' reuse loses nothing.
+FORECAST_TTL = 300.0
 STATIONS_TTL = 300.0
 #: How far back a station's latest report is looked for.
 LATEST_WITHIN = timedelta(days=7)
@@ -288,9 +290,43 @@ class Dashboard:
         answer.rooms = _rooms(latest, values, stored, info, air)
         answer.sensors = _health(latest, info)
         answer.notices = _notices(latest, values, stored, answer)
+        coming = await self._stored_forecast(station, info)
+        _forecast_notices(answer, coming, values, info, zone, latest.at)
+        if answer.airing is not None and answer.airing.advice != "open" and answer.outdoor:
+            damp = [r for r in air if r.humidity >= weather.AIRING_HUMIDITY_PCT]
+            outdoor_dp = _outdoor_dew_point(latest, values, stored)
+            if outdoor_dp is not None:
+                answer.airing.drier_from = forecast.drier_from(
+                    coming, values, info, latest.at, [outdoor_dp + r.delta for r in damp]
+                )
         answer.sky = _sky(latest, stored)
         answer.summary = _summary(answer, values.target)
         return answer
+
+    async def forecast(
+        self, station: str, choice: Mapping[str, str] | None = None
+    ) -> models.ForecastOut:
+        """The station's latest forecast: the next 24 hours and the days its model reaches."""
+        info = await self.info(station)
+        stored = await self._stored_forecast(station, info)
+        values = _Values(info.units, _target(info.units, choice))
+        hours, days = forecast.answer(stored, values, info)
+        return models.ForecastOut(
+            station=station,
+            model=_weather_model(info),
+            issued=stored.issued,
+            units=_units(values.target),
+            hours=hours,
+            days=days,
+        )
+
+    async def _stored_forecast(self, station: str, info: StationInfo) -> forecast.Stored:
+        """The station's newest stored forecast, shared by /now and /forecast."""
+        return await self.cache.get(
+            ("forecast", station),
+            FORECAST_TTL,
+            lambda: forecast.read(self.reader, station, info, _zone(info), self.clock()),
+        )
 
     async def series(
         self,
@@ -918,6 +954,70 @@ def _columns(
     if not any(v is not None for column in columns.values() for v in column):
         return None
     return columns
+
+
+def _outdoor_dew_point(latest: _Latest, values: _Values, stored: Units) -> float | None:
+    """The outdoor sensor's latest dew point, in °C."""
+    for span in latest.derived:
+        if span.sensor == "outdoor":
+            return values.metric(
+                Kind.TEMPERATURE, span.last.get(field_name("dewpoint", Kind.TEMPERATURE, stored))
+            )
+    return None
+
+
+def _forecast_notices(
+    now: models.Now,
+    coming: forecast.Stored,
+    values: _Values,
+    info: StationInfo,
+    zone: tzinfo,
+    at: datetime,
+) -> None:
+    """Add to the cards' notices what the forecast says is coming within the day.
+
+    Rain on the rain card while it is dry; frost or heat on the outdoor card; strong gusts on the
+    wind card while they are not blowing already. Times are in the station's time.
+    """
+    target = values.target
+
+    def when(moment: datetime) -> str:
+        local, today = moment.astimezone(zone), at.astimezone(zone).date()
+        prefix = "" if local.date() == today else "tomorrow "
+        return f"{prefix}{local:%H:%M}"
+
+    def say(card: str, text: str) -> None:
+        notice = now.notices.get(card)
+        if notice is None:
+            now.notices[card] = models.Notice(level="warning", text=text)
+        else:
+            notice.text = f"{notice.text} {text}".strip()
+
+    def show(kind: Kind, value: float) -> str:
+        return f"{values.from_metric(kind, value):g} {SYMBOLS[unit(kind, target)]}"
+
+    raining = now.rain is not None and now.rain.raining
+    rain = forecast.rain(coming, values, info, at)
+    if rain is not None and not raining:
+        say("rain", f"Rain likely from {when(rain.time)}.")
+    low = forecast.extreme(coming, values, info, at, "temp", Kind.TEMPERATURE, lowest=True)
+    if low is not None and low.value <= forecast.FROST_C:
+        # The forecast's frost is more precise than the present reading's hint of it.
+        outdoor = now.notices.get("outdoor")
+        if outdoor is not None:
+            outdoor.text = outdoor.text.replace(
+                "Cold: frost is possible on clear nights.", ""
+            ).strip()
+        say(
+            "outdoor",
+            f"Down to {show(Kind.TEMPERATURE, low.value)} at {when(low.time)}: frost possible.",
+        )
+    high = forecast.extreme(coming, values, info, at, "temp", Kind.TEMPERATURE, lowest=False)
+    if high is not None and high.value >= weather.HEAT_FEELS_C:
+        say("outdoor", f"Up to {show(Kind.TEMPERATURE, high.value)} at {when(high.time)}.")
+    gust = forecast.extreme(coming, values, info, at, "gust", Kind.SPEED, lowest=False)
+    if gust is not None and gust.value > weather.STRONG_GUST_KMH and "wind" not in now.notices:
+        say("wind", f"Gusts to {show(Kind.SPEED, gust.value)} at {when(gust.time)}.")
 
 
 def _sky(latest: _Latest, stored: Units) -> models.Sky | None:

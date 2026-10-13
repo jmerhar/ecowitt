@@ -178,6 +178,9 @@ class HouseAiring(BaseModel):
     humidity_after: float | None = None
     #: How far the median room's dew point is above the outdoor one.
     dew_point_difference: float
+    #: When the forecast has the outdoor air turning dry enough to air a damp room, while the
+    #: advice is not to open now; None otherwise.
+    drier_from: datetime | None = None
 
 
 class Room(BaseModel):
@@ -228,6 +231,59 @@ class Now(BaseModel):
     #: sensors. A card missing from it is unremarkable.
     notices: dict[str, Notice] = Field(default_factory=dict)
     sensors: list[SensorHealth] = Field(default_factory=list)
+
+
+class ForecastHour(BaseModel):
+    """The forecast for one hour."""
+
+    time: datetime
+    temperature: float | None = None
+    humidity: float | None = None
+    dew_point: float | None = None
+    #: The hour's total, and the chance of any, in %.
+    precipitation: float | None = None
+    precipitation_probability: float | None = None
+    weather_code: int | None = None
+    description: str | None = None
+    is_day: bool | None = None
+    #: At 10 m, like the dashboard's wind.
+    wind_speed: float | None = None
+    wind_gust: float | None = None
+    wind_direction: float | None = None
+    compass: str | None = None
+
+
+class ForecastDay(BaseModel):
+    """The forecast for one day in the station's time."""
+
+    #: The day's start, at midnight in the station's time zone.
+    date: datetime
+    weather_code: int | None = None
+    description: str | None = None
+    temperature_max: float | None = None
+    temperature_min: float | None = None
+    precipitation: float | None = None
+    precipitation_probability: float | None = None
+    wind_speed_max: float | None = None
+    wind_gust_max: float | None = None
+    wind_direction: float | None = None
+    compass: str | None = None
+    uv_index_max: float | None = None
+
+
+class ForecastOut(BaseModel):
+    """A station's latest forecast, from its weather model."""
+
+    station: str
+    #: The weather model it comes from, or None when the station has none.
+    model: WeatherModel | None = None
+    #: When the forecast was made; None without one recent enough to show.
+    issued: datetime | None = None
+    units: UnitsOut
+    #: The next 24 hours, from the one under way.
+    hours: list[ForecastHour] = Field(default_factory=list)
+    #: The days from today on, as many as the model reaches.
+    days: list[ForecastDay] = Field(default_factory=list)
 
 
 class Series(BaseModel):

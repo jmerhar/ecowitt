@@ -14,7 +14,15 @@ from datetime import UTC, datetime, timedelta
 
 from ecowitt.core.stationinfo import StationInfo
 from ecowitt.core.store.base import Row
-from ecowitt.core.store.query import Aggregate, Buckets, Extreme, Extremes, ReadError, Span
+from ecowitt.core.store.query import (
+    Aggregate,
+    Buckets,
+    Extreme,
+    Extremes,
+    Point,
+    ReadError,
+    Span,
+)
 
 
 class MemoryReader:
@@ -117,6 +125,29 @@ class MemoryReader:
             times = sorted(by_bucket)
             values = {pair: [_aggregate(pair, by_bucket[t]) for t in times] for pair in pairs}
             found.append(Buckets(tags, _name(rows), times, values))
+        return found
+
+    async def points(
+        self,
+        station: str,
+        table: str,
+        fields: Collection[str],
+        *,
+        start: datetime,
+        end: datetime,
+    ) -> list[Point]:
+        self._fail()
+        self.calls.append(("points", station, table))
+        found = []
+        for row in sorted(self.rows, key=lambda r: r.timestamp):
+            tags = dict(row.tags)
+            if row.table != table or tags.pop("station", None) != station:
+                continue
+            if not start <= _at(row.timestamp) <= end:
+                continue
+            values = {k: v for k, v in row.fields.items() if k in fields}
+            if values:
+                found.append(Point(_at(row.timestamp), tags, values))
         return found
 
     async def aclose(self) -> None:

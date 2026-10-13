@@ -257,6 +257,15 @@ def build_app(
         response.headers["Cache-Control"] = f"public, max-age={int(RANGES[range_].ttl)}"
         return await board.series(station, chosen, range_, choice, model=model)
 
+    @router.get("/stations/{station}/forecast")
+    async def forecast(
+        board: Board, station: Station, choice: Choice, response: Response
+    ) -> models.ForecastOut:
+        """The station's weather forecast, from its weather model: the next 24 hours and the
+        days the model reaches."""
+        response.headers["Cache-Control"] = "public, max-age=300"
+        return await board.forecast(station, choice)
+
     @router.get("/stations/{station}/extremes")
     async def extremes(
         board: Board,
