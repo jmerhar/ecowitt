@@ -190,6 +190,12 @@ decouples from the wind above and cups below about 1 m/s stop turning; while the
 station has a [weather model](#weather-model), the estimate is the model's 10 m wind, and the
 row's `source` is `model`. A changed height or surroundings applies to readings from then on.
 
+To bring the history in line, *Recompute the 10 m wind* on the setup page recalculates it with
+the saved factor, from a chosen moment in the station's time or, left empty, from the first
+reading. It runs in the background, with its progress on the status page, and needs a database
+the server can read back (InfluxDB 3) with a token allowed to read. Readings before the chosen
+moment keep their values, so after moving the anemometer give the moment it was moved.
+
 The dashboard leads with the 10 m figures -- speed, gusts, the Beaufort force, which is defined
 at 10 m, and the strong-gust warning -- marking an estimate as one, with what the sensor
 measured beneath it and faint behind the speed in the wind chart.

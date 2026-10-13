@@ -414,3 +414,34 @@ async def test_only_influxdb_3_can_be_read() -> None:
         reader_for("influx2", url="http://db:8086", database="weather")
     with pytest.raises(ValueError, match="URL is required"):
         reader_from("influx3", {})
+
+
+async def test_points_are_each_row_as_stored_oldest_first(
+    reader: Influx3Store, db: Database
+) -> None:
+    db.rows = [
+        {"time": "2026-10-10T00:00:00", "sensor": "outdoor", "name": "Garden", "value_0": 12.5},
+        {"time": "2026-10-10T00:01:00", "sensor": "outdoor", "value_1": 80.0},
+    ]
+
+    points = await reader.points(
+        "home", "outdoor", ["temp_c", "humidity_pct", "absent"], start=START, end=END
+    )
+
+    assert [(p.time, p.tags, p.values) for p in points] == [
+        (START, {"sensor": "outdoor", "name": "Garden"}, {"temp_c": 12.5}),
+        (START + timedelta(minutes=1), {"sensor": "outdoor"}, {"humidity_pct": 80.0}),
+    ]
+    query = db.queries[-1]
+    assert query["params"] == {"station": "home"}
+    # The station is a parameter; every other tag comes back, and a row with none of the
+    # fields asked for is left out.
+    assert query["q"].startswith('SELECT time, sensor, name, "temp_c" AS value_0')
+    assert '("temp_c" IS NOT NULL OR "humidity_pct" IS NOT NULL) ORDER BY time' in query["q"]
+
+
+async def test_points_of_fields_a_table_lacks_ask_nothing(
+    reader: Influx3Store, db: Database
+) -> None:
+    assert await reader.points("home", "wind", ["gust_kmh"], start=START, end=END) == []
+    assert db.queries == []

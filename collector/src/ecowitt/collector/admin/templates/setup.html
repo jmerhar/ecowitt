@@ -183,6 +183,22 @@
     <button class="danger" type="submit" name="action" value="delete"
             onclick='return confirm({{ ("Remove " ~ entry.name ~ "? Its reports will be discarded until it is added again.")|tojson }})'>Remove</button>
   </form>
+
+  <h3 class="sub">Recompute the 10 m wind</h3>
+  <p class="muted">A new height or surroundings applies from when it is saved. If the history
+    should follow -- the factor was set late, or wrong -- recompute it here with the factor saved
+    above{% if item.wind_factor != 1 %} (×{{ "%.2f"|format(item.wind_factor) }}){% endif %}. Leave
+    <em>From</em> empty for the whole history, or give the moment the anemometer reached its present
+    place, in the station's time; readings before it keep what they have.</p>
+  {% if recomputable %}<p class="muted">{{ recomputable }}</p>{% endif %}
+  <form method="post" action="/setup/recompute" class="fields recompute">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="station" value="{{ entry.name }}">
+    <div><label for="since-{{ loop.index }}">From (optional)</label>
+      <input id="since-{{ loop.index }}" name="since" type="datetime-local"></div>
+    <div><button class="secondary" type="submit" {% if recomputable %}disabled{% endif %}
+      onclick='return confirm({{ ("Recompute the 10 m wind of " ~ entry.name ~ " with ×" ~ "%.2f"|format(item.wind_factor) ~ "? Every reading from the chosen moment on (the whole history if none) is recomputed; earlier ones keep their values.")|tojson }})'>Recompute</button></div>
+  </form>
 </section>
 {% endfor %}
 

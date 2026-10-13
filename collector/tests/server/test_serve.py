@@ -513,3 +513,20 @@ def test_the_writer_follows_the_saved_connection(tmp_path: Path) -> None:
 
     config.replace(ConfigDocument())
     assert writer.kind is None and not writer.configured
+
+
+def test_the_recompute_reads_the_configured_database(tmp_path: Path) -> None:
+    """Only a kind that can be read back gives a reader; no database gives none."""
+    from ecowitt.collector.admin.configstore import ConfigStore
+    from ecowitt.core.store.influx3 import Influx3Store
+
+    path = tmp_path / "config.yaml"
+    path.write_text("stations: []\n", encoding="utf-8")
+    assert serve._reader(ConfigStore(path)) is None
+    path.write_text(
+        "store: {kind: influx2, url: 'http://db', org: o, database: b, token: t}\n",
+        encoding="utf-8",
+    )
+    assert serve._reader(ConfigStore(path)) is None
+    path.write_text("store: {kind: influx3, url: 'http://db', token: t}\n", encoding="utf-8")
+    assert isinstance(serve._reader(ConfigStore(path)), Influx3Store)

@@ -27,7 +27,15 @@ from ecowitt.core.store.influx import (
     TIMEOUT_SECONDS,
     InfluxStore,
 )
-from ecowitt.core.store.query import Aggregate, Buckets, Extreme, Extremes, ReadError, Span
+from ecowitt.core.store.query import (
+    Aggregate,
+    Buckets,
+    Extreme,
+    Extremes,
+    Point,
+    ReadError,
+    Span,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -212,6 +220,40 @@ class Influx3Store(InfluxStore):
         return [
             Buckets(group.tags, names[key], group.times, group.values)
             for key, group in groups.items()
+        ]
+
+    async def points(
+        self,
+        station: str,
+        table: str,
+        fields: Collection[str],
+        *,
+        start: datetime,
+        end: datetime,
+    ) -> list[Point]:
+        """Every row in the window, oldest first; rows with none of the fields are left out."""
+        info = await self._table(table)
+        present = _present(fields, info.columns)
+        if not present:
+            return []
+        tags = [t for t in info.tags if t != "station"]
+        columns = ", ".join(
+            ["time", *tags, *(f'"{name}" AS value_{i}' for i, name in enumerate(present))]
+        )
+        any_field = " OR ".join(f'"{name}" IS NOT NULL' for name in present)
+        sql = (
+            f'SELECT {columns} FROM "{table}" WHERE station = $station '
+            f"AND time >= {_timestamp(start)} AND time <= {_timestamp(end)} "
+            f"AND ({any_field}) ORDER BY time"
+        )
+        rows = await self._rows(sql, {"station": station})
+        return [
+            Point(
+                time=_time(row["time"]),
+                tags={t: str(row[t]) for t in tags if row.get(t) is not None},
+                values=_values(row, "value", present),
+            )
+            for row in rows
         ]
 
     async def _grouped(

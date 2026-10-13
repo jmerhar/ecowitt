@@ -72,7 +72,8 @@ def test_turning_cups_keep_the_sensor_however_light() -> None:
 def test_without_a_model_gust_the_sensors_gust_stays() -> None:
     found = estimate(wind(0.0, 0.5), model=ModelWind(NOW, 4.2, None))
 
-    assert (found["speed"], found["gust"], found["source"]) == (4.2, 1.0, "model")
+    # And a report without a 10-minute average gets none from the model.
+    assert found == {"speed": 4.2, "gust": 1.0, "source": "model"}
 
 
 @pytest.mark.parametrize(

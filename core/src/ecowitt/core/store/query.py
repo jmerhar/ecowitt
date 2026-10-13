@@ -88,6 +88,15 @@ class Buckets(_Group):
     values: dict[tuple[str, Aggregate], list[float | None]] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class Point:
+    """One stored row: when, its tags other than the station, and the fields asked for."""
+
+    time: datetime
+    tags: dict[str, str]
+    values: dict[str, Value] = field(default_factory=dict)
+
+
 class Reader(Protocol):
     """A database readings can be read back from."""
 
@@ -141,6 +150,18 @@ class Reader(Protocol):
         sensors: Collection[str] | None = None,
     ) -> list[Buckets]:
         """Each group's values in buckets of `step`, aligned to `origin`; empty buckets left out."""
+
+    async def points(
+        self,
+        station: str,
+        table: str,
+        fields: Collection[str],
+        *,
+        start: datetime,
+        end: datetime,
+    ) -> list[Point]:
+        """Every row between `start` and `end` (inclusive), oldest first, as stored: for work
+        over the rows themselves, such as recomputing what is derived from them."""
 
     async def aclose(self) -> None:
         """Release connections."""

@@ -51,6 +51,14 @@
       <td>{% if status.model.seconds_since_last_ok is not none or status.model.failures %}Open-Meteo: last fetched {{ status.model.seconds_since_last_ok|ago }}
         {%- if status.model.failures %}, <span class="bad">{{ status.model.failures }} failed since</span>{% endif %}
         {%- else %}<span class="muted">nothing fetched yet; stations with coordinates are</span>{% endif %}</td></tr>
+    {% set r = status.recompute %}
+    {% if r %}
+    <tr><td class="muted">Wind recompute</td>
+      <td>{{ r.station }}, ×{{ "%.2f"|format(r.factor) }}, from {{ (r.start or "")[:16]|replace("T", " ") }} UTC:
+        {% if r.state == "running" %}running, through {{ (r.through or r.start or "")[:16]|replace("T", " ") }}, {{ r.rows }} rows
+        {%- elif r.state == "done" %}done, {{ r.rows }} rows
+        {%- else %}<span class="bad">failed: {{ r.error }}</span> after {{ r.rows }} rows{% endif %}</td></tr>
+    {% endif %}
     <tr><td class="muted">Uptime</td><td>{{ status.uptime_seconds|duration }}</td></tr>
   </table>
   </div>

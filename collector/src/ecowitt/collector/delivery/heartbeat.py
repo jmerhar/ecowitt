@@ -19,7 +19,7 @@ from urllib.parse import urlsplit
 import httpx2
 
 from ecowitt.collector.state import State
-from ecowitt.core import stationinfo, weathermodel
+from ecowitt.core import stationinfo, weathermodel, windheight
 from ecowitt.core.store.base import Row
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,9 @@ logger = logging.getLogger(__name__)
 TIMEOUT_SECONDS = 10.0
 
 #: Tables the collector writes itself rather than from a station's report.
-OWN_TABLES = frozenset({stationinfo.TABLE, weathermodel.TABLE})
+#: The 10 m wind is one: a live report writes it beside the station's readings, which beat, and a
+#: recompute writes it alone, which must not.
+OWN_TABLES = frozenset({stationinfo.TABLE, weathermodel.TABLE, windheight.TABLE})
 
 
 class Heartbeat:

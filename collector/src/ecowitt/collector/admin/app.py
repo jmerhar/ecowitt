@@ -19,6 +19,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from zoneinfo import ZoneInfo
 
 import httpx2
 from fastapi import FastAPI
@@ -42,6 +43,7 @@ from ecowitt.collector.admin.stationconfig import (
 )
 from ecowitt.collector.config import Settings
 from ecowitt.collector.delivery.database import ConfiguredStore
+from ecowitt.collector.delivery.recompute import WindRecompute
 from ecowitt.collector.delivery.spool import Spool
 from ecowitt.collector.http import BodyTooLarge, read_capped_body
 from ecowitt.collector.ingest.handler import StationHandler
@@ -228,6 +230,8 @@ class AdminContext:
     http: httpx2.AsyncClient | None = None
     #: The weather model feed, whose latest rows the status page compares with the readings.
     model: ModelFeed | None = None
+    #: Recomputes a station's 10 m wind over its history, when the setup page asks.
+    recompute: WindRecompute | None = None
     #: Station names to report when there is no store, for processes run without one.
     stations: list[str] = field(default_factory=list)
 
@@ -366,6 +370,13 @@ def build_app(context: AdminContext) -> FastAPI:
             return form
         return await _station_action(request, context, form)
 
+    @app.post("/setup/recompute")
+    async def recompute(request: Request) -> Response:
+        form = await _form(request, context)
+        if isinstance(form, Response):
+            return form
+        return _recompute_action(request, context, form)
+
     @app.post("/setup/admin")
     async def save_admin(request: Request) -> Response:
         form = await _form(request, context)
@@ -464,6 +475,24 @@ def _status(context: AdminContext) -> dict[str, object]:
             "seconds_since_last_ok": _rounded(state.seconds_since_last_model),
             "failures": state.model_failures,
         },
+        "recompute": _recompute_status(context),
+    }
+
+
+def _recompute_status(context: AdminContext) -> dict[str, object] | None:
+    """The 10 m wind recompute's progress, or None before any has run."""
+    if context.recompute is None or context.recompute.progress.state == "idle":
+        return None
+    p = context.recompute.progress
+    return {
+        "state": p.state,
+        "station": p.station,
+        "factor": round(p.factor, 4),
+        "start": p.start.isoformat() if p.start else None,
+        "end": p.end.isoformat() if p.end else None,
+        "through": p.through.isoformat() if p.through else None,
+        "rows": p.rows,
+        "error": p.error,
     }
 
 
@@ -856,6 +885,8 @@ def _setup_view(
         "zones": timezones.all_zones(),
         "models": weathermodel.MODELS,
         "surroundings": windheight.SURROUNDINGS,
+        "recompute": _recompute_status(context),
+        "recomputable": _recomputable(context),
         "height_range": (windheight.MIN_HEIGHT_M, windheight.MAX_HEIGHT_M),
         "model_off": weathermodel.OFF,
         "kinds": list(store_settings.KINDS.values()),
@@ -1044,6 +1075,42 @@ async def _station_action(
     if adopted is not None and response.status_code == 303:
         context.pending.discard(adopted.passkey)
     return response
+
+
+def _recomputable(context: AdminContext) -> str | None:
+    """Why history cannot be recomputed now, or None when it can."""
+    entry = context.document.store
+    if context.recompute is None or entry is None:
+        return "Set up the database first."
+    if not store_settings.KINDS[entry.kind].readable:
+        return f"{store_settings.KINDS[entry.kind].label} cannot be read back yet."
+    if context.recompute.running:
+        return "A recompute is running; the status page shows its progress."
+    return None
+
+
+def _recompute_action(request: Request, context: AdminContext, form: dict[str, str]) -> Response:
+    """Start recomputing a station's 10 m wind from the moment given, in its own time zone."""
+    station = context.store.stations.get(form.get("station", "")) if context.store else None
+    if station is None or context.recompute is None:
+        return _setup_error(request, context, "No such station.")
+    since = None
+    text = form.get("since", "").strip()
+    if text:
+        try:
+            local = datetime.fromisoformat(text)
+        except ValueError:
+            return _setup_error(request, context, "Give the start as a date and a time.")
+        zone = ZoneInfo(station.timezone) if station.timezone else UTC
+        since = local.replace(tzinfo=zone).astimezone(UTC)
+    refused = context.recompute.start(station, since)
+    if refused:
+        return _setup_error(request, context, refused)
+    message = (
+        f"Recomputing the 10 m wind of {station.name} with ×{station.preferences.wind_factor:.2f}"
+        f"{' from ' + text.replace('T', ' ') if text else ''}; the status page shows its progress."
+    )
+    return RedirectResponse(f"/setup?{urlencode({'message': message})}", status_code=303)
 
 
 async def _elevation(

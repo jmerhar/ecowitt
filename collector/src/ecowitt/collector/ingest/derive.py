@@ -60,7 +60,7 @@ def derive(
     if preferences.altitude_m is not None and "abs" in pressure:
         derived += _sea_level(pressure, preferences.altitude_m, climate)
 
-    derived += _wind_10m(readings, preferences.wind_factor, model_wind, timestamp)
+    derived += wind_10m(readings, preferences.wind_factor, model_wind, timestamp)
     derived += _staleness(readings, tracker, station, timestamp)
     return derived
 
@@ -69,7 +69,7 @@ def derive(
 WIND_FIELDS = ("speed", "gust", "speed_avg10m", "max_daily_gust")
 
 
-def _wind_10m(
+def wind_10m(
     readings: list[Reading],
     wind_factor: float,
     model: windheight.ModelWind | None,
@@ -95,7 +95,8 @@ def _wind_10m(
     if wind["speed"] < windheight.STALL_MS and usable:
         source = "model"
         values["speed"] = model.speed_ms  # type: ignore[union-attr]
-        values["speed_avg10m"] = model.speed_ms  # type: ignore[union-attr]
+        if "speed_avg10m" in values:
+            values["speed_avg10m"] = model.speed_ms  # type: ignore[union-attr]
         if model.gust_ms is not None:  # type: ignore[union-attr]
             values["gust"] = model.gust_ms  # type: ignore[union-attr]
     table = windheight.TABLE

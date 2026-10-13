@@ -27,12 +27,15 @@ from ecowitt.collector.delivery.database import ConfiguredStore
 from ecowitt.collector.delivery.delivery import Delivery
 from ecowitt.collector.delivery.heartbeat import Heartbeat
 from ecowitt.collector.delivery.metadata import MetadataPublisher
+from ecowitt.collector.delivery.recompute import WindRecompute
 from ecowitt.collector.delivery.spool import Spool
 from ecowitt.collector.ingest import app as ingest
 from ecowitt.collector.ingest.app import ReportHandler
 from ecowitt.collector.ingest.handler import StationHandler
 from ecowitt.collector.ingest.pending import PendingStations
 from ecowitt.collector.state import State
+from ecowitt.core.store import settings as store_settings
+from ecowitt.core.store.query import Reader
 
 logger = logging.getLogger(__name__)
 
@@ -224,6 +227,8 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
         metadata = MetadataPublisher(delivery, state=state)
         store.subscribe(metadata.update)
         handler = station_handler
+        recompute = WindRecompute(delivery, lambda: _reader(store))
+        closers.append(recompute.aclose)
         context = AdminContext(
             settings,
             state,
@@ -236,6 +241,7 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
             database=writer,
             http=lookup_client,
             model=model,
+            recompute=recompute,
         )
         store.subscribe(lambda _: model.wake())
         calibration.on_step = model.wake
@@ -282,6 +288,14 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
                 await task
         for close in closers:
             await close()
+
+
+def _reader(store: ConfigStore) -> Reader | None:
+    """A reader for the configured database, or None when there is none or it cannot be read."""
+    entry = store.document.store
+    if entry is None or not store_settings.KINDS[entry.kind].readable:
+        return None
+    return store_settings.reader_from(entry.kind, entry.connection)
 
 
 def main() -> None:

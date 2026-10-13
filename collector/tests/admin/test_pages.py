@@ -13,7 +13,7 @@ import time
 import urllib.parse
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -230,6 +230,7 @@ class TestCrossSiteForms:
             ),
             ("/dismiss", {"station": "Home", "kind": "location"}),
             ("/setup/database", {"kind": "influx3", "influx3.url": "http://evil.example"}),
+            ("/setup/recompute", {"station": "Home"}),
         ],
     )
     def test_no_form_from_elsewhere_changes_anything(
@@ -834,6 +835,143 @@ class TestWindSensor:
         assert message in response.text
 
 
+class Recorder:
+    """Stands in for the recompute: records what it was asked to start."""
+
+    def __init__(self, refusal: str | None = None) -> None:
+        self.started: list[tuple[str, object]] = []
+        self.refusal = refusal
+        self.running = False
+        from ecowitt.collector.delivery.recompute import Progress
+
+        self.progress = Progress()
+
+    def start(self, station: object, since: object) -> str | None:
+        if self.refusal is None:
+            self.started.append((station.name, since))  # type: ignore[attr-defined]
+        return self.refusal
+
+
+class TestRecompute:
+    async def adopted(self, rig: Rig, recorder: Recorder | None = None) -> Recorder:
+        await rig.report()
+        adopt(rig)
+        rig.post(
+            "/setup/station",
+            {
+                "original": "Home",
+                "name": "Home",
+                "latitude": "38.72",
+                "longitude": "-9.14",
+                "anemometer_height_m": "2",
+                "wind_surroundings": "sheltered",
+            },
+        )
+        recorder = recorder or Recorder()
+        rig.context.recompute = recorder  # type: ignore[assignment]
+        return recorder
+
+    async def test_the_whole_history_with_no_start(self, rig: Rig) -> None:
+        recorder = await self.adopted(rig)
+        use_database(rig)
+
+        response = rig.post("/setup/recompute", {"station": "Home", "since": ""})
+
+        assert response.status_code == 303
+        assert recorder.started == [("Home", None)]
+        assert (
+            "Recomputing+the+10+m+wind+of+Home+with+%C3%972.16%3B" in response.headers["location"]
+        )
+
+    async def test_a_start_is_read_in_the_stations_time(self, rig: Rig) -> None:
+        """Lisbon is an hour ahead of UTC in October."""
+        recorder = await self.adopted(rig)
+        use_database(rig)
+
+        response = rig.post("/setup/recompute", {"station": "Home", "since": "2026-10-12T12:00"})
+
+        assert response.status_code == 303
+        assert recorder.started == [("Home", datetime(2026, 10, 12, 11, 0, tzinfo=UTC))]
+        assert "from+2026-10-12+12%3A00" in response.headers["location"]
+
+    async def test_a_station_without_a_time_zone_is_read_in_utc(self, rig: Rig) -> None:
+        await rig.report()
+        adopt(rig)
+        recorder = Recorder()
+        rig.context.recompute = recorder  # type: ignore[assignment]
+
+        rig.post("/setup/recompute", {"station": "Home", "since": "2026-10-12T12:00"})
+
+        assert recorder.started == [("Home", datetime(2026, 10, 12, 12, 0, tzinfo=UTC))]
+
+    @pytest.mark.parametrize(
+        ("fields", "message"),
+        [
+            ({"station": "Nowhere"}, "No such station."),
+            ({"station": "Home", "since": "yesterday"}, "Give the start as a date and a time."),
+        ],
+    )
+    async def test_bad_requests_start_nothing(
+        self, rig: Rig, fields: dict[str, str], message: str
+    ) -> None:
+        recorder = await self.adopted(rig)
+
+        response = rig.post("/setup/recompute", fields)
+
+        assert response.status_code == 400 and message in response.text
+        assert recorder.started == []
+
+    async def test_a_refusal_is_shown(self, rig: Rig) -> None:
+        await self.adopted(rig, Recorder("A recompute is already running."))
+
+        response = rig.post("/setup/recompute", {"station": "Home"})
+
+        assert response.status_code == 400 and "already running" in response.text
+
+    async def test_without_a_recompute_nothing_starts(self, rig: Rig) -> None:
+        await rig.report()
+        adopt(rig)
+
+        assert rig.post("/setup/recompute", {"station": "Home"}).status_code == 400
+
+    async def test_the_setup_page_says_when_it_cannot_run(self, rig: Rig) -> None:
+        recorder = await self.adopted(rig)
+        assert "Set up the database first." in rig.client.get("/setup").text
+        use_database(rig)
+        page = rig.client.get("/setup").text
+        assert "Set up the database first." not in page
+        assert re.search(r'<button class="secondary" type="submit" \s*onclick=', page)
+        recorder.running = True
+        assert "A recompute is running" in rig.client.get("/setup").text
+        rig.post(
+            "/setup/database",
+            db("influx2", url="http://127.0.0.1:1", token="t", org="o", database="b"),
+        )
+        assert "cannot be read back yet." in rig.client.get("/setup").text
+
+    async def test_the_status_page_follows_its_progress(self, rig: Rig) -> None:
+        recorder = await self.adopted(rig)
+        assert "Wind recompute" not in rig.client.get("/").text
+        p = recorder.progress
+        start = datetime(2026, 10, 9, 13, 0, tzinfo=UTC)
+        p.state, p.station, p.factor, p.start, p.end = "running", "Home", 2.161, start, start
+        p.through, p.rows = start + timedelta(days=1), 1440
+
+        page = rig.client.get("/").text
+        status = rig.client.get("/api/status").json()["recompute"]
+
+        assert "Home, ×2.16, from 2026-10-09 13:00 UTC:" in page
+        assert "running, through 2026-10-10 13:00, 1440 rows" in page
+        assert status["state"] == "running" and status["rows"] == 1440
+        p.state = "done"
+        assert "done, 1440 rows" in rig.client.get("/").text
+        p.state, p.error = "failed", "the database refused the token"
+        assert (
+            "failed: the database refused the token</span> after 1440 rows"
+            in rig.client.get("/").text
+        )
+
+
 class TestStatus:
     @staticmethod
     def weather(rig: Rig) -> list[dict[str, object]]:
@@ -945,10 +1083,11 @@ class TestStatus:
         rig.post("/setup/station", {"name": "Ann's x');alert(1);('", "passkey": "A"})
 
         page = rig.client.get("/setup").text
-        (handler,) = re.findall(r"onclick='(return confirm\(.*?\))'", page)
+        remove, recompute = re.findall(r"onclick='(return confirm\(.*?\))'", page)
 
-        assert "'" not in handler
-        assert handler.startswith('return confirm("Remove Ann\\u0027s x\\u0027);alert(1);(\\u0027?')
+        assert "'" not in remove and "'" not in recompute
+        assert remove.startswith('return confirm("Remove Ann\\u0027s x\\u0027);alert(1);(\\u0027?')
+        assert recompute.startswith('return confirm("Recompute the 10 m wind of Ann\\u0027s x')
 
     async def test_a_non_numeric_correction_is_tolerated(self, rig: Rig) -> None:
         rig.store.replace(ConfigDocument(stations=[StationEntry(name="Home", passkey="K")]))

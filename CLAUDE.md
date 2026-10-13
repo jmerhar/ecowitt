@@ -77,6 +77,7 @@ collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init_
     heartbeat.py  calls a push monitor's URL after a station's readings are written, at most once
                   per interval (the collector's own rows -- settings, the model -- do not count)
     metadata.py   publishes each station's settings as station_info, only when they change
+    recompute.py  the setup page's opt-in recompute of a station's 10 m wind over its history
 collector/tests/  one folder per subpackage (ingest/, admin/, delivery/), plus
   server/         wiring: the two listeners, settings, the health probe
   common/         the top-level modules the listeners share

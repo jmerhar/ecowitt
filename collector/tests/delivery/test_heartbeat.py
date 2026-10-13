@@ -181,6 +181,9 @@ async def test_calls_are_counted_in_the_state_the_status_page_reads() -> None:
         (["model"], False),
         (["station_info"], False),
         (["model", "station_info"], False),
+        # A recompute writes the 10 m wind alone; a live report writes it with the readings.
+        (["wind_10m"], False),
+        (["wind_10m", "wind"], True),
     ],
 )
 def test_only_a_stations_readings_count_as_written(tables: list[str], beats: bool) -> None:
