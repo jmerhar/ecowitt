@@ -173,6 +173,17 @@ series.
 The status page shows each station's latest model values beside its own readings, with the
 difference: a vane pointing the wrong way or a thermometer in the sun stands out there first.
 
+#### Forecast
+
+Ticking *Store the model's forecast too* on the setup page stores the model's forecast for the
+next 7 days as well, fetched hourly, for the [public dashboard](#public-dashboard) and the
+[Grafana dashboard](#grafana-dashboard) to show. It is off by default, because it needs
+**InfluxDB 3 Enterprise** (free for home use), or InfluxDB 3 Core started with a
+`--query-file-limit` far above its default of 432. Each fetch writes to every hour of the coming
+week; Enterprise compacts the files that leaves, but Core does not, and within a day it refuses
+to read the forecast back. The opt-in is stored as `weather_forecast` in `config.yaml`. A fetch
+costs one Open-Meteo call, about 24 a day.
+
 ### Wind at 10 m
 
 Forecasts, weather models and official stations give wind at 10 m above open ground. A garden
@@ -266,7 +277,7 @@ tables) and `name` (its display name).
 | `battery` | per sensor, in whichever form that sensor reports: a low flag, a voltage or a level |
 | `station` | the console's model, firmware, uptime, upload interval and clock skew |
 | `model` | per located station, a weather model's values every 15 minutes, tagged `source` and `model`; see [Weather model](#weather-model). Precipitation (`precip_15m_mm`) is the 15 minutes ending at the row's time |
-| `forecast`, `forecast_daily` | per station with a weather model, its forecast for the next 7 days, hour by hour and by local day, fetched hourly. Each row's time is the hour or day forecast; its `lead` tag says how many hours (or days) ahead it was made, so the newest forecast for a time has the smallest lead, and forecasts made at each distance ahead are kept |
+| `forecast`, `forecast_daily` | per station storing its weather model's [forecast](#forecast), its forecast for the next 7 days, hour by hour and by local day, fetched hourly. Each row's time is the hour or day forecast; its `lead` tag says how many hours (or days) ahead it was made, so the newest forecast for a time has the smallest lead, and forecasts made at each distance ahead are kept |
 | `station_info` | each station's settings: coordinates, altitude, time zone, stored units, sensor names and the weather model it uses. Written at startup and when the configuration changes them, never otherwise; read the newest row as a whole |
 | `soil`, `soil_ec`, `pm`, `air`, `lightning`, `leak`, `probe`, `leaf`, `depth` | only when those sensors report |
 | `unmapped` | any field this server does not recognise, under its original name |
@@ -291,7 +302,7 @@ Create it before first use if you want anything other than keeping everything.
   [weather model](#weather-model)'s value dashed behind it;
 - the outdoor temperature and wind direction minus the model's, with the band within which a
   difference is usual shaded;
-- the model's forecast: temperature and dew point, rain and its chance, wind, humidity and cloud
+- for a station storing it, the model's [forecast](#forecast): temperature and dew point, rain and its chance, wind, humidity and cloud
   cover for the next 48 hours, whatever time range is chosen, and a table of the next 7 days
   with each day's mean humidity;
 - battery flags, rooms and outdoor sensors that have stopped changing, the console's pressure
@@ -368,10 +379,10 @@ hot, damp or dry, a good time to air the house or one to keep its windows closed
 would leave the rooms at 65% or more and damper than they are), a sensor that needs attention —
 the thresholds of the [Grafana alerts](#grafana-alerts) where there is one. Visitors choose their own units; times are in the station's time zone.
 
-For a station with a [weather model](#weather-model), the page shows that model's forecast
-— the next 24 hours and the days ahead — and the cards say what is coming within the day: rain
-likely within six hours, frost or heat, strong gusts, and drier air to open the windows for. It
-also shows the sky the model gives — clear,
+For a station storing its model's [forecast](#forecast), the page shows it — the next 24 hours
+and the days ahead — and the cards say what is coming within the day: rain likely within six
+hours, frost or heat, strong gusts, and drier air to open the windows for. For a station with a
+[weather model](#weather-model), it also shows the sky the model gives — clear,
 overcast, rain, fog — with an icon from [Meteocons](https://meteocons.com), and the charts can
 draw the model's values dashed beside the station's (*Model*, beside the range). The page credits
 Open-Meteo, as its data's licence asks, and lists the licences of what it bundles at

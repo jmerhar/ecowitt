@@ -69,8 +69,9 @@ collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init_
     modelfeed.py  each located station's weather model (chosen on the setup page), every 15 min:
                   written to the `model` table, kept for the status page's comparison, and the
                   reference the absolute-pressure check reads
-    forecastfeed.py  each station's weather forecast from its model, hourly: `forecast` and
-                  `forecast_daily`, tagged with how far ahead (`lead`) each row was made
+    forecastfeed.py  the weather forecast of each station that opts in (InfluxDB 3 Core cannot
+                  read it back, see README), hourly: `forecast` and `forecast_daily`, tagged
+                  with how far ahead (`lead`) each row was made
     timezones.py  a station's time zone from its coordinates (offline, tzfpy), and validation
 
   delivery/       getting rows into the database (through a core Store)

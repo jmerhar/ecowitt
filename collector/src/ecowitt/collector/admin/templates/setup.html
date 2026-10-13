@@ -143,11 +143,19 @@
           <option value="{{ model_off }}" {% if chosen_model == model_off %}selected{% endif %}>Off</option>
         </select></div>
     </div>
+    {% set store_forecast = draft.get('weather_forecast') == 'on' if draft and draft.get('original') == entry.name and 'weather_model' in draft else entry.weather_forecast %}
+    <label class="inline"><input type="checkbox" name="weather_forecast" {% if store_forecast %}checked{% endif %}>
+      Store the model's forecast too</label>
     <p class="muted">With coordinates, the model's values for the location are stored beside the
-      station's every 15 minutes, and its forecast for the next 7 days every hour, from Open-Meteo,
-      which receives the coordinates. The status page compares the model with the station, absolute
-      pressure is checked against it, and the dashboard shows its forecast; a model that reaches
-      fewer days ahead gives a shorter forecast. Off turns all of these off.</p>
+      station's every 15 minutes, from Open-Meteo, which receives the coordinates. The status page
+      compares them with the station's, and absolute pressure is checked against them. Off turns
+      the model off.</p>
+    <p class="muted">With the box ticked, the model's forecast for the next 7 days is stored every
+      hour too (a model that reaches fewer days ahead gives a shorter one). The dashboard shows it,
+      and warns from it of rain, frost, heat and strong gusts, and of drier air to open the windows
+      for. Each fetch writes to every hour of the coming week: InfluxDB 3 Enterprise compacts the
+      files that leaves, but InfluxDB 3 Core does not, and within a day refuses to read the forecast
+      back unless it runs with a <code>--query-file-limit</code> well above its default of 432.</p>
 
     <h3 class="sub">Wind sensor</h3>
     {% set chosen_surroundings = value(entry, 'wind_surroundings') %}

@@ -13,6 +13,7 @@ environment variables. It is plain YAML so it can be written by hand:
         latitude: 52.37        # optional; enables the weather model and absolute-pressure check
         longitude: 4.90
         weather_model: best_match   # or off, or any model Open-Meteo serves
+        weather_forecast: true      # also store its 7-day forecast, hourly (off by default)
         anemometer_height_m: 2      # optional; with wind_surroundings, wind is estimated at 10 m
         wind_surroundings: gardens  # none, open, gardens or sheltered
         wind_model_fallback: true   # the weather model's wind while the cups are too slow to turn
@@ -76,6 +77,9 @@ class StationEntry(BaseModel):
     timezone: str | None = None
     #: The Open-Meteo model stored beside the readings while there are coordinates, or `off`.
     weather_model: str = Field(default=weathermodel.DEFAULT_MODEL, pattern=r"^[a-z0-9_]{1,64}$")
+    #: Whether the weather model's forecast is stored too. Off unless chosen: InfluxDB 3 Core,
+    #: which does not compact its files, soon refuses to read it back (see the README).
+    weather_forecast: bool = False
     #: The anemometer's height above the ground, and what surrounds it: together they give the
     #: factor wind is scaled by to estimate it at the standard 10 m (`windheight`).
     anemometer_height_m: float | None = Field(
@@ -173,6 +177,7 @@ class Station:
     timezone: str | None = None
     dismissed: dict[str, float] = field(default_factory=dict)
     weather_model: str = weathermodel.DEFAULT_MODEL
+    weather_forecast: bool = False
 
     def matches(self, passkey: str) -> bool:
         """Whether a report's PASSKEY is this station's, compared in constant time."""
@@ -189,6 +194,11 @@ class Station:
         return (
             self.weather_model if self.located and self.weather_model != weathermodel.OFF else None
         )
+
+    @property
+    def forecast_model(self) -> str | None:
+        """The weather model whose forecast is stored for this station, or None."""
+        return self.model if self.weather_forecast else None
 
 
 @dataclass(frozen=True)
@@ -282,6 +292,7 @@ def build(document: ConfigDocument) -> StationConfig:
                 timezone=entry.timezone or timezones.zone_at(entry.latitude, entry.longitude),
                 dismissed=dict(entry.dismissed),
                 weather_model=entry.weather_model,
+                weather_forecast=entry.weather_forecast,
             )
             for entry in document.stations
         )

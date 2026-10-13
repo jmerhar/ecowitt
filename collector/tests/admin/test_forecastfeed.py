@@ -30,6 +30,7 @@ HOME = Station(
     latitude=45.0,
     longitude=7.0,
     timezone="Europe/Lisbon",
+    weather_forecast=True,
 )
 CABIN = Station("Cabin", Preferences(), "L")
 
@@ -123,9 +124,10 @@ async def test_the_stations_model_is_asked_for_and_utc_without_a_time_zone() -> 
     assert "elevation" not in query
 
 
-async def test_a_station_without_a_model_is_not_fetched() -> None:
+async def test_a_station_without_a_model_or_not_storing_its_forecast_is_not_fetched() -> None:
+    stations = [replace(HOME, weather_model="off"), replace(HOME, weather_forecast=False)]
     async with serving(StubInflux(status=200, reply=REPLY)) as stub, httpx2.AsyncClient() as client:
-        assert await feed(stub.url, client, [replace(HOME, weather_model="off")]).refresh() == 0
+        assert await feed(stub.url, client, stations).refresh() == 0
 
     assert stub.requests == []
 

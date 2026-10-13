@@ -1062,6 +1062,11 @@ async def _station_action(
             timezone=form.get("timezone", "").strip() or None,
             weather_model=form.get("weather_model")
             or (existing.weather_model if existing else weathermodel.DEFAULT_MODEL),
+            # Unticked, a checkbox is not sent: the model's choice beside it tells that apart from
+            # a form without the box.
+            weather_forecast="weather_forecast" in form
+            if "weather_model" in form
+            else (existing.weather_forecast if existing else False),
             anemometer_height_m=height,
             wind_surroundings=form.get("wind_surroundings")
             or (existing.wind_surroundings if existing else windheight.NONE),

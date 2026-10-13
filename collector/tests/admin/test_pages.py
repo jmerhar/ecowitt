@@ -809,6 +809,27 @@ class TestWindSensor:
         rig.post("/setup/station", {"original": "Home", "name": "Home"})
         assert load_document(rig.context.settings.config_file).stations[0].wind_model_fallback
 
+    async def test_the_forecast_is_stored_only_once_ticked(self, rig: Rig) -> None:
+        await rig.report()
+        adopt(rig)
+        page = rig.client.get("/setup").text
+        assert 'name="weather_forecast" >' in page
+        assert "<code>--query-file-limit</code>" in page
+        fields = {"original": "Home", "name": "Home", "weather_model": "best_match"}
+
+        rig.post("/setup/station", fields | {"weather_forecast": "on"})
+
+        saved = load_document(rig.context.settings.config_file).stations[0]
+        assert saved.weather_forecast
+        assert rig.store.stations.get("Home").weather_forecast
+        assert 'name="weather_forecast" checked>' in rig.client.get("/setup").text
+        # A form without the model's section leaves it as it is; one with it and the box
+        # unticked turns it off.
+        rig.post("/setup/station", {"original": "Home", "name": "Home"})
+        assert load_document(rig.context.settings.config_file).stations[0].weather_forecast
+        rig.post("/setup/station", fields)
+        assert not load_document(rig.context.settings.config_file).stations[0].weather_forecast
+
     async def test_an_altitude_lookup_keeps_the_box_as_it_was_sent(self, rig: Rig) -> None:
         """The lookup redraws the form from what was typed; the elevation services are down."""
         await rig.report()
@@ -1290,7 +1311,7 @@ class TestStatus:
 
         assert "not configured" in page and "not sent since this server started" in page
         assert "nothing fetched yet: it is fetched for stations with coordinates" in page
-        assert "nothing fetched yet: it is fetched for stations with a weather model" in page
+        assert "it is fetched for stations that store their model's forecast" in page
 
     async def test_the_console_describes_itself(self, rig: Rig) -> None:
         await rig.report()

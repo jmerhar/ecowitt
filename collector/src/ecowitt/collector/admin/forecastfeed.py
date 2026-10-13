@@ -62,10 +62,12 @@ class ForecastFeed:
         self._wake.set()
 
     async def refresh(self) -> int:
-        """Fetch once for every station with a model, returning how many answered."""
+        """Fetch once for every station storing its model's forecast, returning how many
+        answered."""
         answered = 0
         for station in self._stations().stations:
-            if station.model is not None and await self._refresh(station, station.model):
+            model = station.forecast_model
+            if model is not None and await self._refresh(station, model):
                 answered += 1
         return answered
 
