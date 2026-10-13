@@ -3,11 +3,14 @@ the dashboard draws from it -- the forecast section, and the cards' warnings of 
 
 Each stored row is tagged with its `lead`, how far ahead it was made, so the newest forecast for
 any hour is the row with the smallest lead. Only the station's current weather model counts.
+
+Open-Meteo gives an hour's rain, its chance and its strongest gust at the hour's end; they are
+read back at its start, where the hour's temperature is, so that 14:00 means 14:00 to 15:00.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, time, timedelta, tzinfo
 from typing import Protocol
 
@@ -32,6 +35,8 @@ RAIN_WITHIN = timedelta(hours=6)
 FROST_C = 2.0
 #: How far ahead a drier spell for airing is looked for.
 AIRING_WITHIN = timedelta(hours=12)
+#: The hourly values Open-Meteo gives for the hour ending at a row's time.
+OVER_THE_HOUR = ("precip_1h", "precip_probability", "gust")
 
 
 @dataclass(frozen=True)
@@ -53,6 +58,7 @@ async def read(
     hour = now.replace(minute=0, second=0, microsecond=0)
     hourly = _fields(weathermodel.FORECAST_HOURLY, info)
     daily = _fields(weathermodel.FORECAST_DAILY, info)
+    # The end is inclusive, so the row holding the last hour's rain, stored at its end, is read.
     hours = await reader.points(
         station, weathermodel.FORECAST_TABLE, hourly, start=hour, end=hour + timedelta(hours=HOURS)
     )
@@ -67,7 +73,27 @@ async def read(
     issued = max((_issued(p) for p in newest_hours), default=None)
     if issued is None or now - issued > STALE_AFTER:
         return Stored()
-    return Stored(newest_hours[:HOURS], _newest(days, info.weather_model), issued)
+    starting = _from_hour_start(newest_hours, info)
+    return Stored(starting[:HOURS], _newest(days, info.weather_model), issued)
+
+
+def _from_hour_start(points: list[Point], info: StationInfo) -> list[Point]:
+    """Each hour with the values Open-Meteo gives at its end taken from the next row instead, or
+    left out where there is no next row."""
+    names = {
+        field_name(base, kind, info.units)
+        for variable, (base, kind) in weathermodel.FORECAST_HOURLY.items()
+        if base in OVER_THE_HOUR
+    }
+    by_time = {p.time: p for p in points}
+    moved = []
+    for p in points:
+        after = by_time.get(p.time + timedelta(hours=1))
+        values = {k: v for k, v in p.values.items() if k not in names}
+        if after is not None:
+            values |= {k: v for k, v in after.values.items() if k in names}
+        moved.append(replace(p, values=values))
+    return moved
 
 
 def _fields(variables: dict[str, tuple[str, Kind]], info: StationInfo) -> list[str]:
@@ -163,6 +189,7 @@ def answer(
                 wind_direction=None if direction is None else round(direction),
                 compass=None if direction is None else weather.compass(direction),
                 uv_index_max=values.out(Kind.UV_INDEX, v.get(f("uv_index_max", Kind.UV_INDEX))),
+                humidity=values.out(Kind.HUMIDITY, v.get(f("humidity_mean", Kind.HUMIDITY))),
             )
         )
     return hours, days
@@ -183,10 +210,11 @@ class Coming:
 
 
 def rain(stored: Stored, values: Values, info: StationInfo, now: datetime) -> Coming | None:
-    """The first hour within RAIN_WITHIN with rain likely: its chance (or amount) of it."""
+    """The first hour within RAIN_WITHIN, the one under way included, with rain likely: its
+    chance (or amount) of it."""
     chance = field_name("precip_probability", Kind.PERCENT, info.units)
     amount = field_name("precip_1h", Kind.RAIN, info.units)
-    for p in _within(stored.hours, now, RAIN_WITHIN):
+    for p in _within(stored.hours, now, RAIN_WITHIN, under_way=True):
         pct = values.metric(Kind.PERCENT, p.values.get(chance))
         mm = values.metric(Kind.RAIN, p.values.get(amount))
         if (pct is not None and pct >= RAIN_LIKELY_PCT) or (
@@ -206,11 +234,12 @@ def extreme(
     *,
     lowest: bool,
 ) -> Coming | None:
-    """The lowest or highest forecast value of a field within WARN_WITHIN, and when."""
+    """The lowest or highest forecast value of a field within WARN_WITHIN, and when. A value
+    over the hour (a gust) counts from the hour under way; a value at a moment, from the next."""
     name = field_name(base, kind, info.units)
     found = [
         Coming(p.time, v)
-        for p in _within(stored.hours, now, WARN_WITHIN)
+        for p in _within(stored.hours, now, WARN_WITHIN, under_way=base in OVER_THE_HOUR)
         if (v := values.metric(kind, p.values.get(name))) is not None
     ]
     if not found:
@@ -220,22 +249,39 @@ def extreme(
 
 
 def drier_from(
-    stored: Stored, values: Values, info: StationInfo, now: datetime, room_dew_points: list[float]
+    stored: Stored, values: Values, info: StationInfo, now: datetime, room_deltas: list[float]
 ) -> datetime | None:
-    """The first hour within AIRING_WITHIN whose forecast dew point is low enough to dry one of
-    the damp rooms whose dew points are given (in °C), by the Good time to air rule's margin."""
-    if not room_dew_points:
+    """The first hour within AIRING_WITHIN when the outdoor air is forecast dry enough to air one
+    of the damp rooms, whose dew points stand `room_deltas` (°C) above the outdoor one now.
+
+    The model's dew point is compared with its own for the hour under way rather than with the
+    station's, so that a model reading steadily drier or damper than the station does not
+    announce a change that is only that difference: the air must dry by as much as the Good time
+    to air rule's margin is short of being met.
+    """
+    if not room_deltas:
         return None
     name = field_name("dewpoint", Kind.TEMPERATURE, info.units)
-    wettest = max(room_dew_points)
-    for p in _within(stored.hours, now, AIRING_WITHIN):
+    hour = now.replace(minute=0, second=0, microsecond=0)
+    present = next((p for p in stored.hours if p.time == hour), None)
+    model_now = (
+        None if present is None else values.metric(Kind.TEMPERATURE, present.values.get(name))
+    )
+    if model_now is None:
+        return None
+    needed = weather.AIRING_DEWPOINT_DELTA_C - max(room_deltas)
+    for p in _within(stored.hours, now, AIRING_WITHIN, under_way=False):
         outdoor = values.metric(Kind.TEMPERATURE, p.values.get(name))
-        if outdoor is not None and wettest - outdoor > weather.AIRING_DEWPOINT_DELTA_C:
+        if outdoor is not None and model_now - outdoor > needed:
             return p.time
     return None
 
 
-def _within(points: list[Point], now: datetime, span: timedelta) -> list[Point]:
-    """The hours still to come within `span`, the one under way included."""
-    start = now.replace(minute=0, second=0, microsecond=0)
-    return [p for p in points if start <= p.time <= now + span]
+def _within(points: list[Point], now: datetime, span: timedelta, *, under_way: bool) -> list[Point]:
+    """The hours within `span`: from the one under way, for a value over the hour; otherwise
+    those after now, since a value at a moment that has come is the station's to report."""
+    end = now + span
+    if under_way:
+        start = now.replace(minute=0, second=0, microsecond=0)
+        return [p for p in points if start <= p.time <= end]
+    return [p for p in points if now < p.time <= end]

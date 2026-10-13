@@ -236,6 +236,8 @@ class Now(BaseModel):
 class ForecastHour(BaseModel):
     """The forecast for one hour."""
 
+    #: The hour's start. Temperature, humidity, dew point and wind are for that moment; rain and
+    #: gusts for the hour from it.
     time: datetime
     temperature: float | None = None
     humidity: float | None = None
@@ -269,6 +271,8 @@ class ForecastDay(BaseModel):
     wind_direction: float | None = None
     compass: str | None = None
     uv_index_max: float | None = None
+    #: The day's mean relative humidity, in %.
+    humidity: float | None = None
 
 
 class ForecastOut(BaseModel):

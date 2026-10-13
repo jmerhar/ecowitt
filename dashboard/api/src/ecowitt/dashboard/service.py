@@ -291,14 +291,12 @@ class Dashboard:
         answer.sensors = _health(latest, info)
         answer.notices = _notices(latest, values, stored, answer)
         coming = await self._stored_forecast(station, info)
-        _forecast_notices(answer, coming, values, info, zone, latest.at)
-        if answer.airing is not None and answer.airing.advice != "open" and answer.outdoor:
+        _forecast_notices(answer, coming, values, info, zone, self.clock())
+        if answer.airing is not None and answer.airing.advice != "open":
             damp = [r for r in air if r.humidity >= weather.AIRING_HUMIDITY_PCT]
-            outdoor_dp = _outdoor_dew_point(latest, values, stored)
-            if outdoor_dp is not None:
-                answer.airing.drier_from = forecast.drier_from(
-                    coming, values, info, latest.at, [outdoor_dp + r.delta for r in damp]
-                )
+            answer.airing.drier_from = forecast.drier_from(
+                coming, values, info, self.clock(), [r.delta for r in damp]
+            )
         answer.sky = _sky(latest, stored)
         answer.summary = _summary(answer, values.target)
         return answer
@@ -956,16 +954,6 @@ def _columns(
     return columns
 
 
-def _outdoor_dew_point(latest: _Latest, values: _Values, stored: Units) -> float | None:
-    """The outdoor sensor's latest dew point, in °C."""
-    for span in latest.derived:
-        if span.sensor == "outdoor":
-            return values.metric(
-                Kind.TEMPERATURE, span.last.get(field_name("dewpoint", Kind.TEMPERATURE, stored))
-            )
-    return None
-
-
 def _forecast_notices(
     now: models.Now,
     coming: forecast.Stored,
@@ -999,7 +987,12 @@ def _forecast_notices(
     raining = now.rain is not None and now.rain.raining
     rain = forecast.rain(coming, values, info, at)
     if rain is not None and not raining:
-        say("rain", f"Rain likely from {when(rain.time)}.")
+        say(
+            "rain",
+            "Rain likely within the hour."
+            if rain.time <= at
+            else f"Rain likely from {when(rain.time)}.",
+        )
     low = forecast.extreme(coming, values, info, at, "temp", Kind.TEMPERATURE, lowest=True)
     if low is not None and low.value <= forecast.FROST_C:
         # The forecast's frost is more precise than the present reading's hint of it.

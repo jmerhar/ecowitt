@@ -7,6 +7,7 @@ from datetime import timedelta
 
 from fastapi.testclient import TestClient
 
+from ecowitt.dashboard import models
 from ecowitt.dashboard.service import Dashboard
 
 from .conftest import INFO, MIDNIGHT, NOW, readings, row
@@ -121,8 +122,8 @@ async def test_rain_coming_is_on_the_rain_card_while_it_is_dry() -> None:
 
     notices = (await dashboard.now("example")).notices
 
-    # 17:00 UTC is 18:00 in Lisbon.
-    assert notices["rain"].text == "Rain likely from 18:00."
+    # The row at 17:00 UTC is the hour ending then, which begins at 17:00 in Lisbon.
+    assert notices["rain"].text == "Rain likely from 17:00."
 
 
 async def test_a_wet_hour_by_amount_counts_too_and_not_while_raining() -> None:
@@ -131,7 +132,7 @@ async def test_a_wet_hour_by_amount_counts_too_and_not_while_raining() -> None:
     found = await Dashboard(
         MemoryReader([*dry, *rows], {"example": MODELLED}), clock=lambda: NOW
     ).now("example")
-    assert found.notices["rain"].text == "Rain likely from 17:00."
+    assert found.notices["rain"].text == "Rain likely from 16:00."
     # The example station is raining already: there is nothing to announce.
     raining = await board(*rows).now("example")
     assert raining.rain is not None and raining.rain.raining
@@ -153,11 +154,12 @@ async def test_frost_heat_and_gusts_coming_are_on_their_cards() -> None:
 
     notices = (await board(*rows).now("example")).notices
 
-    # 03:00 and 10:00 UTC tomorrow are 04:00 and 11:00 in Lisbon; 19:00 UTC is 20:00 today.
+    # 03:00 and 10:00 UTC tomorrow are 04:00 and 11:00 in Lisbon. A gust is the strongest in the
+    # hour ending at its row, so the 19:00 UTC row's hour begins at 19:00 in Lisbon.
     assert notices["outdoor"].text == (
         "Down to 1 °C at tomorrow 04:00: frost possible. Up to 33 °C at tomorrow 11:00."
     )
-    assert notices["wind"].text == "Gusts to 72 km/h at 20:00."
+    assert notices["wind"].text == "Gusts to 72 km/h at 19:00."
 
 
 async def test_the_forecasts_frost_replaces_the_present_readings_hint() -> None:
@@ -174,8 +176,8 @@ async def test_the_forecasts_frost_replaces_the_present_readings_hint() -> None:
 
 
 async def test_a_drier_spell_ahead_is_given_while_the_advice_is_not_to_open() -> None:
-    """The rooms' dew points are 1 °C above the outdoor 12.5 °C; air below 11.5 °C dries them."""
-    dry_later = coming(**{str(h): {"dewpoint_c": 11.0} for h in range(4, 25)})
+    """The rooms' dew points are 1 °C above outdoors: the model's air must dry by over 1 °C."""
+    dry_later = coming(**{str(h): {"dewpoint_c": 10.9} for h in range(4, 25)})
     airing = {"dewpoint_delta_c": 1.0, "predicted_humidity_pct": 70.0}
     vent = [r for r in readings() if r.table != "ventilation"] + [
         row("ventilation", NOW - timedelta(minutes=1), airing, sensor=s, name=n)
@@ -226,3 +228,130 @@ async def test_the_route_serves_it(client: TestClient, reader: MemoryReader) -> 
     assert response.status_code == 200
     assert response.headers["cache-control"] == "public, max-age=300"
     assert response.json()["hours"][0]["temperature"] == 62.6
+
+
+def damp_rooms(living: tuple[float, float], bath: tuple[float, float] = (50.0, 0.0)) -> list:
+    """The readings with each room's humidity, and its dew point above outdoors', replaced."""
+    rooms = {"indoor": living, "ch1": bath}
+    kept = [r for r in readings() if r.table not in {"ventilation", "indoor", "channel"}]
+    return kept + [
+        row("indoor", NOW - timedelta(minutes=1), {"temp_c": 20.0, "humidity_pct": living[0]},
+            sensor="indoor", name="Living"),
+        row("channel", NOW - timedelta(minutes=1), {"temp_c": 20.0, "humidity_pct": bath[0]},
+            sensor="ch1", name="ch1", channel="1"),
+    ] + [
+        row("ventilation", NOW - timedelta(minutes=1),
+            {"dewpoint_delta_c": delta, "predicted_humidity_pct": 70.0}, sensor=s, name=s)
+        for s, (_, delta) in rooms.items()
+    ]  # fmt: skip
+
+
+async def airing_with(rows: list, dew: dict[int, float], clock=NOW) -> object:  # noqa: ANN001
+    found = await Dashboard(
+        MemoryReader([*rows, *coming(**{str(h): {"dewpoint_c": d} for h, d in dew.items()})],
+                     {"example": MODELLED}),
+        clock=lambda: clock,
+    ).now("example")  # fmt: skip
+    assert found.airing is not None
+    return found.airing
+
+
+async def test_a_model_reading_drier_than_the_station_announces_nothing_by_itself() -> None:
+    """The model's dew point 3 °C under the station's, throughout: no change is coming."""
+    airing = await airing_with(damp_rooms((70.0, 1.0)), dict.fromkeys(range(25), 9.5))
+
+    assert airing.advice != "open" and airing.drier_from is None
+
+
+async def test_the_dampest_rooms_need_decides_and_dry_rooms_are_left_out() -> None:
+    """One damp room 1.5 °C above outdoors needs the air to dry by 0.5 °C; one 0 °C above by 2.
+    A dry room 1.9 °C above would need 0.1 °C, but it does not need airing."""
+    dew = {0: 12.0, **dict.fromkeys(range(3, 25), 11.2)}
+    damp = await airing_with(damp_rooms((70.0, 0.0), (70.0, 1.5)), dew)
+    dry = await airing_with(damp_rooms((70.0, 0.0), (55.0, 1.9)), dew)
+
+    assert damp.drier_from == NOW + 3 * HOUR
+    assert dry.drier_from is None
+
+
+async def test_no_drier_spell_while_the_advice_is_to_open_already() -> None:
+    airing = await airing_with(damp_rooms((70.0, 3.0)), dict.fromkeys(range(1, 25), 5.0))
+
+    assert (airing.advice, airing.drier_from) == ("open", None)
+
+
+async def test_the_hour_under_way_is_not_drier_air_coming() -> None:
+    """At 14:40 the 14:00 row is past: the first hour that can be coming is 15:00."""
+    later = NOW + timedelta(minutes=40)
+    airing = await airing_with(damp_rooms((70.0, 1.0)), {0: 12.0, 1: 12.0, 2: 10.0}, clock=later)
+
+    assert airing.drier_from == NOW + 2 * HOUR
+
+
+async def test_no_drier_spell_without_the_models_present_dew_point() -> None:
+    rows = [hour(NOW + h * HOUR, h + 1, dewpoint_c=5.0) for h in range(1, 25)]
+    found = await Dashboard(
+        MemoryReader([*damp_rooms((70.0, 1.0)), *rows], {"example": MODELLED}), clock=lambda: NOW
+    ).now("example")
+
+    assert found.airing is not None and found.airing.drier_from is None
+
+
+async def test_rain_in_the_hour_under_way_is_within_the_hour_and_past_rain_is_not() -> None:
+    """At 14:40, the row at 15:00 is the hour under way; the row at 14:00 is the hour gone."""
+    dry = [r for r in readings() if r.table != "rain"]
+    later = NOW + timedelta(minutes=40)
+
+    async def notices(at_hours: dict) -> dict:  # noqa: ANN001
+        board = Dashboard(MemoryReader([*dry, *coming(**at_hours)], {"example": MODELLED}),
+                          clock=lambda: later)  # fmt: skip
+        return (await board.now("example")).notices
+
+    under_way = await notices({"1": {"precip_probability_pct": 80.0}})
+    gone = await notices({"0": {"precip_probability_pct": 80.0}})
+
+    assert under_way["rain"].text == "Rain likely within the hour."
+    assert "rain" not in gone
+
+
+async def test_each_hour_shows_the_rain_and_gusts_of_the_hour_from_it() -> None:
+    rows = coming(**{"1": {"precip_1h_mm": 1.5, "gust_kmh": 44.0, "temp_c": 9.0}})
+
+    found = await board(*rows[:-1]).forecast("example")
+
+    first, second = found.hours[0], found.hours[1]
+    assert (first.time, first.precipitation, first.wind_gust, first.temperature) == (
+        NOW, 1.5, 44.0, 17.0,
+    )  # fmt: skip
+    assert (second.temperature, second.wind_gust) == (9.0, 25.0)
+    # The last hour's end is beyond what is stored: its rain is not known.
+    assert found.hours[-1].precipitation is None and found.hours[-1].wind_gust is None
+
+
+async def test_a_gust_already_blowing_is_not_announced_again() -> None:
+    blowing = [r for r in readings() if r.table != "wind_10m"] + [
+        row("wind_10m", NOW - timedelta(minutes=1),
+            {"speed_kmh": 40.0, "gust_kmh": 70.0, "source": "sensor"}),
+    ]  # fmt: skip
+    rows = coming(**{"5": {"gust_kmh": 80.0}})
+    found = await Dashboard(
+        MemoryReader([*blowing, *rows], {"example": MODELLED}), clock=lambda: NOW
+    ).now("example")
+
+    assert found.notices["wind"].text == "Strong gusts."
+
+
+async def test_each_day_has_its_mean_humidity() -> None:
+    found = await board(*coming(), day(MIDNIGHT, 0, humidity_mean_pct=81.0)).forecast("example")
+
+    assert found.days[0].humidity == 81.0
+
+
+async def test_a_past_or_present_hours_frost_is_the_stations_to_report() -> None:
+    """At 14:40 the 14:00 row is gone, and at 14:00 it is now: neither is coming."""
+    frost = coming(**{"0": {"temp_c": 0.0}})
+    for clock in (NOW + timedelta(minutes=40), NOW):
+        found = await Dashboard(
+            MemoryReader([*readings(), *frost], {"example": MODELLED}), clock=lambda c=clock: c
+        ).now("example")
+        assert "frost" not in found.notices.get("outdoor", models.Notice(level="x", text="")).text

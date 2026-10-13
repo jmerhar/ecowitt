@@ -99,7 +99,7 @@ FORECAST_DAILY_TABLE = "forecast_daily"
 FORECAST_DAYS = 7
 
 #: Open-Meteo's hourly forecast variables, and the base field and kind each is stored as.
-#: Precipitation is the hour's total, ending at the row's time.
+#: Precipitation, its chance and the gust are for the hour ending at the row's time.
 FORECAST_HOURLY: dict[str, tuple[str, Kind]] = {
     "temperature_2m": ("temp", Kind.TEMPERATURE),
     "relative_humidity_2m": ("humidity", Kind.HUMIDITY),
@@ -126,4 +126,5 @@ FORECAST_DAILY: dict[str, tuple[str, Kind]] = {
     "wind_gusts_10m_max": ("gust_max", Kind.SPEED),
     "wind_direction_10m_dominant": ("dir", Kind.ANGLE),
     "uv_index_max": ("uv_index_max", Kind.UV_INDEX),
+    "relative_humidity_2m_mean": ("humidity_mean", Kind.HUMIDITY),
 }
