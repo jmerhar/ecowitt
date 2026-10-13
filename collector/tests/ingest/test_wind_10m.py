@@ -21,11 +21,14 @@ def wind(speed: float, gust: float = 5.0, **more: float) -> list[Reading]:
 
 
 def estimate(
-    readings: list[Reading], factor: float = 2.0, model: ModelWind | None = None
+    readings: list[Reading],
+    factor: float = 2.0,
+    model: ModelWind | None = None,
+    fallback: bool = True,
 ) -> dict[str, object]:
     derived = derive(
         readings,
-        Preferences(wind_factor=factor),
+        Preferences(wind_factor=factor, wind_model_fallback=fallback),
         StalenessTracker(),
         station="Home",
         timestamp=NOW,
@@ -88,3 +91,9 @@ def test_stalled_cups_with_no_recent_model_stay_the_sensors(model: ModelWind | N
 
 def test_no_wind_speed_no_estimate() -> None:
     assert estimate([Reading("wind", "dir", Kind.ANGLE, 90.0, sensor="wind")]) == {}
+
+
+def test_with_the_fallback_off_stalled_cups_stay_the_sensors() -> None:
+    found = estimate(wind(0.4, 1.0), model=ModelWind(NOW, 4.2, 9.1), fallback=False)
+
+    assert found == {"speed": 0.8, "gust": 2.0, "source": "sensor"}

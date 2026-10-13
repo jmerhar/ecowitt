@@ -788,6 +788,48 @@ class TestWindSensor:
         assert "Saved, these give <strong>×2.16</strong>." in page
         assert '<option value="sheltered" selected>Sheltered' in page
 
+    async def test_the_model_fallback_is_on_until_unticked(self, rig: Rig) -> None:
+        await rig.report()
+        adopt(rig)
+        assert 'name="wind_model_fallback" checked>' in rig.client.get("/setup").text
+        fields = {
+            "original": "Home",
+            "name": "Home",
+            "anemometer_height_m": "2",
+            "wind_surroundings": "open",
+        }
+
+        rig.post("/setup/station", fields)
+
+        assert rig.store.stations.get("Home").preferences.wind_model_fallback is False
+        assert 'name="wind_model_fallback" >' in rig.client.get("/setup").text
+        rig.post("/setup/station", fields | {"wind_model_fallback": "on"})
+        assert load_document(rig.context.settings.config_file).stations[0].wind_model_fallback
+        # A form without the wind section, such as an altitude lookup's, leaves it as it is.
+        rig.post("/setup/station", {"original": "Home", "name": "Home"})
+        assert load_document(rig.context.settings.config_file).stations[0].wind_model_fallback
+
+    async def test_an_altitude_lookup_keeps_the_box_as_it_was_sent(self, rig: Rig) -> None:
+        """The lookup redraws the form from what was typed; the elevation services are down."""
+        await rig.report()
+        adopt(rig)
+
+        page = rig.post(
+            "/setup/station",
+            {
+                "original": "Home",
+                "name": "Home",
+                "action": "lookup",
+                "latitude": "45",
+                "longitude": "7",
+                "anemometer_height_m": "2",
+                "wind_surroundings": "open",
+            },
+        ).text
+
+        assert "did not answer" in page
+        assert 'name="wind_model_fallback" >' in page
+
     async def test_a_form_without_the_wind_fields_keeps_them(self, rig: Rig) -> None:
         await rig.report()
         adopt(rig)

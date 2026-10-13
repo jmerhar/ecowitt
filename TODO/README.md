@@ -10,3 +10,4 @@ fits the existing code, and lists what is still undecided. Delete a note when it
 | [Sun position](sun-position.md) | sunrise, sunset, sun elevation and clear-sky radiation per station |
 | [Model disagreement alert](model-disagreement-alert.md) | alert when a station's readings stay far from its weather model's |
 | [Reading from InfluxDB 2.x](influxdb2-reads.md) | let the dashboard read a station stored in an InfluxDB 2.x bucket |
+| [Wind factor from the model](wind-factor-from-model.md) | suggest each station's 10 m wind factor from its own wind against the model's |

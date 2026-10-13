@@ -158,13 +158,18 @@
         {% for code, kind in surroundings.items() %}<option value="{{ code }}" {% if code == chosen_surroundings %}selected{% endif %}>{{ kind.label }}</option>{% endfor %}
         </select></div>
     </div>
+    {% set fallback = draft.get('wind_model_fallback') == 'on' if draft and draft.get('original') == entry.name and 'anemometer_height_m' in draft else entry.wind_model_fallback %}
+    <label class="inline"><input type="checkbox" name="wind_model_fallback" {% if fallback %}checked{% endif %}>
+      Use the weather model's wind while the cups are too slow to turn</label>
     <p class="muted">Forecasts and weather models give wind at 10 m above open ground, where it blows
       harder than lower down. With the anemometer's height above the ground (a roof's height
       included) and what surrounds it, wind is also stored as an estimate at 10 m, which the
       dashboards show first.
       {% if item.wind_factor != 1 %}Saved, these give <strong>×{{ "%.2f"|format(item.wind_factor) }}</strong>.{% endif %}
       A change applies to readings from then on; earlier ones keep the factor they were stored with.
-      While the cups are too slow to turn, below 1 m/s, the estimate is the weather model's wind.</p>
+      While the cups are too slow to turn, below 1 m/s, the estimate is the weather model's wind
+      if that box is ticked and the station has a weather model; unticked, it is the stalled
+      reading, scaled.</p>
 
     <h3 class="sub">Sensor names</h3>
     <div class="fields">

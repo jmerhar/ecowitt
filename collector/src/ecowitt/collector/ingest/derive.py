@@ -41,7 +41,7 @@ def derive(
     """Return the derived readings for one report's parsed readings.
 
     `model_wind` is the station's weather model's latest wind, which stands in for the 10 m
-    estimate while the cups have stalled.
+    estimate while the cups have stalled, unless the station's preferences turn that off.
     """
     readings = list(readings)
     climate = _climate(readings)
@@ -60,7 +60,8 @@ def derive(
     if preferences.altitude_m is not None and "abs" in pressure:
         derived += _sea_level(pressure, preferences.altitude_m, climate)
 
-    derived += wind_10m(readings, preferences.wind_factor, model_wind, timestamp)
+    model = model_wind if preferences.wind_model_fallback else None
+    derived += wind_10m(readings, preferences.wind_factor, model, timestamp)
     derived += _staleness(readings, tracker, station, timestamp)
     return derived
 

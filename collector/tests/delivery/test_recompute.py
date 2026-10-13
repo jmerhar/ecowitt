@@ -202,3 +202,19 @@ async def test_closing_with_nothing_running_is_harmless() -> None:
     job = WindRecompute(Sink(), lambda: None)
     await job.aclose()
     await job.wait()
+
+
+async def test_with_the_fallback_off_no_model_is_read() -> None:
+    reader = Reader({"wind": [wind(FIRST, 0.0, 0.0)], "model": [model(FIRST, 18.0, 30.0)]})
+    station = Station(
+        "Home",
+        Preferences(wind_factor=2.0, wind_model_fallback=False),
+        "K",
+        latitude=45.0,
+        longitude=7.0,
+    )
+
+    _, sink = await run(reader, station)
+
+    assert ten(sink.rows)[FIRST]["source"] == "sensor"
+    assert {t for t, _, _ in reader.asked} == {"wind"}

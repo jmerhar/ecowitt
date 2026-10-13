@@ -15,6 +15,7 @@ environment variables. It is plain YAML so it can be written by hand:
         weather_model: best_match   # or off, or any model Open-Meteo serves
         anemometer_height_m: 2      # optional; with wind_surroundings, wind is estimated at 10 m
         wind_surroundings: gardens  # none, open, gardens or sheltered
+        wind_model_fallback: true   # the weather model's wind while the cups are too slow to turn
         sensors:
           indoor: Lounge
           ch1: Bathroom
@@ -81,6 +82,8 @@ class StationEntry(BaseModel):
         default=None, ge=windheight.MIN_HEIGHT_M, le=windheight.MAX_HEIGHT_M
     )
     wind_surroundings: Literal["none", "open", "gardens", "sheltered"] = windheight.NONE
+    #: Whether the weather model's wind stands in for the estimate while the cups stall.
+    wind_model_fallback: bool = True
     sensors: dict[str, str] = Field(default_factory=dict)
     #: Calibration warnings the operator has acknowledged, by kind, with the error at the time.
     #: A warning stays hidden only while the error stays close to that value.
@@ -271,6 +274,7 @@ def build(document: ConfigDocument) -> StationConfig:
                     wind_factor=windheight.factor(
                         entry.anemometer_height_m, entry.wind_surroundings
                     ),
+                    wind_model_fallback=entry.wind_model_fallback,
                 ),
                 _passkey=entry.passkey,
                 latitude=entry.latitude,

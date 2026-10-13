@@ -1061,6 +1061,11 @@ async def _station_action(
             anemometer_height_m=height,
             wind_surroundings=form.get("wind_surroundings")
             or (existing.wind_surroundings if existing else windheight.NONE),
+            # A checkbox is sent only when ticked, so the wind section's presence tells an unticked
+            # box from a form without it.
+            wind_model_fallback="wind_model_fallback" in form
+            if "anemometer_height_m" in form
+            else (existing.wind_model_fallback if existing else True),
             sensors=sensors,
             dismissed=existing.dismissed if existing else {},
         )

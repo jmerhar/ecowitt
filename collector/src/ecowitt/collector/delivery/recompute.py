@@ -180,7 +180,7 @@ class WindRecompute:
         reader: Reader, station: Station, start: datetime, end: datetime, units: Units
     ) -> list[windheight.ModelWind]:
         """The station's weather model's wind around a stretch, in m/s, oldest first."""
-        if station.model is None:
+        if station.model is None or not station.preferences.wind_model_fallback:
             return []
         margin = timedelta(seconds=windheight.MODEL_WITHIN_S)
         speed, gust = (field_name(f, Kind.SPEED, units) for f in ("speed", "gust"))

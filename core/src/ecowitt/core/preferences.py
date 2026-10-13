@@ -26,6 +26,8 @@ class Preferences:
     altitude_m: float | None = None
     #: What measured wind is multiplied by to estimate it at 10 m (`windheight.factor`).
     wind_factor: float = 1.0
+    #: Whether the weather model's wind stands in for the 10 m estimate while the cups stall.
+    wind_model_fallback: bool = True
 
     def name_for(self, sensor: str) -> str:
         """The display name for a sensor, falling back to its identifier.

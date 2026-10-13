@@ -188,7 +188,9 @@ by the neutral logarithmic wind profile, ln(10 / z0) / ln(h / z0), with roughnes
 The estimate holds in daylight and in a breeze. On still nights the air near the ground
 decouples from the wind above and cups below about 1 m/s stop turning; while they do, and the
 station has a [weather model](#weather-model), the estimate is the model's 10 m wind, and the
-row's `source` is `model`. A changed height or surroundings applies to readings from then on.
+row's `source` is `model`. Untick *Use the weather model's wind while the cups are too slow to
+turn* to keep the stalled reading, scaled, instead. A changed height or surroundings applies to
+readings from then on.
 
 To bring the history in line, *Recompute the 10 m wind* on the setup page recalculates it with
 the saved factor, from a chosen moment in the station's time or, left empty, from the first
