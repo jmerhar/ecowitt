@@ -2882,13 +2882,680 @@
       "description": "The station's ten-minute direction minus the weather model's, the short way round, only while the model has at least 10.8 km/h (3 m/s) of wind: below that a vane wanders. Within the shaded ±60° band is usual; a steady offset beyond it is a vane pointed wrongly or turned by a building."
     },
     {
+      "id": 39,
+      "type": "row",
+      "title": "Forecast",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 112,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 40,
+      "type": "timeseries",
+      "title": "Temperature and dew point",
+      "description": "The weather model's forecast for the next 48 hours.",
+      "gridPos": {
+        "x": 0,
+        "y": 113,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "timeFrom": "+48h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT time, temp_c AS \"Temperature\", dewpoint_c AS \"Dew point\"\nFROM (\n  SELECT time, temp_c, dewpoint_c,\n    row_number() OVER (PARTITION BY time ORDER BY CAST(lead AS BIGINT)) AS newest\n  FROM forecast\n  WHERE station = '${station}' AND model = '${model}' AND $__timeFilter(time)\n)\nWHERE newest = 1 ORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "axisBorderShow": false
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Temperature"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dew point"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 41,
+      "type": "timeseries",
+      "title": "Rain",
+      "description": "Each hour's forecast total, ending at its time, and the chance of any rain in it.",
+      "gridPos": {
+        "x": 12,
+        "y": 113,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "timeFrom": "+48h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT time, precip_1h_mm AS \"Rain\", precip_probability_pct AS \"Chance\"\nFROM (\n  SELECT time, precip_1h_mm, precip_probability_pct,\n    row_number() OVER (PARTITION BY time ORDER BY CAST(lead AS BIGINT)) AS newest\n  FROM forecast\n  WHERE station = '${station}' AND model = '${model}' AND $__timeFilter(time)\n)\nWHERE newest = 1 ORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: mm",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "axisBorderShow": false
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Rain"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "bars"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 60
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Chance"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-blue"
+                }
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "max",
+                "value": 100
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 42,
+      "type": "timeseries",
+      "title": "Wind",
+      "description": "Forecast at 10 m, the height the station's own wind is estimated at.",
+      "gridPos": {
+        "x": 0,
+        "y": 121,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "timeFrom": "+48h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT time, speed_kmh AS \"Speed\", gust_kmh AS \"Gust\"\nFROM (\n  SELECT time, speed_kmh, gust_kmh,\n    row_number() OVER (PARTITION BY time ORDER BY CAST(lead AS BIGINT)) AS newest\n  FROM forecast\n  WHERE station = '${station}' AND model = '${model}' AND $__timeFilter(time)\n)\nWHERE newest = 1 ORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "velocitykmh",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "axisBorderShow": false
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Speed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Gust"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#73BF6999"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 43,
+      "type": "timeseries",
+      "title": "Humidity and cloud cover",
+      "description": "Outdoor relative humidity, and the share of the sky the model expects cloud over.",
+      "gridPos": {
+        "x": 12,
+        "y": 121,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "timeFrom": "+48h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT time, humidity_pct AS \"Humidity\", cloud_cover_pct AS \"Cloud cover\"\nFROM (\n  SELECT time, humidity_pct, cloud_cover_pct,\n    row_number() OVER (PARTITION BY time ORDER BY CAST(lead AS BIGINT)) AS newest\n  FROM forecast\n  WHERE station = '${station}' AND model = '${model}' AND $__timeFilter(time)\n)\nWHERE newest = 1 ORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "axisBorderShow": false
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "min": 0,
+          "max": 100
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Humidity"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cloud cover"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8AB8FF66"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 25
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 44,
+      "type": "table",
+      "title": "Next 7 days",
+      "description": "The station's local days, from today, as the weather model forecasts them.",
+      "gridPos": {
+        "x": 0,
+        "y": 129,
+        "w": 24,
+        "h": 9
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT time, weather_code AS \"Weather\", temp_min_c AS \"Low\", temp_max_c AS \"High\", precip_mm AS \"Rain\", precip_probability_pct AS \"Chance\", gust_max_kmh AS \"Gusts\", uv_index_max AS \"UV\"\nFROM (\n  SELECT time, weather_code, temp_min_c, temp_max_c, precip_mm, precip_probability_pct, gust_max_kmh, uv_index_max,\n    row_number() OVER (PARTITION BY time ORDER BY CAST(lead AS BIGINT)) AS newest\n  FROM forecast_daily\n  WHERE station = '${station}' AND model = '${model}' AND time >= date_trunc('day', now() AT TIME ZONE '${station_tz}')\n)\nWHERE newest = 1 ORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "time: ddd D MMM"
+              },
+              {
+                "id": "displayName",
+                "value": "Day"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Weather"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "Clear",
+                        "index": 0
+                      },
+                      "1": {
+                        "text": "Mostly clear",
+                        "index": 1
+                      },
+                      "2": {
+                        "text": "Partly cloudy",
+                        "index": 2
+                      },
+                      "3": {
+                        "text": "Overcast",
+                        "index": 3
+                      },
+                      "45": {
+                        "text": "Fog",
+                        "index": 4
+                      },
+                      "48": {
+                        "text": "Freezing fog",
+                        "index": 5
+                      },
+                      "51": {
+                        "text": "Light drizzle",
+                        "index": 6
+                      },
+                      "53": {
+                        "text": "Drizzle",
+                        "index": 7
+                      },
+                      "55": {
+                        "text": "Heavy drizzle",
+                        "index": 8
+                      },
+                      "56": {
+                        "text": "Light freezing drizzle",
+                        "index": 9
+                      },
+                      "57": {
+                        "text": "Freezing drizzle",
+                        "index": 10
+                      },
+                      "61": {
+                        "text": "Light rain",
+                        "index": 11
+                      },
+                      "63": {
+                        "text": "Rain",
+                        "index": 12
+                      },
+                      "65": {
+                        "text": "Heavy rain",
+                        "index": 13
+                      },
+                      "66": {
+                        "text": "Light freezing rain",
+                        "index": 14
+                      },
+                      "67": {
+                        "text": "Freezing rain",
+                        "index": 15
+                      },
+                      "71": {
+                        "text": "Light snow",
+                        "index": 16
+                      },
+                      "73": {
+                        "text": "Snow",
+                        "index": 17
+                      },
+                      "75": {
+                        "text": "Heavy snow",
+                        "index": 18
+                      },
+                      "77": {
+                        "text": "Snow grains",
+                        "index": 19
+                      },
+                      "80": {
+                        "text": "Light showers",
+                        "index": 20
+                      },
+                      "81": {
+                        "text": "Showers",
+                        "index": 21
+                      },
+                      "82": {
+                        "text": "Heavy showers",
+                        "index": 22
+                      },
+                      "85": {
+                        "text": "Light snow showers",
+                        "index": 23
+                      },
+                      "86": {
+                        "text": "Snow showers",
+                        "index": 24
+                      },
+                      "95": {
+                        "text": "Thunderstorm",
+                        "index": 25
+                      },
+                      "96": {
+                        "text": "Thunderstorm with hail",
+                        "index": 26
+                      },
+                      "99": {
+                        "text": "Thunderstorm with heavy hail",
+                        "index": 27
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Low"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "High"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Rain"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: mm"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Chance"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Gusts"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "velocitykmh"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "UV"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    },
+    {
       "id": 31,
       "type": "row",
       "title": "Station",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 112,
+        "y": 138,
         "w": 24,
         "h": 1
       },
@@ -2904,7 +3571,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 113,
+        "y": 139,
         "w": 4,
         "h": 7
       },
@@ -2976,7 +3643,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 113,
+        "y": 139,
         "w": 10,
         "h": 16
       },
@@ -3105,7 +3772,7 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 121,
+        "y": 147,
         "w": 10,
         "h": 8
       },
@@ -3183,7 +3850,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 120,
+        "y": 146,
         "w": 4,
         "h": 9
       },
@@ -3248,7 +3915,7 @@
       "description": "The station's settings as the collector last published them to the database: written when it starts and whenever the setup page changes them. The time zone decides where the station's day begins, and is taken from the coordinates unless one was entered.",
       "gridPos": {
         "x": 14,
-        "y": 113,
+        "y": 139,
         "w": 10,
         "h": 8
       },

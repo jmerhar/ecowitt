@@ -8,7 +8,11 @@ from typing import Any
 
 import pytest
 
+from ecowitt.core import weathermodel
+
 from .grafana_sql import FIELDS, SCHEMA, queried_fields, queried_tables
+
+FORECASTS = {weathermodel.FORECAST_TABLE, weathermodel.FORECAST_DAILY_TABLE}
 
 DASHBOARD = Path(__file__).parents[3] / "grafana" / "weather.json"
 
@@ -101,3 +105,31 @@ def test_the_alert_panel_lists_the_alert_rules() -> None:
     assert len(lists) == 1
     assert labels == {"ecowitt"}
     assert lists[0]["options"]["alertInstanceLabelFilter"] == '{app="ecowitt"}'
+
+
+def test_the_forecast_names_each_weather_code_as_the_dashboard_does() -> None:
+    """A code the mapping lacks would show as a bare number in the days table."""
+    mappings = [
+        prop["value"]
+        for p in PANELS
+        for override in p["fieldConfig"]["overrides"]
+        for prop in override["properties"]
+        if override["matcher"]["options"] == "Weather" and prop["id"] == "mappings"
+    ]
+    names = {int(code): o["text"] for m in mappings for code, o in m[0]["options"].items()}
+
+    assert len(mappings) == 1
+    assert names == weathermodel.WEATHER_CODES
+
+
+def test_the_forecasts_panels_look_ahead_and_read_its_newest_rows() -> None:
+    """Grafana's own range ends now, which is where a forecast begins."""
+    forecast = [p for p in PANELS if queried_tables(p["targets"][0]["rawSql"]) & FORECASTS]
+
+    assert len(forecast) == 5
+    for panel in forecast:
+        sql = panel["targets"][0]["rawSql"]
+        assert "ORDER BY CAST(lead AS BIGINT)" in sql and "WHERE newest = 1" in sql
+        assert "model = '${model}'" in sql
+        if "$__timeFilter" in sql:
+            assert panel["timeFrom"] == "+48h", panel["title"]

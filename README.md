@@ -291,6 +291,8 @@ Create it before first use if you want anything other than keeping everything.
   [weather model](#weather-model)'s value dashed behind it;
 - the outdoor temperature and wind direction minus the model's, with the band within which a
   difference is usual shaded;
+- the model's forecast: temperature and dew point, rain and its chance, wind, humidity and cloud
+  cover for the next 48 hours, whatever time range is chosen, and a table of the next 7 days;
 - battery flags, rooms and outdoor sensors that have stopped changing, the console's pressure
   calibration, and the station's settings as last published (time zone, coordinates, altitude,
   stored units).

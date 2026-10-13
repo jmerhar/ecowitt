@@ -29,8 +29,11 @@ FUNCTIONS = {
     "now",
     "interval",
     "date_part",
+    "date_trunc",
     "initcap",
     "coalesce",
+    # The newest forecast for a time is the row numbered first by its lead.
+    "row_number",
     # A direction's mean is taken around the circle: the angle of the summed unit vectors.
     "sin",
     "cos",
@@ -74,6 +77,19 @@ def schema() -> dict[str, set[str]]:
         "model",
         *(field_name(base, kind, Units()) for base, kind in weathermodel.VARIABLES.values()),
     }
+    # Written by the forecast feed: each table's declared variables, tagged with their lead.
+    for table, variables in (
+        (weathermodel.FORECAST_TABLE, weathermodel.FORECAST_HOURLY),
+        (weathermodel.FORECAST_DAILY_TABLE, weathermodel.FORECAST_DAILY),
+    ):
+        tables[table] = {
+            "time",
+            "station",
+            "source",
+            "model",
+            "lead",
+            *(field_name(base, kind, Units()) for base, kind in variables.values()),
+        }
     return tables
 
 
