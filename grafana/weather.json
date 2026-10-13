@@ -3303,7 +3303,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT time, weather_code AS \"Weather\", temp_min_c AS \"Low\", temp_max_c AS \"High\", precip_mm AS \"Rain\", precip_probability_pct AS \"Chance\", gust_max_kmh AS \"Gusts\", uv_index_max AS \"UV\"\nFROM (\n  SELECT time, weather_code, temp_min_c, temp_max_c, precip_mm, precip_probability_pct, gust_max_kmh, uv_index_max,\n    row_number() OVER (PARTITION BY time ORDER BY CAST(lead AS BIGINT)) AS newest\n  FROM forecast_daily\n  WHERE station = '${station}' AND model = '${model}' AND time >= date_trunc('day', now() AT TIME ZONE '${station_tz}')\n)\nWHERE newest = 1 ORDER BY time",
+          "rawSql": "SELECT time, weather_code AS \"Weather\", temp_min_c AS \"Low\", temp_max_c AS \"High\", precip_mm AS \"Rain\", precip_probability_pct AS \"Chance\", humidity_mean_pct AS \"Humidity\", gust_max_kmh AS \"Gusts\", uv_index_max AS \"UV\"\nFROM (\n  SELECT time, weather_code, temp_min_c, temp_max_c, precip_mm, precip_probability_pct, humidity_mean_pct, gust_max_kmh, uv_index_max,\n    row_number() OVER (PARTITION BY time ORDER BY CAST(lead AS BIGINT)) AS newest\n  FROM forecast_daily\n  WHERE station = '${station}' AND model = '${model}' AND time >= date_trunc('day', now() AT TIME ZONE '${station_tz}')\n)\nWHERE newest = 1 ORDER BY time",
           "refId": "A"
         }
       ],
@@ -3505,6 +3505,18 @@
             "matcher": {
               "id": "byName",
               "options": "Chance"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Humidity"
             },
             "properties": [
               {
