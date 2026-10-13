@@ -29,6 +29,32 @@ describe("NowCard", () => {
     expect(onselect).toHaveBeenCalledWith("temperature");
   });
 
+  it("shows humidity and dew point as coloured bars", () => {
+    const base = now();
+    const { container } = render(NowCard, {
+      now: now({ outdoor: { ...base.outdoor!, humidity: 93, dew_point: 18 } }),
+      symbols: SYMBOLS, timezone: tz, onselect: vi.fn(),
+    });
+    const [humidity, dew] = [...container.querySelectorAll<HTMLElement>(".bar")];
+    expect(humidity).toHaveClass("cool");
+    expect(humidity).toHaveAttribute("title", "Humid");
+    expect(humidity.querySelector("span")!.style.width).toBe("93%");
+    expect(dew).toHaveClass("warn");
+    expect(dew).toHaveAttribute("title", "Muggy");
+    // Read aloud with its level, which a screen reader cannot see in the colour.
+    expect(screen.getByText("93%").closest("dd")).toHaveTextContent("93%, humid");
+  });
+
+  it("draws no bar for a reading the sensor did not send", () => {
+    const base = now();
+    const { container } = render(NowCard, {
+      now: now({ outdoor: { ...base.outdoor!, humidity: null, dew_point: null } }),
+      symbols: SYMBOLS, timezone: tz, onselect: vi.fn(),
+    });
+    expect(container.querySelector(".bar")).toBeNull();
+    expect(screen.getByText("Humidity")).toBeInTheDocument();
+  });
+
   it("leaves out what it does not have", () => {
     const base = now();
     render(NowCard, {

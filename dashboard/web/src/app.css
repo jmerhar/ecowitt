@@ -9,6 +9,7 @@
   --good: #2f6f5e;
   --warn: #a8761c;
   --bad: #a33a2b;
+  --cool: #2f6fb0;
   --gutter: 1rem;
   color-scheme: light dark;
 }
@@ -23,6 +24,7 @@
     --good: #7cc4ad;
     --warn: #e3b04b;
     --bad: #e0806f;
+    --cool: #6ea8e6;
   }
 }
 @media (min-width: 48rem) {

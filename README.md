@@ -354,6 +354,7 @@ talks to the server's own listeners, so publishing it changes nothing about who 
 those.
 
 The page shows a station at a glance — temperature with what it feels like and today's range,
+humidity and dew point as bars coloured by level (dry to very humid; crisp to oppressive),
 wind on a compass, rain, pressure and its three-hour trend, sunrise and sunset, each room with
 whether airing it would help, and any sensor that needs attention — then charts over a day, a
 week, a month or a year, and the highs and lows of today, this month or this year. A card with
