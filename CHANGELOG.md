@@ -5,6 +5,18 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 [Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
 says what under *Upgrading*.
 
+## 2.6.0 — 2026-10-13
+
+### Added
+
+- Outdoor humidity and dew point are shown as bars coloured by level, the dew point on a −5 to
+  25 °C comfort scale.
+- Chart ranges of 1, 3, 6 and 12 hours, the shorter ones charting every report.
+
+### Changed
+
+- On phones the chart ranges are a dropdown.
+
 ## 2.5.0 — 2026-10-13
 
 ### Added
