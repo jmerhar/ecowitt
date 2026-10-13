@@ -32,6 +32,12 @@ describe("History", () => {
     ]);
     await fireEvent.click(screen.getByRole("tab", { name: "3 h" }));
     await waitFor(() => expect(api.series).toHaveBeenLastCalledWith("Home", ["outdoor.temperature", "outdoor.dew_point"], "3h", {}, false));
+    // The phone's folded choice follows, and chooses too.
+    const folded = screen.getByRole("combobox", { name: "Range" }) as HTMLSelectElement;
+    expect(folded.value).toBe("3h");
+    await fireEvent.change(folded, { target: { value: "12h" } });
+    await waitFor(() => expect(api.series).toHaveBeenLastCalledWith("Home", ["outdoor.temperature", "outdoor.dew_point"], "12h", {}, false));
+    expect(screen.getByRole("tab", { name: "12 h" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("offers the weather model where the station has one and the chart has a metric it covers", async () => {

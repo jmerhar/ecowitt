@@ -104,11 +104,18 @@
           title="The weather model's values for this location, dashed: {weatherModel.label}, from Open-Meteo"
           onclick={() => (model = !model)}>Model</button>
       {/if}
-      <div class="tabs" role="tablist" aria-label="Range">
+      <div class="tabs wide-ranges" role="tablist" aria-label="Range">
         {#each meta.ranges as r (r)}
           <button role="tab" aria-selected={r === range} onclick={() => (range = r)}>{RANGES[r] ?? r}</button>
         {/each}
       </div>
+      <!-- A phone has no room for eight tabs beside the chart tabs: the same choice, folded. -->
+      <label class="narrow-ranges">
+        <span class="visually-hidden">Range</span>
+        <select value={range} onchange={(e) => (range = e.currentTarget.value)}>
+          {#each meta.ranges as r (r)}<option value={r}>{RANGES[r] ?? r}</option>{/each}
+        </select>
+      </label>
     </div>
   </div>
   {#if error}
@@ -132,6 +139,17 @@
   }
   .loading {
     opacity: 0.6;
+  }
+  .narrow-ranges {
+    display: none;
+  }
+  @media (max-width: 36rem) {
+    .wide-ranges {
+      display: none;
+    }
+    .narrow-ranges {
+      display: block;
+    }
   }
   .controls {
     display: flex;
