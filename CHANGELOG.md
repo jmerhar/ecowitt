@@ -5,6 +5,28 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 [Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
 says what under *Upgrading*.
 
+## 2.7.0 — 2026-10-14
+
+### Added
+
+- **Weather forecast**, opt-in per station on the setup page (*Store the model's forecast too*):
+  the station's weather model's forecast for the next 7 days, fetched hourly into the `forecast`
+  and `forecast_daily` tables, each row tagged with how far ahead it was made (`lead`). It needs
+  InfluxDB 3 Enterprise, or InfluxDB 3 Core with a `--query-file-limit` well above its default of
+  432, which Core otherwise reaches within a day.
+- The dashboard's **Forecast** section: the next 24 hours as a strip (sky, temperature, humidity,
+  chance of rain, wind) and the days ahead as a table (low, high, rain, humidity, gusts), from
+  `GET /api/v1/stations/{id}/forecast`.
+- The cards warn of what the forecast says is coming: rain likely within six hours, frost or heat
+  within the day, gusts over 60 km/h, and the hour drier air arrives while airing would not help.
+- A **Forecast** row in the Grafana dashboard: the next 48 hours whatever range is chosen, and a
+  table of the next 7 days.
+- The status page shows the forecast fetch's health.
+
+### Changed
+
+- The chart range is chosen from a dropdown at every width, beside the chart tabs.
+
 ## 2.6.0 — 2026-10-13
 
 ### Added
