@@ -63,8 +63,8 @@
           "for": "15m",
           "keep_firing_for": "30m",
           "annotations": {
-            "summary": "{{ $labels.room }} is at {{ humanize $values.B.Value }}% humidity, and the outside air's dew point is {{ printf \"%.1f\" $values.A.Value }} °C lower: airing would dry it.",
-            "headline": "Airing would dry these rooms: the outside air's dew point is more than 2 °C below theirs.",
+            "summary": "{{ $labels.room }} is at {{ humanize $values.B.Value }}% humidity, and the outside air holds less water (its dew point is {{ printf \"%.1f\" $values.A.Value }} °C lower): warmed indoors, it would dry the room.",
+            "headline": "The outside air holds less water than these rooms: warmed indoors, it would dry them.",
             "item": "{{ $labels.room }}: {{ humanize $values.B.Value }}% humidity, dew point {{ printf \"%.1f\" $values.A.Value }} °C above outdoors'",
             "description": "A room at 65% humidity or more, with the outdoor dew point at least 2 °C below the room's, for 15 minutes."
           },

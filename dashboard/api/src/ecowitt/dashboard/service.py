@@ -898,7 +898,7 @@ def _notices(
         elif temp is not None and weather.feels_like(temp, humidity, speed) >= weather.HEAT_FEELS_C:
             words.append("Heat: take care outdoors.")
         if humidity is not None and humidity >= weather.HUMID_AIR_PCT:
-            words.append("Very humid: fog and condensation likely.")
+            words.append("Very humid outside: fog and condensation likely.")
         elif humidity is not None and humidity <= weather.DRY_AIR_PCT:
             words.append("Very dry air: fire risk.")
         if words:

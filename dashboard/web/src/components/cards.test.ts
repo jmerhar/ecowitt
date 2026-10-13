@@ -231,7 +231,7 @@ describe("SunCard", () => {
 describe("Rooms", () => {
   it("lists each room with advice only where there is some", () => {
     render(Rooms, { rooms: now().rooms, units: UNITS, symbols: SYMBOLS });
-    expect(screen.getByText("Air it")).toHaveAttribute("title", expect.stringContaining("drier"));
+    expect(screen.getByText("Air it")).toHaveAttribute("title", expect.stringContaining("holds less water"));
     expect(screen.getByText("Keep closed")).toBeInTheDocument();
     // Airing would dry the bathroom (75% to 49%) and dampen the lounge (55% to 58%) and the
     // attic (70% to 71%, a point).
@@ -355,7 +355,7 @@ describe("highlights", () => {
 
 describe("AiringCard", () => {
   it.each([
-    [{ advice: "open", rooms: ["Bathroom", "Kitchen"] }, "Good time to air", "airing would dry Bathroom, Kitchen."],
+    [{ advice: "open", rooms: ["Bathroom", "Kitchen"] }, "Good time to air", "warmed indoors, it would dry Bathroom, Kitchen."],
     [{ advice: "keep_closed", rooms: [] }, "Keep the windows closed", "take the rooms to 65% or more, where damp starts."],
     [{ advice: "no_need", rooms: [] }, "No need to air", "dry enough."],
     [{ advice: "no_need", rooms: [], humidity_after: null }, "No need to air", "dry enough."],

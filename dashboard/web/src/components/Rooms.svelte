@@ -51,7 +51,7 @@
   }
 
   const ADVICE = {
-    open: { text: "Air it", hint: "The outside air is drier: airing would bring humidity down" },
+    open: { text: "Air it", hint: "The outside air holds less water: warmed indoors, it would bring humidity down" },
     keep_closed: {
       text: "Keep closed",
       hint: "The outside air holds as much moisture or more: airing would not dry it",

@@ -11,7 +11,7 @@ describe("humidityLevel", () => {
     [74.9, "good", "Comfortable"],
     [75, "cool", "Humid"],
     [94.9, "cool", "Humid"],
-    [95, "warn", "Very humid: fog likely"],
+    [95, "warn", "Very humid outside: fog likely"],
   ] as const)("%s%% is %s", (pct, tone, words) => {
     expect(humidityLevel(pct)).toEqual({ fill: pct, tone, words });
   });

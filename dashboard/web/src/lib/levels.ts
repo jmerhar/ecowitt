@@ -20,7 +20,7 @@ export function humidityLevel(pct: number): Level {
   if (pct < 40) return { fill, tone: "warn", words: "Dry" };
   if (pct < 75) return { fill, tone: "good", words: "Comfortable" };
   if (pct < 95) return { fill, tone: "cool", words: "Humid" };
-  return { fill, tone: "warn", words: "Very humid: fog likely" };
+  return { fill, tone: "warn", words: "Very humid outside: fog likely" };
 }
 
 /** The dew point scale's ends, in °C: an empty bar and a full one. */

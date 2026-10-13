@@ -484,7 +484,7 @@ async def test_weather_worth_a_warning_is_flagged(reader: MemoryReader) -> None:
     notices = (await Dashboard(reader, clock=lambda: NOW).now("example")).notices
     assert {card: n.text for card, n in notices.items() if card not in {"sensors", "airing"}} == {
         "outdoor": "Cold: frost is possible on clear nights. "
-        "Very humid: fog and condensation likely.",
+        "Very humid outside: fog and condensation likely.",
         "wind": "Strong gusts.",
         "rain": "Heavy rain.",
         "pressure": "Falling fast: a front or a storm is likely.",

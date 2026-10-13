@@ -54,10 +54,10 @@
   </div>
   <p>
     {#if airing.advice === "open"}
-      The outside air is drier: airing would dry {airing.rooms.join(", ")}.
+      The outside air holds less water: warmed indoors, it would dry {airing.rooms.join(", ")}.
     {:else if airing.advice === "keep_closed"}
-      The outside air is more humid: airing would take the rooms to {DAMP_PCT}% or more, where
-      damp starts.
+      The outside air holds more water: warmed indoors, it would take the rooms to {DAMP_PCT}% or
+      more, where damp starts.
     {:else if change === "up"}
       Airing would make the rooms a little more humid, but not enough to matter: they would stay
       under {DAMP_PCT}%.
