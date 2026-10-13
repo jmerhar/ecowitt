@@ -302,6 +302,8 @@ async def test_run_without_a_handler_loads_the_configured_stations(
     monkeypatch.setattr(InfluxStore, "aclose", track_close)
     woken: list[bool] = []
     monkeypatch.setattr(serve.ModelFeed, "wake", lambda _self: woken.append(True))
+    forecasts_woken: list[bool] = []
+    monkeypatch.setattr(serve.ForecastFeed, "wake", lambda _self: forecasts_woken.append(True))
     monitors: list[serve.CalibrationMonitor] = []
     real_monitor = serve.CalibrationMonitor
 
@@ -338,9 +340,9 @@ async def test_run_without_a_handler_loads_the_configured_stations(
     assert (tmp_path / "secret.key").is_file()
     names = {t.get_name() for t in asyncio.all_tasks()}
     assert not names & {"spool-replay", "weather-model", "weather-forecast", "station-metadata"}
-    # Configuration changes and pressure steps both wake the weather model refresh; subscribing
-    # delivers the first configuration at once.
-    assert woken
+    # Configuration changes and pressure steps both wake the weather model refresh, and changes
+    # the forecast's; subscribing delivers the first configuration at once.
+    assert woken and forecasts_woken
     assert monitors[0].on_step is not None
 
 

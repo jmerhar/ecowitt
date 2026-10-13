@@ -1289,8 +1289,8 @@ class TestStatus:
         page = rig.client.get("/").text
 
         assert "not configured" in page and "not sent since this server started" in page
-        assert "nothing fetched yet; stations with coordinates are" in page
-        assert "nothing fetched yet; stations with a weather model are" in page
+        assert "nothing fetched yet: it is fetched for stations with coordinates" in page
+        assert "nothing fetched yet: it is fetched for stations with a weather model" in page
 
     async def test_the_console_describes_itself(self, rig: Rig) -> None:
         await rig.report()
