@@ -49,7 +49,12 @@ class Range:
     ttl: float
 
 
+#: A station reports about once a minute, so the shortest ranges keep every report.
 RANGES = {
+    "1h": Range(timedelta(hours=1), timedelta(minutes=1), 30),
+    "3h": Range(timedelta(hours=3), timedelta(minutes=1), 30),
+    "6h": Range(timedelta(hours=6), timedelta(minutes=1), 30),
+    "12h": Range(timedelta(hours=12), timedelta(minutes=2), 60),
     "24h": Range(timedelta(hours=24), timedelta(minutes=5), 60),
     "7d": Range(timedelta(days=7), timedelta(minutes=30), 300),
     "30d": Range(timedelta(days=30), timedelta(hours=2), 900),

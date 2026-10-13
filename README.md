@@ -356,8 +356,8 @@ those.
 The page shows a station at a glance — temperature with what it feels like and today's range,
 humidity and dew point as bars coloured by level (dry to very humid; crisp to oppressive),
 wind on a compass, rain, pressure and its three-hour trend, sunrise and sunset, each room with
-whether airing it would help, and any sensor that needs attention — then charts over a day, a
-week, a month or a year, and the highs and lows of today, this month or this year. A card with
+whether airing it would help, and any sensor that needs attention — then charts over the last 1,
+3, 6 or 12 hours, a day, a week, a month or a year, and the highs and lows of today, this month or this year. A card with
 something to act on is edged in colour and says what: cold (5 °C or below) or heat, very humid or
 very dry air, strong gusts, heavy rain, pressure falling fast, very high UV, a room that is cold,
 hot, damp or dry, a good time to air the house or one to keep its windows closed (when airing
@@ -396,7 +396,7 @@ the file and restart the container.
 | `/meta` | the metrics, units, chart ranges and record periods on offer, and which metrics the weather model has |
 | `/stations` | each station shown, with its location, time zone, stored units and weather model |
 | `/stations/{id}/now` | current conditions, the sky from the weather model, today's range, rooms with airing advice, sensor health, a one-line summary |
-| `/stations/{id}/series?metrics=…&range=24h` | metrics over `24h`, `7d`, `30d` or `1y`, in buckets that start at the station's midnight; `&model=true` adds the weather model's series (`source: model`) |
+| `/stations/{id}/series?metrics=…&range=24h` | metrics over `1h`, `3h`, `6h`, `12h`, `24h`, `7d`, `30d` or `1y`, in buckets that start at the station's midnight; `&model=true` adds the weather model's series (`source: model`) |
 | `/stations/{id}/extremes?period=today` | the lowest and highest of each metric `today`, this `month` or this `year` |
 
 Every answer is in the station's stored units unless the request asks otherwise, per quantity:

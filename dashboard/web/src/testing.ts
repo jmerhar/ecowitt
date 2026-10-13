@@ -27,7 +27,7 @@ export const META: Meta = {
     distance: [{ code: "km", symbol: "km" }],
   },
   symbols: SYMBOLS,
-  ranges: ["24h", "7d", "30d", "1y"],
+  ranges: ["1h", "3h", "6h", "12h", "24h", "7d", "30d", "1y"],
   periods: ["today", "month", "year"],
 };
 

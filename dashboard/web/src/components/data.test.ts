@@ -23,6 +23,17 @@ describe("History", () => {
     expect(screen.getByRole("tab", { name: "Pressure" })).toHaveAttribute("aria-selected", "true");
   });
 
+  it("offers the short ranges first, by their length", async () => {
+    const api = fakeApi();
+    render(History, { ...base, api, view: "temperature", range: "24h" });
+    const ranges = screen.getByRole("tablist", { name: "Range" });
+    expect([...ranges.querySelectorAll("button")].map((b) => b.textContent)).toEqual([
+      "1 h", "3 h", "6 h", "12 h", "Day", "Week", "Month", "Year",
+    ]);
+    await fireEvent.click(screen.getByRole("tab", { name: "3 h" }));
+    await waitFor(() => expect(api.series).toHaveBeenLastCalledWith("Home", ["outdoor.temperature", "outdoor.dew_point"], "3h", {}, false));
+  });
+
   it("offers the weather model where the station has one and the chart has a metric it covers", async () => {
     const api = fakeApi();
     const weatherModel = { id: "best_match", label: "Best for this location" };

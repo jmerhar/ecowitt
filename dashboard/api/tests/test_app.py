@@ -112,7 +112,7 @@ def test_series(client: TestClient) -> None:
         ("metrics=outdoor.colour", "unknown metrics: outdoor.colour"),
         ("metrics=,", "ask for between 1 and 12 metrics"),
         ("metrics=" + ",".join(["wind.gust"] * 13), "ask for between 1 and 12 metrics"),
-        ("metrics=wind.gust&range=2h", "range must be one of 24h, 7d, 30d, 1y"),
+        ("metrics=wind.gust&range=2h", "range must be one of 1h, 3h, 6h, 12h, 24h, 7d, 30d, 1y"),
     ],
 )
 def test_a_bad_series_request_is_refused(client: TestClient, query: str, problem: str) -> None:

@@ -38,7 +38,10 @@
     model = $bindable(false),
   }: Props = $props();
 
-  const RANGES: Record<string, string> = { "24h": "Day", "7d": "Week", "30d": "Month", "1y": "Year" };
+  const RANGES: Record<string, string> = {
+    "1h": "1 h", "3h": "3 h", "6h": "6 h", "12h": "12 h",
+    "24h": "Day", "7d": "Week", "30d": "Month", "1y": "Year",
+  };
 
   let answer = $state<SeriesOut | null>(null);
   /** The view the answer was fetched for: another view's answer holds none of this one's. */

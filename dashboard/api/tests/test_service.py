@@ -374,7 +374,7 @@ def test_meta_lists_metrics_units_ranges_and_periods(board: Dashboard) -> None:
     assert metrics["rooms.humidity"].per_sensor and not metrics["wind.gust"].per_sensor
     assert [c.code for c in meta.units["pressure"]] == ["hpa", "inhg", "mmhg"]
     assert meta.symbols["mm_h"] == "mm/h"
-    assert meta.ranges == ["24h", "7d", "30d", "1y"]
+    assert meta.ranges == ["1h", "3h", "6h", "12h", "24h", "7d", "30d", "1y"]
     assert meta.periods == ["today", "month", "year"]
 
 
@@ -562,3 +562,14 @@ async def test_closed_windows_are_a_warning(reader: MemoryReader) -> None:
     reader.rows.append(row("ventilation", LAST, vent, sensor="indoor"))
     notices = (await Dashboard(reader, clock=lambda: NOW).now("example")).notices
     assert notices["airing"].level == "warning"
+
+
+@pytest.mark.parametrize(("name", "step"), [("1h", 60), ("3h", 60), ("6h", 60), ("12h", 120)])
+async def test_short_ranges_keep_every_report(board: Dashboard, name: str, step: int) -> None:
+    """A minute apart, the station's own pace, up to six hours; two minutes for twelve."""
+    found = await board.series("example", ["outdoor.temperature"], name)
+
+    assert (found.range, found.step_s, found.end) == (name, step, NOW)
+    assert found.start == NOW - RANGES[name].duration
+    # The last reading, a minute before NOW, falls in every one of them.
+    assert found.series[0].values["max"][-1] == 18.0
