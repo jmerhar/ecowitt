@@ -5,6 +5,30 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 [Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
 says what under *Upgrading*.
 
+## 2.5.0 — 2026-10-13
+
+### Added
+
+- **Wind at 10 m**: each station's anemometer height and surroundings on the setup page give a
+  factor by the logarithmic wind profile, and every report's wind is also stored in a `wind_10m`
+  table, scaled by it. While the cups stall below 1 m/s, the weather model's wind can stand in (a
+  per-station switch, on by default).
+- The dashboard, its API and Grafana lead with the 10 m wind, with the measured wind beside it;
+  the status page compares the model's wind with the 10 m estimate.
+- A recompute on the setup page applies a station's factor to its stored history, from a chosen
+  moment or from the first reading, with progress on the status page.
+
+### Changed
+
+- The *Strong wind* alert and the dashboard's strong-gust notice judge the 10 m gust, the height
+  their 60 km/h threshold is meant for. A station with no height set is unaffected.
+- The API's `wind.speed` and `wind.gust` series are the 10 m estimates; `wind.measured_speed` and
+  `wind.measured_gust` chart the measurement.
+
+### Upgrading
+
+- Import `grafana/weather.json` and `grafana/alerts.json` again: both read `wind_10m`.
+
 ## 2.4.1 — 2026-10-12
 
 ### Fixed
