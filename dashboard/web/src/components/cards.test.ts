@@ -97,6 +97,29 @@ describe("WindCard", () => {
     expect(onselect).toHaveBeenCalledWith("wind");
   });
 
+  it("marks an estimate at 10 m, and shows what the sensor measured beneath it", () => {
+    const wind = { ...now().wind!, speed: 30, gust: 50, source: "sensor" as const, height_factor: 2 };
+    render(WindCard, { wind, units: UNITS, symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
+    expect(screen.getByText("30.0 km/h")).toBeInTheDocument();
+    expect(screen.getByText("at 10 m, estimated")).toHaveAttribute("title", expect.stringContaining("×2.00"));
+    expect(screen.getByText("Measured here")).toBeInTheDocument();
+    expect(screen.getByText("15.0 km/h, gusts 25.0 km/h")).toBeInTheDocument();
+  });
+
+  it("says when the figures are the weather model's, and nothing when there is no estimate", () => {
+    const wind = { ...now().wind!, source: "model" as const, height_factor: 2 };
+    const first = render(WindCard, { wind, units: UNITS, symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
+    expect(screen.getByText("at 10 m, from the model")).toHaveAttribute("title", expect.stringContaining("too light"));
+    first.unmount();
+    // A factor of 1 from the sensor is the measurement itself, as is a station with no estimate.
+    for (const plain of [{ source: "sensor" as const, height_factor: 1 }, { source: null, height_factor: 2 }]) {
+      const card = render(WindCard, { wind: { ...now().wind!, ...plain }, units: UNITS, symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
+      expect(screen.queryByText(/at 10 m/)).not.toBeInTheDocument();
+      expect(screen.queryByText("Measured here")).not.toBeInTheDocument();
+      card.unmount();
+    }
+  });
+
   it("has no arrow or direction in a calm", () => {
     const calm = { ...now().wind!, direction: null, compass: null, beaufort: 0, description: "Calm", max_gust_today: null };
     const { container } = render(WindCard, { wind: calm, units: UNITS, symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });

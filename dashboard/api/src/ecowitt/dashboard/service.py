@@ -15,7 +15,7 @@ from collections.abc import Awaitable, Callable, Collection, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta, tzinfo
 
-from ecowitt.core import weathermodel
+from ecowitt.core import weathermodel, windheight
 from ecowitt.core.stationinfo import StationInfo
 from ecowitt.core.store.query import Buckets, Extreme, Extremes, Reader, Span
 from ecowitt.core.units import Kind, Units, convert, field_name
@@ -35,6 +35,8 @@ from ecowitt.dashboard.sun import sun_times
 
 #: The units calculations are made in.
 METRIC = Units()
+#: The table of wind estimated at 10 m, which the wind answers lead with.
+TEN = windheight.TABLE
 
 
 @dataclass(frozen=True)
@@ -108,6 +110,10 @@ class _Latest:
     battery: list[Span] = field(default_factory=list)
     temperature_today: Extremes | None = None
     wind_today: Extremes | None = None
+    #: The wind estimated at 10 m (`windheight`): latest values, today's and recent gusts.
+    wind_10m: Span | None = None
+    wind_10m_today: Extremes | None = None
+    recent_wind_10m: Extremes | None = None
     #: The strongest gust and each gauge's heaviest rain rate within GUSTS_WITHIN of the report.
     recent_wind: Extremes | None = None
     recent_rain: list[Extremes] = field(default_factory=list)
@@ -217,6 +223,7 @@ class Dashboard:
                     timezone=info.timezone or "UTC",
                     units=_units(info.units),
                     weather_model=_weather_model(info),
+                    wind_factor=info.wind_factor,
                 )
             )
         return found
@@ -267,7 +274,7 @@ class Dashboard:
             return answer
         stored = info.units
         answer.outdoor = _outdoor(latest, values, stored)
-        answer.wind = _wind(latest, values, stored)
+        answer.wind = _wind(latest, values, stored, info)
         answer.rain = _rain(latest, values, stored)
         answer.pressure = _pressure(latest, values, stored)
         answer.sun = _sun(latest, values, stored, info, zone)
@@ -414,6 +421,7 @@ class Dashboard:
         (
             outdoor, derived, wind, rain, pressure, solar, indoor, channel, ventilation,
             battery, temperature_today, wind_today, sky, recent_wind, recent_rain,
+            wind_10m, wind_10m_today, recent_wind_10m,
         ) = await asyncio.gather(
             span("outdoor", f("temp", T), f("humidity", H), sensors=["outdoor"]),
             span("derived", f("dewpoint", T), "unchanged_s"),
@@ -432,6 +440,9 @@ class Dashboard:
             self._sky(station, info, now),
             self.reader.extremes(station, "wind", [f("gust", S)], start=recent, end=end),
             self.reader.extremes(station, "rain", [rate], start=recent, end=end),
+            span(TEN, f("speed", S), f("gust", S), "source"),
+            self.reader.extremes(station, TEN, [f("gust", S)], start=midnight, end=now),
+            self.reader.extremes(station, TEN, [f("gust", S)], start=recent, end=end),
         )  # fmt: skip
         return _Latest(
             report=report,
@@ -448,6 +459,9 @@ class Dashboard:
             wind_today=_first(wind_today),
             recent_wind=_first(recent_wind),
             recent_rain=recent_rain,
+            wind_10m=_first(wind_10m),
+            wind_10m_today=_first(wind_10m_today),
+            recent_wind_10m=_first(recent_wind_10m),
             sky=sky,
             at=now,
         )
@@ -582,25 +596,41 @@ def _outdoor(latest: _Latest, values: _Values, stored: Units) -> models.Outdoor 
     )
 
 
-def _wind(latest: _Latest, values: _Values, stored: Units) -> models.Wind | None:
-    """The wind section."""
+def _wind(latest: _Latest, values: _Values, stored: Units, info: StationInfo) -> models.Wind | None:
+    """The wind section: led by the estimate at 10 m, with what the sensor measured beside it.
+
+    A station whose 10 m estimate has not been written for the latest report -- one running a
+    collector without it -- leads with the measured wind.
+    """
     if latest.wind is None:
         return None
     S = Kind.SPEED
-    last = latest.wind.last
-    speed = values.metric(S, last.get(field_name("speed", S, stored)))
-    direction = values.metric(Kind.ANGLE, last.get("dir_deg"))
+    speed_field, gust_field = field_name("speed", S, stored), field_name("gust", S, stored)
+    measured = latest.wind.last
+    ten = latest.wind_10m.last if latest.wind_10m else {}
+    lead = ten if speed_field in ten else measured
+    speed = values.metric(S, lead.get(speed_field))
+    direction = values.metric(Kind.ANGLE, measured.get("dir_deg"))
     force = None if speed is None else weather.beaufort(speed)
-    today = latest.wind_today
+    today = latest.wind_10m_today if lead is ten else latest.wind_today
+    measured_today = latest.wind_today
+    source = ten.get("source") if lead is ten else None
     return models.Wind(
         speed=None if speed is None else values.from_metric(S, speed),
-        gust=values.out(S, last.get(field_name("gust", S, stored))),
+        gust=values.out(S, lead.get(gust_field)),
         direction=None if direction is None else round(direction),
         compass=None if direction is None else weather.compass(direction),
         beaufort=force,
         description=None if force is None else weather.BEAUFORT_NAMES[force],
-        max_gust_today=values.at(S, today.maximum[field_name("gust", S, stored)])
-        if today
+        max_gust_today=values.at(S, today.maximum[gust_field])
+        if today and gust_field in today.maximum
+        else None,
+        source=source if isinstance(source, str) else None,
+        height_factor=info.wind_factor,
+        measured_speed=values.out(S, measured.get(speed_field)),
+        measured_gust=values.out(S, measured.get(gust_field)),
+        measured_max_gust_today=values.at(S, measured_today.maximum[gust_field])
+        if measured_today and gust_field in measured_today.maximum
         else None,
     )
 
@@ -841,8 +871,9 @@ def _notices(
         found = [g.maximum[name].value for g in groups if name in g.maximum]
         return convert(kind, max(found), stored, METRIC) if found else 0.0
 
-    wind = [latest.recent_wind] if latest.recent_wind else []
-    if strongest(wind, "gust", Kind.SPEED) > weather.STRONG_GUST_KMH:
+    # The 10 m gust, the height the threshold is meant for; the measured one without it.
+    recent = latest.recent_wind_10m or latest.recent_wind
+    if strongest([recent] if recent else [], "gust", Kind.SPEED) > weather.STRONG_GUST_KMH:
         warn("wind", "Strong gusts.")
     if strongest(latest.recent_rain, "rate", Kind.RAIN_RATE) > weather.HEAVY_RAIN_MM_H:
         warn("rain", "Heavy rain.")

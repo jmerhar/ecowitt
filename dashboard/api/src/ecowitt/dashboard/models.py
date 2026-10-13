@@ -42,6 +42,8 @@ class Station(BaseModel):
     units: UnitsOut
     #: The weather model whose values /series can add, or None when the station has none.
     weather_model: WeatherModel | None = None
+    #: What its measured wind is multiplied by to estimate it at 10 m; 1 with no correction.
+    wind_factor: float = 1.0
 
 
 class At(BaseModel):
@@ -63,7 +65,8 @@ class Outdoor(BaseModel):
 
 
 class Wind(BaseModel):
-    """The latest wind, and today's strongest gust."""
+    """The latest wind and today's strongest gust, estimated at the standard 10 m, with what the
+    sensor measured beside them."""
 
     speed: float | None = None
     gust: float | None = None
@@ -73,6 +76,15 @@ class Wind(BaseModel):
     beaufort: int | None = None
     description: str | None = None
     max_gust_today: At | None = None
+    #: Where the 10 m figures came from: sensor (measured, scaled by height_factor) or model (the
+    #: weather model's, while the cups were too slow to turn); None when they are the measured
+    #: wind itself.
+    source: str | None = None
+    #: What measured wind is multiplied by for the estimate; 1 with no correction set.
+    height_factor: float = 1.0
+    measured_speed: float | None = None
+    measured_gust: float | None = None
+    measured_max_gust_today: At | None = None
 
 
 class Rain(BaseModel):

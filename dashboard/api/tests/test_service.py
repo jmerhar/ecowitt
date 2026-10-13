@@ -207,8 +207,9 @@ async def test_the_gauge_that_reported_last_is_shown(reader: MemoryReader) -> No
 
 
 async def test_a_calm_wind_has_no_direction_in_the_summary(reader: MemoryReader) -> None:
-    reader.rows = [r for r in reader.rows if r.table != "wind"]
+    reader.rows = [r for r in reader.rows if r.table not in {"wind", "wind_10m"}]
     reader.rows.append(row("wind", LAST, {"speed_kmh": 0.5, "dir_deg": 90.0}))
+    reader.rows.append(row("wind_10m", LAST, {"speed_kmh": 0.5, "source": "sensor"}))
     now = await Dashboard(reader, clock=lambda: NOW).now("example")
     assert "Calm." in now.summary
 
@@ -465,6 +466,7 @@ async def test_weather_worth_a_warning_is_flagged(reader: MemoryReader) -> None:
         row("station", later, {"interval_s": 60.0}),
         row("outdoor", later, {"temp_c": 5.0, "humidity_pct": 95.0}, sensor="outdoor"),
         row("wind", later, {"speed_kmh": 40.0, "gust_kmh": 61.0, "dir_deg": 0.0}),
+        row("wind_10m", later, {"speed_kmh": 40.0, "gust_kmh": 61.0, "source": "sensor"}),
         row("rain", later, {"rate_mm_h": 10.5}, gauge="bucket"),
         # 1015 hPa at the start of the three hours, 1011.5 at their end: 3.5 hPa down.
         row("pressure", later - timedelta(hours=3), {"sea_hpa": 1015.0}),
@@ -500,6 +502,7 @@ async def test_a_gust_or_downpour_counts_for_ten_minutes(
     earlier = LAST - timedelta(minutes=minutes)
     reader.rows += [
         row("wind", earlier, {"speed_kmh": 40.0, "gust_kmh": 61.0, "dir_deg": 0.0}),
+        row("wind_10m", earlier, {"speed_kmh": 40.0, "gust_kmh": 61.0, "source": "sensor"}),
         row("rain", earlier, {"rate_mm_h": 10.5}, gauge="piezo"),
     ]
     notices = (await Dashboard(reader, clock=lambda: NOW).now("example")).notices

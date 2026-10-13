@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import get_args
 
+from ecowitt.core import windheight
 from ecowitt.core.store.query import Aggregate
 from ecowitt.core.units import (
     DistanceUnit,
@@ -118,6 +119,7 @@ _RANGE = (Aggregate.MEAN, Aggregate.MIN, Aggregate.MAX)
 _ROOMS = ("indoor", "channel")
 _OUT = ("outdoor",)
 _DERIVED = ("derived",)
+_TEN = windheight.TABLE
 T, H = Kind.TEMPERATURE, Kind.HUMIDITY
 
 METRICS: dict[str, Metric] = {
@@ -135,13 +137,23 @@ METRICS: dict[str, Metric] = {
             "outdoor.dew_point", "Dew point", _DERIVED, "dewpoint", T, _RANGE, Scope.OUTDOOR,
             model_base="dewpoint",
         ),
+        # Speed and gust are the estimates at 10 m (`windheight`), the height forecasts give;
+        # what the sensor measured is charted beside them, without records of its own.
         Metric(
-            "wind.speed", "Wind speed", ("wind",), "speed", Kind.SPEED,
+            "wind.speed", "Wind speed", (_TEN,), "speed", Kind.SPEED,
             (Aggregate.MEAN, Aggregate.MAX), extremes=Sides.MAX, model_base="speed",
         ),
         Metric(
-            "wind.gust", "Wind gust", ("wind",), "gust", Kind.SPEED, (Aggregate.MAX,),
+            "wind.gust", "Wind gust", (_TEN,), "gust", Kind.SPEED, (Aggregate.MAX,),
             extremes=Sides.MAX, model_base="gust",
+        ),
+        Metric(
+            "wind.measured_speed", "Wind speed, measured", ("wind",), "speed", Kind.SPEED,
+            (Aggregate.MEAN,), extremes=Sides.NONE,
+        ),
+        Metric(
+            "wind.measured_gust", "Wind gust, measured", ("wind",), "gust", Kind.SPEED,
+            (Aggregate.MAX,), extremes=Sides.NONE,
         ),
         Metric(
             "wind.direction", "Wind direction", ("wind",), "dir", Kind.ANGLE,

@@ -25,6 +25,8 @@ export type Station = {
   units: Units;
   /** The weather model whose values /series can add, or null when the station has none. */
   weather_model: WeatherModel | null;
+  /** What its measured wind is multiplied by to estimate it at 10 m; 1 with no correction. */
+  wind_factor: number;
 };
 
 export type Outdoor = {
@@ -44,6 +46,13 @@ export type Wind = {
   beaufort: number | null;
   description: string | null;
   max_gust_today: At | null;
+  /** Where the 10 m figures came from; null when they are the measured wind itself. */
+  source: "sensor" | "model" | null;
+  /** What measured wind is multiplied by for the estimate at 10 m; 1 with no correction. */
+  height_factor: number;
+  measured_speed: number | null;
+  measured_gust: number | null;
+  measured_max_gust_today: At | null;
 };
 
 export type Rain = {

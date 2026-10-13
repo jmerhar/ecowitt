@@ -34,6 +34,7 @@ export const META: Meta = {
 export const STATION: Station = {
   id: "Home", latitude: 38.72, longitude: -9.14, altitude_m: 100, timezone: "Europe/Lisbon", units: UNITS,
   weather_model: null,
+  wind_factor: 1,
 };
 
 export function now(overrides: Partial<Now> = {}): Now {
@@ -52,6 +53,8 @@ export function now(overrides: Partial<Now> = {}): Now {
     wind: {
       speed: 15, gust: 25, direction: 135, compass: "SE", beaufort: 3, description: "Gentle breeze",
       max_gust_today: { value: 52, time: "2026-10-10T10:00:00Z" },
+      source: null, height_factor: 1, measured_speed: 15, measured_gust: 25,
+      measured_max_gust_today: { value: 52, time: "2026-10-10T10:00:00Z" },
     },
     rain: {
       gauge: "bucket", rate: 0, event: 0, hourly: 0, daily: 1.2, last_24h: 3.5, weekly: 9,

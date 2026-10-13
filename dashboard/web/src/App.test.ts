@@ -54,7 +54,7 @@ describe("App", () => {
     render(App, { api, storage });
     await fireEvent.click(await screen.findByRole("button", { name: /Wind/ }));
     await waitFor(() =>
-      expect(api.series).toHaveBeenLastCalledWith("Home", ["wind.speed", "wind.gust", "wind.direction"], "24h", {}, false),
+      expect(api.series).toHaveBeenLastCalledWith("Home", ["wind.speed", "wind.gust", "wind.direction", "wind.measured_speed"], "24h", {}, false),
     );
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
     expect(JSON.parse(storage.getItem("ecowitt-dashboard")!).view).toBe("wind");

@@ -7,7 +7,7 @@
 import type { Series, SeriesOut } from "./api";
 
 /** How one metric is drawn. */
-export type Style = "line" | "band" | "points" | "bars";
+export type Style = "line" | "band" | "points" | "bars" | "thin";
 
 /** A chart tab: its metrics, how each is drawn, and on which axis. */
 export type View = {
@@ -33,10 +33,12 @@ export const VIEWS: View[] = [
   {
     id: "wind",
     label: "Wind",
+    // Speed and gust at 10 m; what the sensor measured, faint behind them.
     metrics: [
       { id: "wind.speed", style: "line", axis: "left" },
       { id: "wind.gust", style: "line", axis: "left" },
       { id: "wind.direction", style: "points", axis: "right" },
+      { id: "wind.measured_speed", style: "thin", axis: "left" },
     ],
   },
   {
@@ -243,8 +245,9 @@ export function spec(view: View, chart: ChartData): PlotSpec {
     series.push({
       label: line.label,
       scale: line.axis,
-      stroke,
-      width: line.style === "points" ? 0 : 2,
+      // A thin line is drawn faint, behind the lines a chart is about.
+      stroke: line.style === "thin" ? `${stroke}88` : stroke,
+      width: line.style === "points" ? 0 : line.style === "thin" ? 1 : 2,
       style: line.style,
       unit: line.unit,
       fill: line.style === "bars" ? `${stroke}99` : undefined,

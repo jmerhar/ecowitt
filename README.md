@@ -190,6 +190,10 @@ decouples from the wind above and cups below about 1 m/s stop turning; while the
 station has a [weather model](#weather-model), the estimate is the model's 10 m wind, and the
 row's `source` is `model`. A changed height or surroundings applies to readings from then on.
 
+The dashboard leads with the 10 m figures -- speed, gusts, the Beaufort force, which is defined
+at 10 m, and the strong-gust warning -- marking an estimate as one, with what the sensor
+measured beneath it and faint behind the speed in the wind chart.
+
 ## Two ports, and why it matters
 
 The station speaks **plain HTTP and follows no redirects**, so its endpoint cannot sit behind

@@ -105,6 +105,20 @@ describe("the weather model's lines", () => {
   });
 });
 
+describe("a thin line", () => {
+  it("is drawn faint and narrow, behind the lines a chart is about", () => {
+    const wind = viewFor("wind");
+    const built = spec(wind, align(wind, series({
+      series: [
+        { metric: "wind.speed", sensor: null, name: null, unit: "kmh", source: "station", t: [1], values: { mean: [30] } },
+        { metric: "wind.measured_speed", sensor: null, name: null, unit: "kmh", source: "station", t: [1], values: { mean: [15] } },
+      ],
+    }), {}));
+    expect(built.series[1]).toMatchObject({ style: "thin", width: 1, stroke: `${PALETTE[3]}88` });
+    expect(built.series[0]).toMatchObject({ width: 2, stroke: PALETTE[0] });
+  });
+});
+
 describe("spec", () => {
   it("draws a band's edges as a filled band behind its line", () => {
     const view = viewFor("temperature");

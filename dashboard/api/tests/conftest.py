@@ -69,6 +69,12 @@ def readings() -> list[Row]:
         row("wind", NOW - 4 * hour, {"speed_kmh": 30.0, "gust_kmh": 52.0, "dir_deg": 350.0}),
         row("wind", LAST - hour / 12, {"speed_kmh": 10.0, "gust_kmh": 20.0, "dir_deg": 10.0}),
         row("wind", LAST, {"speed_kmh": 15.0, "gust_kmh": 25.0, "dir_deg": 135.0}),
+        # The estimate at 10 m, with no correction set: the measured wind itself.
+        row("wind_10m", NOW - 4 * hour, {"speed_kmh": 30.0, "gust_kmh": 52.0, "source": "sensor"}),
+        row(
+            "wind_10m", LAST - hour / 12, {"speed_kmh": 10.0, "gust_kmh": 20.0, "source": "sensor"}
+        ),
+        row("wind_10m", LAST, {"speed_kmh": 15.0, "gust_kmh": 25.0, "source": "sensor"}),
         row(
             "rain",
             LAST,
