@@ -35,6 +35,20 @@ export function quantity(
   return symbol === "%" || symbol === "°" ? `${text}${symbol}` : `${text} ${symbol}`;
 }
 
+/** A value rounded to a whole number, with its unit's symbol: "17 °C", "12 km/h". */
+export function whole(
+  value: number | null | undefined,
+  unit: string,
+  symbols: Record<string, string>,
+  locale = LOCALE,
+): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return "–";
+  const symbol = symbols[unit] ?? "";
+  const text = Math.round(value).toLocaleString(locale);
+  if (!symbol) return text;
+  return symbol === "%" || symbol === "°" ? `${text}${symbol}` : `${text} ${symbol}`;
+}
+
 /** The time of day at the station: "14:05". */
 export function clock(iso: string | null | undefined, timezone: string, locale = LOCALE): string {
   if (!iso) return "–";
@@ -118,4 +132,26 @@ export function uvRisk(index: number | null | undefined): string {
   if (index < 8) return "High";
   if (index < 11) return "Very high";
   return "Extreme";
+}
+
+/** A time to come at the station: "14:00" today, "tomorrow 06:00", or "Thu 15 Oct, 06:00". */
+export function coming(iso: string, timezone: string, now: Date = new Date()): string {
+  const label = dayLabel(iso, timezone, now);
+  const time = clock(iso, timezone);
+  if (label === "Today") return time;
+  return label === "Tomorrow" ? `tomorrow ${time}` : `${label}, ${time}`;
+}
+
+/** A day at the station, as a forecast names it: "Today", "Tomorrow", or "Thu 15 Oct". */
+export function dayLabel(iso: string, timezone: string, now: Date = new Date()): string {
+  const date = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(d);
+  const day = date(new Date(iso));
+  if (day === date(now)) return "Today";
+  if (day === date(new Date(now.getTime() + 86_400_000))) return "Tomorrow";
+  return new Intl.DateTimeFormat(LOCALE, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: timezone,
+  }).format(new Date(iso));
 }

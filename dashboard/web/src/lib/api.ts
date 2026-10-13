@@ -119,6 +119,8 @@ export type HouseAiring = {
   humidity: number;
   humidity_after: number | null;
   dew_point_difference: number;
+  /** When the forecast has the air turning dry enough to air a damp room, if it is not now. */
+  drier_from: string | null;
 };
 
 export type SensorHealth = {
@@ -148,6 +150,48 @@ export type Now = {
   sensors: SensorHealth[];
   /** What deserves attention, by card; a card missing from it is unremarkable. */
   notices: Partial<Record<string, Notice>>;
+};
+
+export type ForecastHour = {
+  time: string;
+  temperature: number | null;
+  humidity: number | null;
+  dew_point: number | null;
+  precipitation: number | null;
+  precipitation_probability: number | null;
+  weather_code: number | null;
+  description: string | null;
+  is_day: boolean | null;
+  wind_speed: number | null;
+  wind_gust: number | null;
+  wind_direction: number | null;
+  compass: string | null;
+};
+
+export type ForecastDay = {
+  /** The day's start, at midnight in the station's time zone. */
+  date: string;
+  weather_code: number | null;
+  description: string | null;
+  temperature_max: number | null;
+  temperature_min: number | null;
+  precipitation: number | null;
+  precipitation_probability: number | null;
+  wind_speed_max: number | null;
+  wind_gust_max: number | null;
+  wind_direction: number | null;
+  compass: string | null;
+  uv_index_max: number | null;
+};
+
+export type ForecastOut = {
+  station: string;
+  model: WeatherModel | null;
+  /** When it was made; null without a forecast recent enough to show. */
+  issued: string | null;
+  units: Units;
+  hours: ForecastHour[];
+  days: ForecastDay[];
 };
 
 export type Series = {
@@ -255,6 +299,10 @@ export class Api {
       range,
       model: model ? "true" : undefined,
     });
+  }
+
+  forecast(station: string, units: UnitChoice = {}): Promise<ForecastOut> {
+    return this.get(`/stations/${encodeURIComponent(station)}/forecast`, units);
   }
 
   extremes(station: string, period: string, units: UnitChoice = {}): Promise<ExtremesOut> {

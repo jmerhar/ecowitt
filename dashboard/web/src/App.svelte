@@ -16,6 +16,7 @@
   import Rooms from "./components/Rooms.svelte";
   import History from "./components/History.svelte";
   import Records from "./components/Records.svelte";
+  import Forecast from "./components/Forecast.svelte";
   import Sensors from "./components/Sensors.svelte";
   import UnitsMenu from "./components/UnitsMenu.svelte";
 
@@ -153,12 +154,14 @@
   {#if now && station && meta}
     <section class="glance">
       <NowCard {now} {symbols} {timezone} onselect={drill} notice={now.notices.outdoor} />
-      {#if now.airing}<AiringCard airing={now.airing} {symbols} onselect={drill} notice={now.notices.airing} />{/if}
+      {#if now.airing}<AiringCard airing={now.airing} {symbols} {timezone} onselect={drill} notice={now.notices.airing} />{/if}
       {#if now.wind}<WindCard wind={now.wind} units={now.units} {symbols} {timezone} onselect={drill} notice={now.notices.wind} />{/if}
       {#if now.rain}<RainCard rain={now.rain} units={now.units} {symbols} onselect={drill} notice={now.notices.rain} />{/if}
       {#if now.pressure}<PressureCard pressure={now.pressure} units={now.units} {symbols} onselect={drill} notice={now.notices.pressure} />{/if}
       {#if now.sun}<SunCard sun={now.sun} {symbols} {timezone} onselect={drill} notice={now.notices.sun} />{/if}
     </section>
+
+    <Forecast {api} station={station.id} units={prefs.units} {timezone} {symbols} {tick} />
 
     {#if now.rooms.length}<Rooms rooms={now.rooms} units={now.units} {symbols} notice={now.notices.rooms} bind:sort={prefs.rooms} />{/if}
 

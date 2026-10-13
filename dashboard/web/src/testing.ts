@@ -1,6 +1,8 @@
 /** API answers for tests, shaped as the dashboard API gives them, and a stand-in Api. */
 import { vi } from "vitest";
-import type { Api, ExtremesOut, Meta, Now, SeriesOut, Station } from "./lib/api";
+import type {
+  Api, ExtremesOut, ForecastHour, ForecastOut, Meta, Now, SeriesOut, Station,
+} from "./lib/api";
 
 export const SYMBOLS: Record<string, string> = {
   c: "°C", f: "°F", hpa: "hPa", inhg: "inHg", mmhg: "mmHg", mm: "mm", in: "in",
@@ -68,7 +70,10 @@ export function now(overrides: Partial<Now> = {}): Now {
       radiation: 450, uv_index: 4, sunrise: "2026-10-10T06:42:00Z", noon: "2026-10-10T12:24:00Z",
       sunset: "2026-10-10T18:07:00Z", daylight_s: 41100, polar: null,
     },
-    airing: { advice: "open", rooms: ["Bathroom"], humidity: 70, humidity_after: 58, dew_point_difference: 0.3 },
+    airing: {
+      advice: "open", rooms: ["Bathroom"], humidity: 70, humidity_after: 58, dew_point_difference: 0.3,
+      drier_from: null,
+    },
     rooms: [
       { sensor: "indoor", name: "Lounge", temperature: 21, humidity: 55, dew_point: 11.9,
         airing: { advice: "no_need", humidity_after: 58, dew_point_difference: 0.3 }, flags: [] },
@@ -123,12 +128,42 @@ export function extremes(overrides: Partial<ExtremesOut> = {}): ExtremesOut {
 }
 
 /** An Api whose every method is a mock answering from the fixtures above. */
-export function fakeApi(): Api & Record<"meta" | "stations" | "now" | "series" | "extremes", ReturnType<typeof vi.fn>> {
+export function fakeApi(): Api & Record<"meta" | "stations" | "now" | "series" | "extremes" | "forecast", ReturnType<typeof vi.fn>> {
   return {
     meta: vi.fn(async () => META),
     stations: vi.fn(async () => [STATION]),
     now: vi.fn(async () => now()),
     series: vi.fn(async () => series()),
     extremes: vi.fn(async () => extremes()),
+    forecast: vi.fn(async () => forecast()),
   } as never;
+}
+
+/** A forecast made at 13:00 UTC on 10 Oct: three hours and two days. */
+export function forecast(overrides: Partial<ForecastOut> = {}): ForecastOut {
+  const hour = (time: string, temperature: number, chance: number, code: number, is_day: boolean): ForecastHour => ({
+    time, temperature, humidity: 70, dew_point: 12, precipitation: 0, precipitation_probability: chance,
+    weather_code: code, description: code === 61 ? "Light rain" : "Overcast", is_day,
+    wind_speed: 14.6, wind_gust: 30.2, wind_direction: 350, compass: "N",
+  });
+  return {
+    station: "Home",
+    model: { id: "best_match", label: "Best for this location" },
+    issued: "2026-10-10T13:00:00Z",
+    units: UNITS,
+    hours: [
+      hour("2026-10-10T14:00:00Z", 17.6, 0, 3, true),
+      hour("2026-10-10T15:00:00Z", 16.4, 70, 61, true),
+      hour("2026-10-10T20:00:00Z", 13.2, 5, 3, false),
+    ],
+    days: [
+      { date: "2026-10-09T23:00:00Z", weather_code: 61, description: "Light rain", temperature_max: 21.4,
+        temperature_min: 12.6, precipitation: 2.4, precipitation_probability: 70, wind_speed_max: 20,
+        wind_gust_max: 41.3, wind_direction: 350, compass: "N", uv_index_max: 5 },
+      { date: "2026-10-10T23:00:00Z", weather_code: 3, description: "Overcast", temperature_max: 19,
+        temperature_min: 11, precipitation: 0, precipitation_probability: 5, wind_speed_max: 12,
+        wind_gust_max: 20, wind_direction: 10, compass: "N", uv_index_max: 4 },
+    ],
+    ...overrides,
+  };
 }

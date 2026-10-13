@@ -2,8 +2,9 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { describe, expect, it, vi } from "vitest";
 import History from "./History.svelte";
 import Records from "./Records.svelte";
+import Forecast from "./Forecast.svelte";
 import { ApiError } from "../lib/api";
-import { extremes, fakeApi, META, series } from "../testing";
+import { extremes, fakeApi, forecast, META, series, SYMBOLS } from "../testing";
 
 vi.mock("./Chart.svelte", async () => ({ default: (await import("./ChartStub.svelte")).default }));
 
@@ -180,5 +181,78 @@ describe("Records", () => {
     api.extremes.mockRejectedValue(new Error("boom"));
     render(Records, { ...base, api, period: "today" });
     expect(await screen.findByText("The records could not be loaded.")).toBeInTheDocument();
+  });
+});
+
+
+describe("Forecast", () => {
+  const props = { station: "Home", units: {}, timezone: "Europe/Lisbon", symbols: SYMBOLS };
+
+  it("shows the coming hours and the days, in the station's time", async () => {
+    const api = fakeApi();
+    render(Forecast, { ...props, api });
+    const hours = await screen.findByRole("list", { name: "The next 24 hours" });
+    const items = [...hours.querySelectorAll("[role=listitem]")].map((i) => i.textContent!.replace(/\s+/g, " ").trim());
+    // 14:00 UTC is 15:00 in Lisbon; whole degrees and km/h in the strip.
+    expect(items[0]).toBe("15:00 18 °C 0% 15 km/h N");
+    expect(items[1]).toContain("70%");
+    expect(screen.getByText(/Best for this location, made 14:00/)).toBeInTheDocument();
+    const cells = (row: HTMLElement) =>
+      [...row.querySelectorAll("td")].map((c) => c.textContent!.replace(/\s+/g, " ").trim());
+    const [first, second] = screen.getAllByRole("row").slice(1);
+    // The day that began at 23:00 UTC on 9 Oct is 10 Oct in Lisbon; a chance of rain worth
+    // showing comes after the amount, a small one not at all.
+    expect(cells(first)).toEqual(["Sat 10 Oct", "Light rain", "13 °C", "21 °C", "2.4 mm 70%", "41 km/h N"]);
+    expect(cells(second)).toEqual(["Sun 11 Oct", "Overcast", "11 °C", "19 °C", "0.0 mm", "20 km/h N"]);
+  });
+
+  it("marks only the chances of rain worth showing", async () => {
+    const api = fakeApi();
+    const { container } = render(Forecast, { ...props, api });
+    await screen.findByRole("list", { name: "The next 24 hours" });
+    const rain = [...container.querySelectorAll(".hour .rain")];
+    expect(rain.map((r) => r.classList.contains("dry"))).toEqual([true, false, true]);
+    // The night's icon at night, the day's by day.
+    const icons = [...container.querySelectorAll<HTMLImageElement>(".hour img")].map((i) => i.alt);
+    expect(icons).toEqual(["Overcast", "Light rain", "Overcast"]);
+  });
+
+  it("leaves out what the forecast does not have", async () => {
+    const api = fakeApi();
+    const base = forecast();
+    api.forecast.mockResolvedValue(forecast({
+      model: null,
+      hours: [{ ...base.hours[0], weather_code: null, description: null, compass: null }],
+      days: [{ ...base.days[1], weather_code: null, compass: null }],
+    }));
+    const { container } = render(Forecast, { ...props, api });
+    await screen.findByRole("list", { name: "The next 24 hours" });
+    expect(container.querySelectorAll("img")).toHaveLength(0);
+    expect(screen.getByText(/Weather model, made/)).toBeInTheDocument();
+    expect(container.querySelector(".hour .wind")!.textContent!.trim()).toBe("15 km/h");
+  });
+
+  it("asks again on each refresh and in the units chosen", async () => {
+    const api = fakeApi();
+    const view = render(Forecast, { ...props, api });
+    await screen.findByRole("list", { name: "The next 24 hours" });
+    await view.rerender({ ...props, api, units: { temperature: "f" }, tick: 1 });
+    await waitFor(() => expect(api.forecast).toHaveBeenLastCalledWith("Home", { temperature: "f" }));
+  });
+
+  it("is absent without a forecast to show, and says when it cannot be loaded", async () => {
+    const api = fakeApi();
+    api.forecast.mockResolvedValue(forecast({ issued: null, hours: [], days: [] }));
+    const { container } = render(Forecast, { ...props, api });
+    await waitFor(() => expect(api.forecast).toHaveBeenCalled());
+    expect(container.querySelector(".forecast")).toBeNull();
+    const failing = fakeApi();
+    failing.forecast.mockRejectedValue(new ApiError(503, "the database could not be read"));
+    render(Forecast, { ...props, api: failing });
+    expect(await screen.findByText("the database could not be read")).toBeInTheDocument();
+    const broken = fakeApi();
+    broken.forecast.mockRejectedValue(new Error("x"));
+    render(Forecast, { ...props, api: broken });
+    expect(await screen.findByText("The forecast could not be loaded.")).toBeInTheDocument();
   });
 });

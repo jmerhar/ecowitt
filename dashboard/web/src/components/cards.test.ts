@@ -395,6 +395,25 @@ describe("AiringCard", () => {
   });
 });
 
+describe("AiringCard's forecast", () => {
+  it("says when drier air is expected, in the station's time", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-10T14:00:00Z"));
+    try {
+      const airing = { ...now().airing!, advice: "no_need" as const, drier_from: "2026-10-10T17:00:00Z" };
+      render(AiringCard, { airing, symbols: SYMBOLS, onselect: vi.fn(), timezone: tz });
+      expect(screen.getByText("Drier air expected from 18:00: air the rooms then.")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("says nothing of it without a drier spell", () => {
+    render(AiringCard, { airing: now().airing!, symbols: SYMBOLS, onselect: vi.fn() });
+    expect(screen.queryByText(/Drier air expected/)).not.toBeInTheDocument();
+  });
+});
+
 describe("Sensors", () => {
   it("opens when a sensor needs attention, naming what is wrong", () => {
     const { container } = render(Sensors, { sensors: now().sensors });

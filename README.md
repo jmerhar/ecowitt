@@ -365,7 +365,10 @@ hot, damp or dry, a good time to air the house or one to keep its windows closed
 would leave the rooms at 65% or more and damper than they are), a sensor that needs attention —
 the thresholds of the [Grafana alerts](#grafana-alerts) where there is one. Visitors choose their own units; times are in the station's time zone.
 
-For a station with a [weather model](#weather-model), the page shows the sky it gives — clear,
+For a station with a [weather model](#weather-model), the page shows that model's forecast
+— the next 24 hours and the days ahead — and the cards say what is coming within the day: rain
+likely within six hours, frost or heat, strong gusts, and drier air to open the windows for. It
+also shows the sky the model gives — clear,
 overcast, rain, fog — with an icon from [Meteocons](https://meteocons.com), and the charts can
 draw the model's values dashed beside the station's (*Model*, beside the range). The page credits
 Open-Meteo, as its data's licence asks, and lists the licences of what it bundles at

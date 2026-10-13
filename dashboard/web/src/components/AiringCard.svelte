@@ -5,15 +5,17 @@
    */
   import DoorOpenIcon from "@lucide/svelte/icons/door-open";
   import type { Notice, HouseAiring } from "../lib/api";
-  import { quantity } from "../lib/format";
+  import { coming, quantity } from "../lib/format";
 
   type Props = {
     notice?: Notice;
     airing: HouseAiring;
     symbols: Record<string, string>;
     onselect: (view: string) => void;
+    /** The station's time zone, for when the forecast says the air turns drier. */
+    timezone?: string;
   };
-  let { airing, symbols, onselect, notice }: Props = $props();
+  let { airing, symbols, onselect, notice, timezone = "UTC" }: Props = $props();
 
   const HEADLINES = {
     open: "Good time to air",
@@ -65,6 +67,9 @@
       The rooms are dry enough.
     {/if}
   </p>
+  {#if airing.drier_from}
+    <p class="later">Drier air expected from {coming(airing.drier_from, timezone)}: air the rooms then.</p>
+  {/if}
 </button>
 
 <style>
@@ -76,6 +81,10 @@
   }
   p {
     margin: 0.6rem 0 0;
+  }
+  .later {
+    color: var(--good);
+    font-weight: 500;
   }
   .change {
     display: flex;

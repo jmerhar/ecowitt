@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { ago, axisLabels, clock, duration, moment, number, quantity, today, uvRisk, zoneCity } from "./format";
+import {
+  ago, axisLabels, clock, coming, dayLabel, duration, moment, number, quantity, today, uvRisk, whole, zoneCity,
+} from "./format";
 import { SYMBOLS } from "../testing";
 
 describe("number", () => {
@@ -94,5 +96,33 @@ describe("uvRisk", () => {
 
   it("says nothing without a reading", () => {
     expect(uvRisk(null)).toBe("");
+  });
+});
+
+
+describe("coming and dayLabel", () => {
+  // 10 Oct, 15:00 in Lisbon.
+  const now = new Date("2026-10-10T14:00:00Z");
+
+  it("name today, tomorrow and later days in the station's time", () => {
+    expect(dayLabel("2026-10-10T20:00:00Z", "Europe/Lisbon", now)).toBe("Today");
+    // 23:30 UTC is already the 11th in Lisbon.
+    expect(dayLabel("2026-10-10T23:30:00Z", "Europe/Lisbon", now)).toBe("Tomorrow");
+    expect(dayLabel("2026-10-12T10:00:00Z", "Europe/Lisbon", now)).toBe("Mon 12 Oct");
+  });
+
+  it("give a time to come with its day when it is not today", () => {
+    expect(coming("2026-10-10T17:00:00Z", "Europe/Lisbon", now)).toBe("18:00");
+    expect(coming("2026-10-11T05:00:00Z", "Europe/Lisbon", now)).toBe("tomorrow 06:00");
+    expect(coming("2026-10-13T05:00:00Z", "Europe/Lisbon", now)).toBe("Tue 13 Oct, 06:00");
+  });
+});
+
+describe("whole", () => {
+  it("rounds to a whole number with the unit's symbol", () => {
+    expect(whole(17.6, "c", SYMBOLS)).toBe("18 °C");
+    expect(whole(69.5, "pct", SYMBOLS)).toBe("70%");
+    expect(whole(3.2, "", SYMBOLS)).toBe("3");
+    expect(whole(null, "c", SYMBOLS)).toBe("–");
   });
 });
