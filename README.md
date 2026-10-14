@@ -1,6 +1,7 @@
 # Ecowitt Server
 
 [![Test and Publish](https://github.com/jmerhar/ecowitt/actions/workflows/build-and-push.yml/badge.svg)](https://github.com/jmerhar/ecowitt/actions/workflows/build-and-push.yml)
+[![codecov](https://codecov.io/gh/jmerhar/ecowitt/branch/main/graph/badge.svg)](https://app.codecov.io/gh/jmerhar/ecowitt)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 An Ecowitt weather station can upload to a server of your choosing, every few seconds, for
