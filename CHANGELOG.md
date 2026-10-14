@@ -5,7 +5,7 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 [Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
 says what under *Upgrading*.
 
-## Unreleased
+## 2.8.1 — 2026-10-14
 
 ### Changed
 
