@@ -100,6 +100,21 @@ def test_the_compose_file_must_follow_the_major_version(root: Path) -> None:
     )
     compose.write_text("services: {}\n")
     assert run(root, "check")[2] == "docker-compose.yml names no ecowitt image\n"
+    # A line naming the image that cannot be read for its tag is refused, never skipped.
+    compose.write_text(COMPOSE.format(major=1).replace("dashboard:1", "dashboard@sha256:ab"))
+    assert run(root, "check")[2] == "docker-compose.yml line 5 names an image without a plain tag\n"
+
+
+def test_a_pin_with_a_comment_after_it_is_read_and_moved(root: Path) -> None:
+    compose = root / "docker-compose.yml"
+    compose.write_text(COMPOSE.format(major=1).replace("dashboard:1", 'dashboard:1"  # pinned'))
+    (root / "CHANGELOG.md").write_text(CHANGELOG.replace("- Something new.", "- Breaking."))
+
+    version.set_version(root, "2.0.0", date(2026, 10, 14))
+
+    assert compose.read_text() == COMPOSE.format(major=2).replace(
+        "dashboard:2", 'dashboard:2"  # pinned'
+    )
 
 
 def test_a_major_release_moves_the_compose_file_and_a_minor_one_keeps_it(root: Path) -> None:
@@ -126,6 +141,7 @@ def test_setting_a_version_writes_every_manifest_and_dates_the_changelog(root: P
 
     assert set(version.versions(root).values()) == {"1.3.0"}
     lock = json.loads((root / "dashboard/web/package-lock.json").read_text())
+    assert (lock["version"], lock["packages"][""]["version"]) == ("1.3.0", "1.3.0")
     assert lock["packages"]["node_modules/dep"]["version"] == "4.5.6", "dependencies untouched"
     text = (root / "CHANGELOG.md").read_text()
     assert "## Unreleased" not in text
@@ -140,7 +156,18 @@ def test_setting_a_version_writes_every_manifest_and_dates_the_changelog(root: P
         (None, "1.3", "1.3 is not a version like 1.2.3"),
         (("## Unreleased\n", "## Later\n"), "1.3.0", "has no '## Unreleased' section"),
         (("- Something new.\n", ""), "1.3.0", "'## Unreleased' section is empty"),
-        (None, "1.2.3", "already has a section for 1.2.3"),
+        (
+            ("## Unreleased\n", "## 1.3.0\n\n## Unreleased\n"),
+            "1.3.0",
+            "already has a section for 1.3.0",
+        ),
+        (None, "1.2.3", "1.2.3 is not after 1.2.3, the current version"),
+        (None, "0.9.0", "0.9.0 is not after 1.2.3, the current version"),
+        (
+            ("## Unreleased\n", "## Unreleased\n\n- More.\n\n## Unreleased\n"),
+            "1.3.0",
+            "has more than one '## Unreleased' section",
+        ),
     ],
 )
 def test_a_release_that_cannot_be_cut_changes_nothing(
@@ -156,6 +183,38 @@ def test_a_release_that_cannot_be_cut_changes_nothing(
     assert code == 1 and problem in err
     assert changelog.read_text() == before
     assert set(version.versions(root).values()) == {"1.2.3"}
+
+
+def test_a_mention_of_the_heading_in_prose_is_left_alone(root: Path) -> None:
+    changelog = root / "CHANGELOG.md"
+    changelog.write_text(
+        CHANGELOG.replace("Intro.", "Write notes under `## Unreleased` until a release.")
+    )
+
+    version.set_version(root, "1.3.0", date(2026, 10, 14))
+
+    text = changelog.read_text()
+    assert "Write notes under `## Unreleased` until a release." in text
+    assert "## 1.3.0 — 2026-10-14\n\n### Added" in text
+
+
+@pytest.mark.parametrize(
+    "broken", ["dashboard/web/package-lock.json", "dashboard/web/package.json"]
+)
+def test_a_manifest_that_cannot_be_read_stops_the_release_before_anything_is_written(
+    root: Path, broken: str
+) -> None:
+    if broken.endswith("lock.json"):
+        (root / broken).unlink()
+    else:
+        (root / broken).write_text(json.dumps({"name": "web"}, indent=2))
+    before = {p: p.read_text() for p in root.rglob("*") if p.is_file()}
+
+    code, _, err = run(root, "set", "1.3.0")
+
+    assert code == 1 and "Traceback" not in err
+    assert err in (f"{broken} is missing\n", f"{broken} names no version where one is expected\n")
+    assert {p: p.read_text() for p in root.rglob("*") if p.is_file()} == before
 
 
 def test_notes_need_a_dated_section(root: Path) -> None:
@@ -208,6 +267,34 @@ def test_a_release_is_committed_and_tagged_with_its_notes(repo: Path) -> None:
     assert git(repo, "status", "--porcelain") == ""
 
 
+def test_a_release_is_signed_when_git_has_a_signing_key(
+    repo: Path, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    key = tmp_path_factory.mktemp("key") / "key"
+    made = subprocess.run(
+        ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)],
+        capture_output=True, check=False, timeout=30,
+    )  # fmt: skip
+    if made.returncode:
+        pytest.skip("ssh-keygen is not available")
+    git(repo, "config", "gpg.format", "ssh")
+    git(repo, "config", "user.signingkey", f"{key}.pub")
+
+    assert release(repo, "1.3.0").returncode == 0
+    assert "-----BEGIN SSH SIGNATURE-----" in git(repo, "cat-file", "tag", "v1.3.0")
+
+
+def test_a_release_that_cannot_be_cut_leaves_no_commit_or_tag(repo: Path) -> None:
+    (repo / "CHANGELOG.md").write_text(CHANGELOG.replace("- Something new.\n", ""))
+    git(repo, "commit", "--quiet", "--all", "--message", "empty notes")
+
+    result = release(repo, "1.3.0")
+
+    assert result.returncode == 1 and "section is empty" in result.stderr
+    assert git(repo, "log", "-1", "--format=%s") == "empty notes\n"
+    assert (git(repo, "tag"), git(repo, "status", "--porcelain")) == ("", "")
+
+
 def test_a_release_needs_a_clean_main(repo: Path) -> None:
     (repo / "stray.txt").write_text("x")
     assert "working tree has changes" in release(repo, "1.3.0").stderr
@@ -215,3 +302,51 @@ def test_a_release_needs_a_clean_main(repo: Path) -> None:
     git(repo, "switch", "--quiet", "--create", "other")
     assert "cut from main" in release(repo, "1.3.0").stderr
     assert git(repo, "tag") == ""
+
+
+@pytest.fixture
+def gh(repo: Path, tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """A stand-in gh on PATH: it records its calls, and has a release for the tags in `exists`."""
+    shutil.copy2(BIN / "github-release.sh", repo / "bin" / "github-release.sh")
+    git(repo, "add", ".")
+    git(repo, "commit", "--quiet", "--message", "the release script")
+    fake = tmp_path_factory.mktemp("fake-bin")
+    (fake / "gh").write_text(
+        "#!/usr/bin/env bash\n"
+        'echo "$*" >> "$GH_LOG"\n'
+        'if [ "$1 $2" = "release view" ]; then grep -qx "$3" "$GH_EXISTS" 2>/dev/null; exit; fi\n'
+        'if [ "$1 $2" = "release create" ]; then cat >> "$GH_LOG"; fi\n'
+    )
+    (fake / "gh").chmod(0o755)
+    return fake
+
+
+def github_release(repo: Path, fake: Path, tag: str, exists: str = "") -> tuple[int, str]:
+    log, existing = fake / "log", fake / "exists"
+    existing.write_text(exists)
+    env = {**__import__("os").environ, "PATH": f"{fake}:/usr/bin:/bin", "GH_LOG": str(log),
+           "GH_EXISTS": str(existing)}  # fmt: skip
+    code = subprocess.run(
+        [str(repo / "bin/github-release.sh"), tag], env=env, capture_output=True, text=True,
+        check=False, timeout=60,
+    ).returncode  # fmt: skip
+    return code, log.read_text() if log.exists() else ""
+
+
+def test_the_github_release_carries_the_notes_and_is_made_once(repo: Path, gh: Path) -> None:
+    assert release(repo, "1.3.0").returncode == 0
+
+    code, calls = github_release(repo, gh, "v1.3.0")
+    assert code == 0
+    assert "release create v1.3.0 --verify-tag --title Ecowitt Server 1.3.0 --notes-file -" in calls
+    assert "### Added\n\n- Something new." in calls
+    # A re-run of the workflow finds the release and leaves it.
+    (gh / "log").unlink()
+    code, calls = github_release(repo, gh, "v1.3.0", exists="v1.3.0\n")
+    assert code == 0 and "release create" not in calls
+
+
+def test_no_github_release_for_a_tag_the_manifests_do_not_name(repo: Path, gh: Path) -> None:
+    code, calls = github_release(repo, gh, "v9.9.9")
+
+    assert code == 1 and calls == ""

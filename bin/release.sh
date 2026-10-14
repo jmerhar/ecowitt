@@ -20,14 +20,23 @@ if [ "$(git symbolic-ref --short HEAD 2>/dev/null)" != "main" ]; then
   exit 1
 fi
 
+# `set` changes nothing unless the whole release can be cut, and the notes are in hand before
+# anything is committed, so a failure here leaves neither a commit nor a tag.
 python3 bin/version.py set "$version"
+if ! notes=$(python3 bin/version.py notes "$version"); then
+  git checkout -- .
+  exit 1
+fi
 git commit --quiet --all --message "chore(release): $version"
 
 sign=(--annotate)
 if [ -n "$(git config --get user.signingkey || true)" ]; then
   sign=(--sign)
 fi
-{ printf 'Ecowitt Server %s\n\n' "$version"; python3 bin/version.py notes "$version"; } \
+printf 'Ecowitt Server %s\n\n%s\n' "$version" "$notes" \
   | git tag "${sign[@]}" --cleanup=verbatim "v$version" --file=-
 
 echo "Released $version. Publish it with: git push origin main v$version"
+# An editable install records the version it was installed at, so a local run reports this one
+# only once the virtualenv is reinstalled; the images install afresh.
+echo "Run make install for a local make dev to report $version."

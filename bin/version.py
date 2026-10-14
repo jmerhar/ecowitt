@@ -4,8 +4,10 @@
     version.py check [TAG]   every manifest names the same version, and docker-compose.yml pins
                              its images to that version's major; with a tag (v1.2.3), that the
                              manifests name that version and CHANGELOG.md has its section
-    version.py set X.Y.Z     write X.Y.Z into every manifest and its major into docker-compose.yml,
-                             and date CHANGELOG.md's Unreleased section as X.Y.Z's
+    version.py set X.Y.Z     write X.Y.Z, which must follow the current version, into every
+                             manifest and its major into docker-compose.yml, and date
+                             CHANGELOG.md's Unreleased section as X.Y.Z's; a release that cannot be
+                             cut changes nothing
     version.py notes X.Y.Z   print X.Y.Z's section of CHANGELOG.md, without its heading
 
 `--root DIR` reads and writes a checkout other than this one, as the tests do.
@@ -23,12 +25,17 @@ PYPROJECTS = ("core/pyproject.toml", "collector/pyproject.toml", "dashboard/api/
 PACKAGE = "dashboard/web/package.json"
 LOCK = "dashboard/web/package-lock.json"
 CHANGELOG = "CHANGELOG.md"
-#: The shipped compose file follows a major version, so an install gets every release that needs
-#: nothing done on upgrading, and no other.
+#: The shipped compose file follows a major version, so `docker compose pull` brings every release
+#: that keeps the images' settings and stored data working, and no other.
 COMPOSE = "docker-compose.yml"
-COMPOSE_IMAGE = re.compile(r"(?m)^(    image: ghcr\.io/jmerhar/ecowitt(?:-dashboard)?:)(\S+)$")
+#: An image line naming one of the project's images, its tag, and anything after the tag.
+COMPOSE_IMAGE = re.compile(
+    r"""^(\s*image:\s*["']?ghcr\.io/jmerhar/ecowitt(?:-dashboard)?:)([0-9A-Za-z._-]+)(.*)$"""
+)
+OUR_IMAGE = re.compile(r"^\s*image:.*ghcr\.io/jmerhar/ecowitt")
 SEMVER = re.compile(r"\d+\.\d+\.\d+")
 UNRELEASED = "## Unreleased"
+UNRELEASED_HEADING = re.compile(r"(?m)^## Unreleased$")
 
 #: Each manifest's own version: a pyproject's `version`, package.json's, and the lockfile's
 #: top-level one and its root package's (the dependencies' versions are left alone).
@@ -46,17 +53,38 @@ class VersionError(Exception):
     """What stops a check or a release, said to the person running it."""
 
 
+def _read(root: Path, path: str) -> str:
+    try:
+        return (root / path).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        raise VersionError(f"{path} is missing") from None
+
+
 def versions(root: Path) -> dict[str, str]:
     """Every manifest's version, by where it was found."""
     found = {}
     for path, patterns in PATTERNS.items():
-        text = (root / path).read_text(encoding="utf-8")
+        text = _read(root, path)
         for n, pattern in enumerate(patterns):
             match = pattern.search(text)
             if match is None:
                 raise VersionError(f"{path} names no version where one is expected")
             found[f"{path}#{n}" if n else path] = match.group(2)
     return found
+
+
+def _pins(text: str) -> list[tuple[int, re.Match[str]]]:
+    """Each line of a compose file naming one of the project's images, read for its tag."""
+    pins = []
+    for n, line in enumerate(text.splitlines()):
+        if OUR_IMAGE.match(line):
+            match = COMPOSE_IMAGE.match(line)
+            if match is None:
+                raise VersionError(f"{COMPOSE} line {n + 1} names an image without a plain tag")
+            pins.append((n, match))
+    if not pins:
+        raise VersionError(f"{COMPOSE} names no ecowitt image")
+    return pins
 
 
 def check(root: Path, tag: str | None) -> str:
@@ -67,14 +95,10 @@ def check(root: Path, tag: str | None) -> str:
         raise VersionError(f"the manifests name different versions:\n{listed}")
     version = next(iter(found.values()))
     major = version.split(".")[0]
-    pins = COMPOSE_IMAGE.findall((root / COMPOSE).read_text(encoding="utf-8"))
-    if not pins:
-        raise VersionError(f"{COMPOSE} names no ecowitt image")
-    for image, pin in pins:
-        if pin != major:
-            raise VersionError(
-                f"{COMPOSE} pins {image.split()[1]}{pin}, not {major} as {version} is"
-            )
+    for _, pin in _pins(_read(root, COMPOSE)):
+        if pin.group(2) != major:
+            image = pin.group(1).split("image:")[1].strip().strip("\"'")
+            raise VersionError(f"{COMPOSE} pins {image}{pin.group(2)}, not {major} as {version} is")
     if tag is not None:
         if tag != f"v{version}":
             raise VersionError(f"the tag is {tag}, but the manifests name {version}")
@@ -83,33 +107,41 @@ def check(root: Path, tag: str | None) -> str:
 
 
 def set_version(root: Path, version: str, today: date) -> None:
-    """Write `version` into every manifest and date the Unreleased changelog section as it."""
+    """Write `version` into every manifest and its major into the compose file, and date the
+    Unreleased changelog section as it. Every file is worked out before any is written, so a
+    release that cannot be cut changes nothing."""
     if not SEMVER.fullmatch(version):
         raise VersionError(f"{version} is not a version like 1.2.3")
-    changelog = root / CHANGELOG
-    text = changelog.read_text(encoding="utf-8")
-    if UNRELEASED not in text.splitlines():
-        raise VersionError(f"{CHANGELOG} has no '{UNRELEASED}' section to release")
+    current = check(root, None)
+    if tuple(map(int, version.split("."))) <= tuple(map(int, current.split("."))):
+        raise VersionError(f"{version} is not after {current}, the current version")
+    text = _read(root, CHANGELOG)
+    headings = UNRELEASED_HEADING.findall(text)
+    if len(headings) != 1:
+        found = "no" if not headings else "more than one"
+        raise VersionError(f"{CHANGELOG} has {found} '{UNRELEASED}' section to release")
     if not any(
         line.strip() and not line.startswith("#")
         for line in _section(text, UNRELEASED).splitlines()
     ):
         raise VersionError(f"{CHANGELOG}'s '{UNRELEASED}' section is empty")
-    if re.search(rf"(?m)^## {re.escape(version)} ", text):
+    if re.search(rf"(?m)^## {re.escape(version)}(\s|$)", text):
         raise VersionError(f"{CHANGELOG} already has a section for {version}")
+    planned = {CHANGELOG: UNRELEASED_HEADING.sub(f"## {version} — {today.isoformat()}", text, 1)}
+    # check() above has found every pattern in its file, so each substitution has its line.
     for path, patterns in PATTERNS.items():
-        file = root / path
-        content = file.read_text(encoding="utf-8")
+        content = _read(root, path)
         for pattern in patterns:
             content = pattern.sub(rf"\g<1>{version}\g<3>", content, count=1)
-        file.write_text(content, encoding="utf-8")
-    compose = root / COMPOSE
-    major = version.split(".")[0]
-    compose.write_text(
-        COMPOSE_IMAGE.sub(rf"\g<1>{major}", compose.read_text(encoding="utf-8")), encoding="utf-8"
-    )
-    heading = f"## {version} — {today.isoformat()}"
-    changelog.write_text(text.replace(UNRELEASED, heading, 1), encoding="utf-8")
+        planned[path] = content
+    compose = _read(root, COMPOSE)
+    lines = compose.split("\n")
+    for n, pin in _pins(compose):
+        lines[n] = f"{pin.group(1)}{version.split('.')[0]}{pin.group(3)}"
+    planned[COMPOSE] = "\n".join(lines)
+    for path, content in planned.items():
+        (root / path).write_text(content, encoding="utf-8")
+    check(root, f"v{version}")
 
 
 def notes(root: Path, version: str) -> str:

@@ -8,5 +8,10 @@ tag="${1:?usage: bin/github-release.sh vX.Y.Z}"
 version="${tag#v}"
 
 python3 bin/version.py check "$tag"
+# A re-run of the workflow finds the release made the first time.
+if gh release view "$tag" >/dev/null 2>&1; then
+  echo "$tag already has a release"
+  exit 0
+fi
 python3 bin/version.py notes "$version" \
   | gh release create "$tag" --verify-tag --title "Ecowitt Server $version" --notes-file -
