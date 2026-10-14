@@ -368,6 +368,8 @@ class Meta(BaseModel):
     """What the API offers."""
 
     title: str
+    #: The release of Ecowitt Server serving the dashboard.
+    version: str
     metrics: list[MetricInfo]
     units: dict[str, list[UnitChoice]]
     #: The symbol for every unit code a value can come in.

@@ -250,6 +250,8 @@ export type MetricInfo = {
 
 export type Meta = {
   title: string;
+  /** The release of Ecowitt Server serving the dashboard. */
+  version: string;
   metrics: MetricInfo[];
   units: Record<string, { code: string; symbol: string }[]>;
   symbols: Record<string, string>;

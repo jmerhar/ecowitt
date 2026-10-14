@@ -14,6 +14,7 @@ export const UNITS = { temperature: "c", pressure: "hpa", rain: "mm", wind: "kmh
 
 export const META: Meta = {
   title: "Test weather",
+  version: "2.8.0",
   metrics: [
     { id: "outdoor.temperature", label: "Temperature", quantity: "temperature", unit: null, aggregates: ["mean", "min", "max"], extremes: "both", per_sensor: false, model: true },
     { id: "outdoor.dew_point", label: "Dew point", quantity: "temperature", unit: null, aggregates: ["mean", "min", "max"], extremes: "both", per_sensor: false, model: true },

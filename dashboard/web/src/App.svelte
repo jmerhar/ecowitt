@@ -190,6 +190,7 @@
     (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>) ·
   {/if}
   Icons by Meteocons and Lucide · <a href="/licenses.md">Licences</a>
+  {#if meta}· Ecowitt Server {meta.version}{/if}
 </footer>
 
 <style>

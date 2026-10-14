@@ -153,6 +153,7 @@ describe("App", () => {
     const footer = await screen.findByRole("contentinfo");
     await waitFor(() => expect(within(footer).getByRole("link", { name: "Open-Meteo.com" })).toBeInTheDocument());
     expect(within(footer).getByRole("link", { name: "Licences" })).toHaveAttribute("href", "/licenses.md");
+    expect(footer).toHaveTextContent("Ecowitt Server 2.8.0");
     first.unmount();
     render(App, { api: fakeApi() });
     const plain = await screen.findByRole("contentinfo");

@@ -14,6 +14,7 @@ import zoneinfo
 from collections.abc import Awaitable, Callable, Collection, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta, tzinfo
+from importlib.metadata import version as package_version
 
 from ecowitt.core import weathermodel, windheight
 from ecowitt.core.stationinfo import StationInfo
@@ -64,6 +65,8 @@ RANGES = {
 PERIODS = {"today": 60.0, "month": 600.0, "year": 1800.0}
 
 NOW_TTL = 30.0
+#: The release running, from the installed package's metadata.
+VERSION = package_version("ecowitt-dashboard")
 #: The collector fetches a forecast hourly, so a few minutes' reuse loses nothing.
 FORECAST_TTL = 300.0
 STATIONS_TTL = 300.0
@@ -239,6 +242,7 @@ class Dashboard:
         """The metrics, units, ranges and periods there are."""
         return models.Meta(
             title=self.title,
+            version=VERSION,
             metrics=[
                 models.MetricInfo(
                     id=m.id,

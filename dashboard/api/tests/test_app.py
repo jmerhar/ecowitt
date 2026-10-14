@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from importlib.metadata import version as package_version
 from pathlib import Path
 
 import pytest
@@ -75,6 +76,7 @@ def test_stations(client: TestClient) -> None:
 def test_meta(client: TestClient) -> None:
     meta = client.get("/api/v1/meta").json()
     assert meta["title"] == "Test weather"
+    assert meta["version"] == package_version("ecowitt-dashboard")
     assert "outdoor.temperature" in {m["id"] for m in meta["metrics"]}
 
 

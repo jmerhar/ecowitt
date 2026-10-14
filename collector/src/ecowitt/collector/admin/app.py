@@ -16,6 +16,7 @@ import re
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from importlib.metadata import version as package_version
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
@@ -441,10 +442,15 @@ def build_app(context: AdminContext) -> FastAPI:
     return app
 
 
+#: The release running, from the installed package's metadata.
+VERSION = package_version("ecowitt-collector")
+
+
 def _status(context: AdminContext) -> dict[str, object]:
     """The `/api/status` document."""
     state, settings = context.state, context.settings
     return {
+        "version": VERSION,
         "uptime_seconds": round(state.uptime_seconds, 1),
         "reports_accepted": state.reports_accepted,
         "reports_rejected": state.reports_rejected,

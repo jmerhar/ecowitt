@@ -14,6 +14,7 @@ import urllib.parse
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from importlib.metadata import version as package_version
 from pathlib import Path
 
 import pytest
@@ -1286,6 +1287,9 @@ class TestStatus:
         status = rig.client.get("/api/status").json()
 
         assert "<h2>Health</h2>" in page
+        # The release, as the installed package records it.
+        assert status["version"] == package_version("ecowitt-collector")
+        assert f"Ecowitt Server {status['version']} ·" in page
         assert "1 accepted" in page and "the last 0 s ago" in page
         assert "Database</td>" in page and "not set up" in page
         assert "last accepted never, " in page and "1 failed" in page
