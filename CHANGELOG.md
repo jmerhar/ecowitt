@@ -5,6 +5,25 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 [Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
 says what under *Upgrading*.
 
+## 2.7.1 — 2026-10-14
+
+### Fixed
+
+- "Very humid" outdoors beside "the outside air is drier" read as a contradiction. The outdoor
+  notice says it is outside; the airing card, the rooms table and the *Good time to air* alert say
+  the outside air holds less (or more) water, and what it would do once warmed indoors.
+- Keeping the windows closed is advised only when airing would leave the rooms at 65% or more
+  *and* at least 5 points damper than they are. A 1-point margin, within two sensors' error, sent
+  *Close the windows* for rooms at 69% that would have settled at 70%. The airing card and the
+  rooms table's colours treat a smaller change either way as none.
+- *Close the windows* is not sent while any room would be dried by airing, which *Good time to
+  air* announces instead, as the dashboard has always given airing precedence. Its message gives
+  whole percentages.
+
+### Upgrading
+
+- Import `grafana/alerts.json` again for the alert changes.
+
 ## 2.7.0 — 2026-10-14
 
 ### Added
