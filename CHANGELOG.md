@@ -5,6 +5,13 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 [Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
 says what under *Upgrading*.
 
+## Unreleased
+
+### Changed
+
+- The shipped `docker-compose.yml` pulls the images' major line (`:2`) instead of `latest`, so
+  `docker compose pull` never brings a release that needs something done on upgrading.
+
 ## 2.8.0 — 2026-10-14
 
 ### Added

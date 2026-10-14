@@ -35,6 +35,14 @@ Intro.
 """
 
 
+COMPOSE = """services:
+  ecowitt:
+    image: ghcr.io/jmerhar/ecowitt:{major}
+  dashboard:
+    image: ghcr.io/jmerhar/ecowitt-dashboard:{major}
+"""
+
+
 @pytest.fixture
 def root(tmp_path: Path) -> Path:
     """A checkout's manifests and changelog, all at 1.2.3."""
@@ -55,6 +63,7 @@ def root(tmp_path: Path) -> Path:
     }
     (web / "package-lock.json").write_text(json.dumps(lock, indent=2))
     (tmp_path / "CHANGELOG.md").write_text(CHANGELOG)
+    (tmp_path / "docker-compose.yml").write_text(COMPOSE.format(major=1))
     return tmp_path
 
 
@@ -81,6 +90,29 @@ def test_a_manifest_out_of_step_is_named(root: Path) -> None:
 
     assert code == 1
     assert "collector/pyproject.toml: 1.2.4" in err and "core/pyproject.toml: 1.2.3" in err
+
+
+def test_the_compose_file_must_follow_the_major_version(root: Path) -> None:
+    compose = root / "docker-compose.yml"
+    compose.write_text(COMPOSE.format(major=1).replace("dashboard:1", "dashboard:latest"))
+    assert run(root, "check")[2] == (
+        "docker-compose.yml pins ghcr.io/jmerhar/ecowitt-dashboard:latest, not 1 as 1.2.3 is\n"
+    )
+    compose.write_text("services: {}\n")
+    assert run(root, "check")[2] == "docker-compose.yml names no ecowitt image\n"
+
+
+def test_a_major_release_moves_the_compose_file_and_a_minor_one_keeps_it(root: Path) -> None:
+    version.set_version(root, "1.3.0", date(2026, 10, 14))
+    assert (root / "docker-compose.yml").read_text() == COMPOSE.format(major=1)
+    (root / "CHANGELOG.md").write_text(
+        (root / "CHANGELOG.md")
+        .read_text()
+        .replace("## 1.3.0", "## Unreleased\n\n- Breaking.\n\n## 1.3.0")
+    )
+    version.set_version(root, "2.0.0", date(2026, 10, 15))
+    assert (root / "docker-compose.yml").read_text() == COMPOSE.format(major=2)
+    assert run(root, "check", "v2.0.0")[0] == 0
 
 
 def test_a_manifest_without_a_version_is_refused(root: Path) -> None:

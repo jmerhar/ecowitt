@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """The release version, which every project's manifest and CHANGELOG.md carry.
 
-    version.py check [TAG]   every manifest names the same version; with a tag (v1.2.3), that it
-                             names that version and CHANGELOG.md has its section
-    version.py set X.Y.Z     write X.Y.Z into every manifest, and date CHANGELOG.md's Unreleased
-                             section as X.Y.Z's
+    version.py check [TAG]   every manifest names the same version, and docker-compose.yml pins
+                             its images to that version's major; with a tag (v1.2.3), that the
+                             manifests name that version and CHANGELOG.md has its section
+    version.py set X.Y.Z     write X.Y.Z into every manifest and its major into docker-compose.yml,
+                             and date CHANGELOG.md's Unreleased section as X.Y.Z's
     version.py notes X.Y.Z   print X.Y.Z's section of CHANGELOG.md, without its heading
 
 `--root DIR` reads and writes a checkout other than this one, as the tests do.
@@ -22,6 +23,10 @@ PYPROJECTS = ("core/pyproject.toml", "collector/pyproject.toml", "dashboard/api/
 PACKAGE = "dashboard/web/package.json"
 LOCK = "dashboard/web/package-lock.json"
 CHANGELOG = "CHANGELOG.md"
+#: The shipped compose file follows a major version, so an install gets every release that needs
+#: nothing done on upgrading, and no other.
+COMPOSE = "docker-compose.yml"
+COMPOSE_IMAGE = re.compile(r"(?m)^(    image: ghcr\.io/jmerhar/ecowitt(?:-dashboard)?:)(\S+)$")
 SEMVER = re.compile(r"\d+\.\d+\.\d+")
 UNRELEASED = "## Unreleased"
 
@@ -61,6 +66,15 @@ def check(root: Path, tag: str | None) -> str:
         listed = "\n".join(f"  {where}: {v}" for where, v in found.items())
         raise VersionError(f"the manifests name different versions:\n{listed}")
     version = next(iter(found.values()))
+    major = version.split(".")[0]
+    pins = COMPOSE_IMAGE.findall((root / COMPOSE).read_text(encoding="utf-8"))
+    if not pins:
+        raise VersionError(f"{COMPOSE} names no ecowitt image")
+    for image, pin in pins:
+        if pin != major:
+            raise VersionError(
+                f"{COMPOSE} pins {image.split()[1]}{pin}, not {major} as {version} is"
+            )
     if tag is not None:
         if tag != f"v{version}":
             raise VersionError(f"the tag is {tag}, but the manifests name {version}")
@@ -89,6 +103,11 @@ def set_version(root: Path, version: str, today: date) -> None:
         for pattern in patterns:
             content = pattern.sub(rf"\g<1>{version}\g<3>", content, count=1)
         file.write_text(content, encoding="utf-8")
+    compose = root / COMPOSE
+    major = version.split(".")[0]
+    compose.write_text(
+        COMPOSE_IMAGE.sub(rf"\g<1>{major}", compose.read_text(encoding="utf-8")), encoding="utf-8"
+    )
     heading = f"## {version} — {today.isoformat()}"
     changelog.write_text(text.replace(UNRELEASED, heading, 1), encoding="utf-8")
 

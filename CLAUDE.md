@@ -122,7 +122,8 @@ TODO/             one note per planned feature; delete a note when its feature s
 bin/              every script the Makefile and CI run; its Python is linted with the shared
                   ruff.toml (bin/ci-ruff.sh). lockfile.sh / check-lockfile.sh write and guard
                   the page's package-lock.json; test-web.sh type-checks and tests the page;
-                  version.py keeps every manifest's version in step, release.sh cuts a release
+                  version.py keeps every manifest's version and the compose file's major image
+                  tag in step, release.sh cuts a release
                   and github-release.sh (CI, on a tag) publishes its notes
 CHANGELOG.md      every release's notes; new work goes under `## Unreleased`
 ```
