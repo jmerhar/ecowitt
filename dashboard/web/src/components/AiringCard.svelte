@@ -27,13 +27,15 @@
   const after = $derived(quantity(airing.humidity_after, "pct", symbols));
   /** The humidity where a room starts to be damp: the API's AIRING_HUMIDITY_PCT. */
   const DAMP_PCT = 65;
+  /** A smaller change is within the sensors' error: the API's DAMPER_BY_PCT. */
+  const MARGIN_PCT = 5;
 
-  /** How airing would change the rooms' humidity: down, up, or by under a point. */
+  /** How airing would change the rooms' humidity: down, up, or by less than the sensors tell. */
   const change = $derived.by(() => {
     const later = airing.humidity_after;
     if (later === null) return null;
-    if (later <= airing.humidity - 1) return "down";
-    return later >= airing.humidity + 1 ? "up" : "same";
+    if (later <= airing.humidity - MARGIN_PCT) return "down";
+    return later >= airing.humidity + MARGIN_PCT ? "up" : "same";
   });
   /** Green when airing would dry the rooms; red only when it would make them damp. */
   const colour = $derived(
@@ -62,7 +64,7 @@
       Airing would make the rooms a little more humid, but not enough to matter: they would stay
       under {DAMP_PCT}%.
     {:else if change === "same"}
-      Airing would make little difference: the outside air is about as humid as the rooms.
+      Airing would make little difference: the outside air holds about as much water as the rooms.
     {:else}
       The rooms are dry enough.
     {/if}

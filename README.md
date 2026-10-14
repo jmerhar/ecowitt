@@ -329,7 +329,7 @@ one alert per room or station (*Close the windows* is one per station):
 | Rule | Fires when | Severity |
 |---|---|---|
 | Good time to air | a room is at 65% humidity or more and the outdoor dew point is more than 2 °C below the room's, for 15 minutes | info |
-| Close the windows | airing would leave the rooms at a median of 65% humidity or more, and at least a point damper than they are, for 30 minutes: the advice the dashboard gives | info |
+| Close the windows | airing would leave the rooms at a median of 65% humidity or more, and at least 5 points damper than they are (less is within the sensors' error), for 30 minutes: the advice the dashboard gives | info |
 | Damp room | a room has not dropped below 70% humidity in 6 hours | warning |
 | Sensor not updating | a room or outdoor sensor's readings have not changed, or not arrived, for 3 hours of the station's reports | warning |
 | Battery low | a sensor's low-battery flag has been set for an hour | warning |

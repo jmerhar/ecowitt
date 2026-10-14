@@ -117,10 +117,11 @@ def test_tendency(change: float, words: str) -> None:
         # Airing would not help a damp room, but would not hurt it either.
         (90, 0.5, 89, Airing.NO_NEED),
         (60, 0.2, 59, Airing.NO_NEED),
-        # It would leave a room damp and damper than it is.
-        (70, -0.5, 73, Airing.KEEP_CLOSED),
-        (64, -0.2, 65, Airing.KEEP_CLOSED),
-        (64.5, -0.2, 65, Airing.NO_NEED),
+        # It would leave a room damp and damper than it is, by more than the sensors' error.
+        (70, -1.0, 75, Airing.KEEP_CLOSED),
+        (60, -1.0, 65, Airing.KEEP_CLOSED),
+        (60.5, -1.0, 65, Airing.NO_NEED),
+        (69, -0.2, 70.2, Airing.NO_NEED),
         # Damper, but not damp: nothing to warn of.
         (50, -2, 62, Airing.NO_NEED),
         (70, -0.5, None, Airing.NO_NEED),

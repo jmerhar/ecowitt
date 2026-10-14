@@ -59,12 +59,15 @@
     no_need: { text: "", hint: "" },
   } as const;
 
-  /** Whether airing would dry a room (good) or dampen it (bad), by a point or more. */
+  /** A smaller change is within the sensors' error: the API's DAMPER_BY_PCT. */
+  const MARGIN_PCT = 5;
+
+  /** Whether airing would dry a room (good) or dampen it (bad), by more than the sensors' error. */
   function effect(room: Room): string {
     const after = room.airing?.humidity_after;
     if (after === null || after === undefined || room.humidity === null) return "muted";
-    if (after <= room.humidity - 1) return "good";
-    return after >= room.humidity + 1 ? "bad" : "muted";
+    if (after <= room.humidity - MARGIN_PCT) return "good";
+    return after >= room.humidity + MARGIN_PCT ? "bad" : "muted";
   }
 
   /** The airing column, only while some room has advice to give. */

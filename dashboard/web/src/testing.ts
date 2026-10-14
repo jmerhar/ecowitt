@@ -80,7 +80,7 @@ export function now(overrides: Partial<Now> = {}): Now {
       { sensor: "ch1", name: "Bathroom", temperature: 20, humidity: 75, dew_point: 15.4,
         airing: { advice: "open", humidity_after: 49, dew_point_difference: 2.9 }, flags: ["damp"] },
       { sensor: "ch2", name: "Attic", temperature: 19, humidity: 70, dew_point: 13.4,
-        airing: { advice: "keep_closed", humidity_after: 71, dew_point_difference: 0.2 }, flags: ["cold"] },
+        airing: { advice: "keep_closed", humidity_after: 76, dew_point_difference: -1.2 }, flags: ["cold"] },
     ],
     sensors: [
       { sensor: "outdoor", name: "Outdoor", battery_low: false, unchanged_s: 0, updating: true },

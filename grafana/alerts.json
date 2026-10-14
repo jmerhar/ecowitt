@@ -123,7 +123,7 @@
               "model": {
                 "refId": "C",
                 "type": "math",
-                "expression": "$A >= 65 && $A >= $B + 1"
+                "expression": "$A >= 65 && $A >= $B + 5"
               }
             }
           ],
@@ -132,8 +132,8 @@
           "for": "30m",
           "keep_firing_for": "30m",
           "annotations": {
-            "summary": "Airing would leave the house damp: the rooms, at {{ humanize $values.B.Value }}% humidity, would settle at {{ humanize $values.A.Value }}% with the outside air. Keep the windows closed.",
-            "description": "Airing would leave the rooms at a median of 65% humidity or more, and at least a point damper than they are, for 30 minutes: the outside air holds more moisture than theirs."
+            "summary": "Airing would leave the house damp: the rooms, at {{ printf \"%.0f\" $values.B.Value }}% humidity, would settle at {{ printf \"%.0f\" $values.A.Value }}% with the outside air. Keep the windows closed.",
+            "description": "Airing would leave the rooms at a median of 65% humidity or more, and at least 5 points damper than they are (less is within the sensors' error), for 30 minutes: the outside air holds more moisture than theirs."
           },
           "labels": {
             "app": "ecowitt",

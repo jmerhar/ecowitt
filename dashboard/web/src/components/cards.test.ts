@@ -233,11 +233,11 @@ describe("Rooms", () => {
     render(Rooms, { rooms: now().rooms, units: UNITS, symbols: SYMBOLS });
     expect(screen.getByText("Air it")).toHaveAttribute("title", expect.stringContaining("holds less water"));
     expect(screen.getByText("Keep closed")).toBeInTheDocument();
-    // Airing would dry the bathroom (75% to 49%) and dampen the lounge (55% to 58%) and the
-    // attic (70% to 71%, a point).
+    // Airing would dry the bathroom (75% to 49%) and dampen the attic (70% to 76%); it would
+    // change the lounge (55% to 58%) by less than the sensors' error.
     expect(screen.getByText("49%")).toHaveClass("good");
-    expect(screen.getByText("58%")).toHaveClass("bad");
-    expect(screen.getByText("71%")).toHaveClass("bad");
+    expect(screen.getByText("58%")).toHaveClass("muted");
+    expect(screen.getByText("76%")).toHaveClass("bad");
     expect(screen.getAllByRole("row")).toHaveLength(4);
   });
 
@@ -360,7 +360,8 @@ describe("AiringCard", () => {
     [{ advice: "no_need", rooms: [] }, "No need to air", "dry enough."],
     [{ advice: "no_need", rooms: [], humidity_after: null }, "No need to air", "dry enough."],
     [{ advice: "no_need", rooms: [], humidity: 60, humidity_after: 59.5 }, "No need to air", "would make little difference"],
-    [{ advice: "no_need", rooms: [], humidity: 62, humidity_after: 63 }, "No need to air", "they would stay under 65%."],
+    [{ advice: "no_need", rooms: [], humidity: 57, humidity_after: 63 }, "No need to air", "they would stay under 65%."],
+    [{ advice: "no_need", rooms: [], humidity: 62, humidity_after: 66 }, "No need to air", "would make little difference"],
   ] as const)("says what to do: %#", async (overrides, headline, words) => {
     const onselect = vi.fn();
     const { container } = render(AiringCard, {
