@@ -8,7 +8,7 @@
 # settings in ./data-dashboard. Back those up and there is nothing else to keep.
 services:
   ecowitt:
-    # The major version: every release that needs nothing done on upgrading (CHANGELOG.md).
+    # The major version: every release that keeps these settings and the stored data working.
     image: ghcr.io/jmerhar/ecowitt:2
     container_name: ecowitt
     restart: unless-stopped

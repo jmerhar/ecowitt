@@ -2,8 +2,9 @@
 
 Every release of Ecowitt Server: the collector image (`ghcr.io/jmerhar/ecowitt`) and, from 2.1.0,
 the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one version. Versions follow
-[Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
-says what under *Upgrading*.
+[Semantic Versioning](https://semver.org): a major release changes the images' settings or stored
+data in a way that needs acting on. Any release can also ask for the Grafana dashboard or alert
+rules to be imported again. Either is listed under *Upgrading*.
 
 ## 2.8.1 — 2026-10-14
 
