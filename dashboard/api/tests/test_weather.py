@@ -149,8 +149,12 @@ def test_the_thresholds_match_the_alert_rules() -> None:
         f"$A > {weather.AIRING_DEWPOINT_DELTA_C:g} && $B >= {weather.AIRING_HUMIDITY_PCT:g}"
     )
     assert condition("Close the windows")["expression"] == (
-        f"$A >= {weather.AIRING_HUMIDITY_PCT:g} && $A >= $B + {weather.DAMPER_BY_PCT:g}"
+        f"$A >= {weather.AIRING_HUMIDITY_PCT:g} && $A >= $B + {weather.DAMPER_BY_PCT:g} && $D == 0"
     )
+    # Like the page, no advice to close while any room would be dried by airing.
+    airable = next(d for d in rules["Close the windows"]["data"] if d["refId"] == "D")
+    damp, drier = weather.AIRING_HUMIDITY_PCT, weather.AIRING_DEWPOINT_DELTA_C
+    assert f"rh.rh >= {damp:g} AND vent.delta > {drier:g}" in airable["model"]["rawSql"]
     assert threshold("Sensor not updating") == weather.STALE_AFTER_S
     silent = next(d for d in rules["Sensor not updating"]["data"] if d["refId"] == "A")
     # The sensors the dashboard judges too (service._judged): the outdoor one and the rooms.

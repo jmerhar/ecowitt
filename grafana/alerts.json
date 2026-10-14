@@ -114,6 +114,22 @@
               }
             },
             {
+              "refId": "D",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "D",
+                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(dewpoint_delta_c ORDER BY time) AS delta\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station, sum(CASE WHEN rh.rh >= 65 AND vent.delta > 2 THEN 1 ELSE 0 END) AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor\nGROUP BY rh.station",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
               "refId": "C",
               "relativeTimeRange": {
                 "from": 0,
@@ -123,7 +139,7 @@
               "model": {
                 "refId": "C",
                 "type": "math",
-                "expression": "$A >= 65 && $A >= $B + 5"
+                "expression": "$A >= 65 && $A >= $B + 5 && $D == 0"
               }
             }
           ],
@@ -133,7 +149,7 @@
           "keep_firing_for": "30m",
           "annotations": {
             "summary": "Airing would leave the house damp: the rooms, at {{ printf \"%.0f\" $values.B.Value }}% humidity, would settle at {{ printf \"%.0f\" $values.A.Value }}% with the outside air. Keep the windows closed.",
-            "description": "Airing would leave the rooms at a median of 65% humidity or more, and at least 5 points damper than they are (less is within the sensors' error), for 30 minutes: the outside air holds more moisture than theirs."
+            "description": "Airing would leave the rooms at a median of 65% humidity or more, and at least 5 points damper than they are (less is within the sensors' error), for 30 minutes, while no room would be dried by airing (which Good time to air announces instead): the outside air holds more moisture than theirs."
           },
           "labels": {
             "app": "ecowitt",
