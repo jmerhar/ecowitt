@@ -121,7 +121,10 @@ grafana/          weather.json, the dashboard, and alerts.json, the alert rules;
 TODO/             one note per planned feature; delete a note when its feature ships
 bin/              every script the Makefile and CI run; its Python is linted with the shared
                   ruff.toml (bin/ci-ruff.sh). lockfile.sh / check-lockfile.sh write and guard
-                  the page's package-lock.json; test-web.sh type-checks and tests the page
+                  the page's package-lock.json; test-web.sh type-checks and tests the page;
+                  version.py keeps every manifest's version in step, release.sh cuts a release
+                  and github-release.sh (CI, on a tag) publishes its notes
+CHANGELOG.md      every release's notes; new work goes under `## Unreleased`
 ```
 
 ## Things worth knowing before changing anything
@@ -251,6 +254,7 @@ make web-install  # the dashboard page's node_modules, from the lockfile, via th
 make test-web     # the dashboard page: svelte-check and Vitest with coverage
 make lockfile     # regenerate dashboard/web/package-lock.json (the only way to)
 make check        # lint + every suite with coverage
+bin/release.sh 2.9.0   # date the changelog's Unreleased section, commit and tag; then push both
 UPDATE_GOLDEN=1 bin/test-python.sh collector tests/ingest/test_pipeline.py   # after an intended output change
 ```
 

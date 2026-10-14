@@ -3,8 +3,10 @@ name: Test and Publish
 on:
   # push is limited to main because pull_request already covers branch work; triggering on
   # both would run the whole suite twice for every pull request.
+  # A release tag (v1.2.3) publishes that version's images and its GitHub release.
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
   workflow_dispatch: {}
@@ -118,6 +120,10 @@ jobs:
 
       - name: Lockfile resolves only to the public registry
         run: bin/check-lockfile.sh
+
+      # Every manifest names one version; a release tag must name it, with its changelog notes.
+      - name: Versions agree
+        run: bin/version.py check ${{ github.ref_type == 'tag' && github.ref_name || '' }}
 
       - name: Install ruff
         run: pip install ruff
@@ -234,11 +240,15 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE }}${{ matrix.image }}
-          # A moving tag for deployments that follow the branch, and an immutable one so a
-          # specific build can always be pinned or rolled back to.
+          # A moving tag for deployments that follow the branch, an immutable one so a
+          # specific build can always be pinned or rolled back to, and on a release tag its
+          # version, minor and major line.
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=long
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
 
       - uses: docker/build-push-action@v6
         with:
@@ -249,3 +259,18 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  release:
+    # The GitHub release for a version, once its images are published.
+    needs: [publish]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Create the GitHub release from the changelog
+        run: bin/github-release.sh "${{ github.ref_name }}"
+        env:
+          GH_TOKEN: ${{ github.token }}

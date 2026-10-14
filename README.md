@@ -485,6 +485,13 @@ Both listeners bind every interface *inside the container*, where a loopback bin
 unreachable even through a published port. Which of them the outside world can reach is
 decided by the compose file's publish addresses.
 
+## Versions
+
+Both images carry one version, listed with what changed in [`CHANGELOG.md`](CHANGELOG.md); a major
+release says there what to do on upgrading. Each image is published as `latest` (every change to
+`main`), as each release's version (`2.8.0`) and its minor and major lines (`2.8`, `2`), and by
+commit (`sha-…`). The collector's status page and the dashboard's footer show the version running.
+
 ## Development
 
 ```bash

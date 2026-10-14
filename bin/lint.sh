@@ -17,6 +17,7 @@ run() {
 run "shellcheck" shellcheck bin/*.sh
 run "ruff" env RUFF=.venv/bin/ruff bin/ci-ruff.sh
 run "lockfile registry" bin/check-lockfile.sh
+run "versions agree" bin/version.py check
 run "compose files parse" sh -c '
   docker compose -f docker-compose.yml config -q &&
   docker compose -f docker-compose.yml -f docker-compose.build.yml config -q &&

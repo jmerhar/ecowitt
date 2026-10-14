@@ -5,6 +5,17 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 [Semantic Versioning](https://semver.org): a major release needs something done on upgrading, and
 says what under *Upgrading*.
 
+## Unreleased
+
+### Added
+
+- The version is shown on the collector's status page and in `/api/status`, and by the dashboard
+  in `/api/v1/meta` and its page's footer.
+- Images are published under their version (`2.8.0`, `2.8` and `2`) as well as `latest` and the
+  commit, so a deployment can follow a release line instead of every change, and each release has
+  a GitHub release with its notes.
+- This changelog, and `bin/release.sh`, which cuts a release.
+
 ## 2.7.1 — 2026-10-14
 
 ### Fixed
