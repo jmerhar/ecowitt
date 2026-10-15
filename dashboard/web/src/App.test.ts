@@ -183,6 +183,21 @@ describe("App", () => {
     shown.unmount();
   });
 
+  it("points the home screen at a full-screen app when asked, and remembers that", async () => {
+    const link = Object.assign(document.createElement("link"), { rel: "manifest", href: "/manifest.webmanifest" });
+    document.head.append(link);
+    const storage = memory();
+    const shown = render(App, { api: fakeApi(), storage });
+    await waitFor(() => expect(link.getAttribute("href")).toBe("/manifest.webmanifest"));
+    await fireEvent.click(await screen.findByLabelText("Full screen from the home screen"));
+    await waitFor(() => expect(link.getAttribute("href")).toBe("/manifest.webmanifest?display=fullscreen"));
+    expect(JSON.parse(storage.getItem("ecowitt-dashboard")!).fullscreen).toBe(true);
+    await fireEvent.click(screen.getByLabelText("Full screen from the home screen"));
+    await waitFor(() => expect(link.getAttribute("href")).toBe("/manifest.webmanifest"));
+    shown.unmount();
+    link.remove();
+  });
+
   it("opens in the sun's last theme before the station's sun times arrive", async () => {
     const api = fakeApi();
     api.now.mockReturnValue(new Promise(() => {}));

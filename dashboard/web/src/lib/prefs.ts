@@ -23,6 +23,8 @@ export type Prefs = {
   theme: ThemeChoice;
   /** What following the sun last showed, for the moment before its times arrive. */
   sunTheme: Theme;
+  /** Whether the page, added to a home screen from this browser, opens without the system's bars. */
+  fullscreen: boolean;
 };
 
 /** Wind estimated at the standard 10 m, or as the anemometer measured it at its own height. */
@@ -42,6 +44,7 @@ export const DEFAULTS: Prefs = {
   wind: "10m",
   theme: "system",
   sunTheme: null,
+  fullscreen: false,
 };
 
 const KEY = "ecowitt-dashboard";
@@ -62,6 +65,7 @@ export function load(storage: Storage | undefined = globalThis.localStorage): Pr
       wind: saved.wind === "10m" || saved.wind === "sensor" ? saved.wind : DEFAULTS.wind,
       theme: THEME_CHOICES.includes(saved.theme as ThemeChoice) ? (saved.theme as ThemeChoice) : DEFAULTS.theme,
       sunTheme: saved.sunTheme === "light" || saved.sunTheme === "dark" ? saved.sunTheme : DEFAULTS.sunTheme,
+      fullscreen: typeof saved.fullscreen === "boolean" ? saved.fullscreen : DEFAULTS.fullscreen,
     };
   } catch {
     return { ...DEFAULTS };

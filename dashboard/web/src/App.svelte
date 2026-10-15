@@ -58,6 +58,13 @@
   /** Light or dark, rechecked as the clock moves, so following the sun turns at sunset. */
   const theme = $derived(themeAt(prefs.theme, now?.sun ?? null, clock, prefs.sunTheme));
 
+  // The manifest a home screen reads when the page is added to it: one that opens the app
+  // without the system's bars, where the visitor asked for that.
+  $effect(() => {
+    const href = prefs.fullscreen ? "/manifest.webmanifest?display=fullscreen" : "/manifest.webmanifest";
+    document.querySelector('link[rel="manifest"]')?.setAttribute("href", href);
+  });
+
   $effect(() => {
     applyTheme(theme);
     if (prefs.theme === "sun" && theme !== prefs.sunTheme) prefs.sunTheme = theme;
@@ -156,7 +163,8 @@
     {#if meta}
       <UnitsMenu {meta} chosen={prefs.units} onchange={chooseUnits}
         wind={estimatesWind ? prefs.wind : null} onwind={(w) => (prefs.wind = w)}
-        theme={prefs.theme} ontheme={(t) => (prefs.theme = t)} />
+        theme={prefs.theme} ontheme={(t) => (prefs.theme = t)}
+        fullscreen={prefs.fullscreen} onfullscreen={(f) => (prefs.fullscreen = f)} />
     {/if}
   </div>
 </header>

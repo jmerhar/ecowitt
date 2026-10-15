@@ -13,7 +13,7 @@ import logging
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 from urllib.parse import parse_qsl
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
@@ -177,13 +177,14 @@ def build_app(
     index_page = settings.web_dir / "index.html"
 
     @app.get("/manifest.webmanifest", include_in_schema=False)
-    async def manifest() -> Response:
+    async def manifest(display: Display = "standalone") -> Response:
         """What a phone or tablet needs to add the page to its home screen as an app, named for
-        the site. Served once set up, since until then the page is the setup form."""
+        the site. Served once set up, since until then the page is the setup form. The page asks
+        for `display=fullscreen` where the visitor wants the app without the system's bars."""
         if site.dashboard is None:
             raise HTTPException(404)
         return JSONResponse(
-            _manifest(site.dashboard.title),
+            _manifest(site.dashboard.title, display),
             media_type="application/manifest+json",
             headers={"Cache-Control": "public, max-age=3600"},
         )
@@ -291,9 +292,12 @@ def build_app(
 #: splash screen a phone shows while it opens matches the icon.
 APP_BACKGROUND = "#16181a"
 
+#: How the home-screen app opens: with the system's bars, or without them.
+Display = Literal["standalone", "fullscreen"]
 
-def _manifest(title: str) -> dict[str, object]:
-    """The web app manifest for a site of this title."""
+
+def _manifest(title: str, display: Display = "standalone") -> dict[str, object]:
+    """The web app manifest for a site of this title, opening as `display` asks."""
     icon = "/icons/icon-{size}.png"
     return {
         "name": title,
@@ -301,7 +305,7 @@ def _manifest(title: str) -> dict[str, object]:
         "description": "Current conditions and history from the weather station",
         "start_url": "/",
         "scope": "/",
-        "display": "standalone",
+        "display": display,
         "background_color": APP_BACKGROUND,
         "theme_color": APP_BACKGROUND,
         "icons": [

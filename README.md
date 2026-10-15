@@ -419,7 +419,10 @@ Open-Meteo, as its data's licence asks, and lists the licences of what it bundle
 Served over HTTPS, the page can be added to a phone's or tablet's home screen (*Add to Home
 screen* or *Install app* in Chrome, *Share → Add to Home Screen* on an iPhone or iPad), where it
 opens as an app of its own, named for the site's title. Its icon is drawn in
-`dashboard/web/icons/app-icon.svg`; `make app-icons` renders the PNGs after a change.
+`dashboard/web/icons/app-icon.svg`; `make app-icons` renders the PNGs after a change. With *Full
+screen from the home screen* ticked in its *Settings* menu, the app opens without the system's
+bars, for a screen left on a wall. A home screen keeps how an app opens from when it was added,
+so an icon added before the setting needs adding again.
 
 Browsers without ES modules, down to Chrome 59 on an Android 4.4 tablet, load a second build of
 the page, compiled down and polyfilled, and the stylesheet carries fallbacks for them. Such a

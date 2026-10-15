@@ -38,6 +38,13 @@ def test_the_manifest_is_named_for_the_site_and_opens_as_an_app(client: TestClie
     assert {("192x192", "any"), ("512x512", "any"), ("512x512", "maskable")} <= purposes
 
 
+def test_the_page_can_ask_for_an_app_that_opens_full_screen(client: TestClient) -> None:
+    found = client.get("/manifest.webmanifest", params={"display": "fullscreen"}).json()
+
+    assert (found["start_url"], found["display"]) == ("/", "fullscreen")
+    assert client.get("/manifest.webmanifest", params={"display": "minimal-ui"}).status_code == 422
+
+
 def test_there_is_no_manifest_before_setup(settings: Settings, reader: MemoryReader) -> None:
     """Until setup is done the page is the setup form, which is no app to install."""
     with TestClient(build_app(settings, make_reader=lambda *_: reader)) as fresh:

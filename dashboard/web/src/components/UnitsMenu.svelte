@@ -2,7 +2,7 @@
   /**
    * The visitor's settings: units, one choice per quantity, where "station" leaves a quantity as
    * stored; for a station whose wind is estimated at 10 m, whether the page leads with that or the
-   * measurement; and the theme.
+   * measurement; the theme; and whether the page, added to a home screen, opens full screen.
    */
   import type { Meta, UnitChoice, Units } from "../lib/api";
   import type { WindHeight } from "../lib/prefs";
@@ -17,9 +17,20 @@
     onwind?: (wind: WindHeight) => void;
     theme?: ThemeChoice;
     ontheme?: (theme: ThemeChoice) => void;
+    fullscreen?: boolean;
+    onfullscreen?: (fullscreen: boolean) => void;
   };
-  let { meta, chosen, onchange, wind = null, onwind = () => {}, theme = "system", ontheme = () => {} }: Props =
-    $props();
+  let {
+    meta,
+    chosen,
+    onchange,
+    wind = null,
+    onwind = () => {},
+    theme = "system",
+    ontheme = () => {},
+    fullscreen = false,
+    onfullscreen = () => {},
+  }: Props = $props();
 
   const THEMES: Record<ThemeChoice, string> = {
     system: "As the device",
@@ -73,6 +84,12 @@
       <select value={theme} onchange={(e) => ontheme(e.currentTarget.value as ThemeChoice)}>
         {#each Object.entries(THEMES) as [code, label] (code)}<option value={code}>{label}</option>{/each}
       </select>
+    </label>
+    <!-- A home screen keeps how the app opens from when it was added, so this applies to an icon
+         added after it is set. -->
+    <label title="Applies when the page is next added to the home screen">
+      Full screen from the home screen
+      <input type="checkbox" checked={fullscreen} onchange={(e) => onfullscreen(e.currentTarget.checked)} />
     </label>
   </div>
 </details>
