@@ -9,9 +9,18 @@ describe("failures", () => {
     expect(failures(WORKING, [])).toEqual([]);
   });
 
-  it("passes on what the page reported", () => {
+  it("passes on what the page reported, naming the language", () => {
     expect(failures(WORKING, ["uncaught: ReferenceError: ResizeObserver is not defined"])).toEqual([
-      "uncaught: ReferenceError: ResizeObserver is not defined",
+      "en: uncaught: ReferenceError: ResizeObserver is not defined",
+    ]);
+  });
+
+  it("looks for each language's own words", () => {
+    const portuguese = { ...WORKING, text: "Tempo\nExterior\n18,0 °C\nPrevisão" };
+    expect(failures(portuguese, [], "pt-PT")).toEqual([]);
+    expect(failures(WORKING, [], "pt-PT")).toEqual([
+      'pt-PT: the cards were not drawn (no "Exterior")',
+      'pt-PT: the forecast was not drawn (no "Previsão")',
     ]);
   });
 

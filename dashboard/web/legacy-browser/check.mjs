@@ -1,17 +1,20 @@
-// Load the dashboard in a remote browser over the DevTools protocol and check that its legacy
-// build ran: nothing thrown, the cards and a chart drawn, and the stylesheet's fallbacks applied.
-// Exits 1 with each failure listed.
+// Load the dashboard in a remote browser over the DevTools protocol, once in each of its languages,
+// and check that its legacy build ran: nothing thrown, the cards and a chart drawn, and the
+// stylesheet's fallbacks applied. Exits 1 with each failure listed.
 //
 //   node check.mjs DEVTOOLS_URL PAGE_URL
 //
 // bin/test-legacy-browser.sh runs it against Chromium 59 (legacy-browser/Dockerfile).
 
-import { failures } from "./failures.mjs";
+import { failures, LANGUAGES } from "./failures.mjs";
 
 const [devtools, page] = process.argv.slice(2);
 
 /** How long the page gets to fetch its answers and draw, in milliseconds. */
 const SETTLE_MS = 20_000;
+
+/** Where the page keeps the visitor's language (src/lib/language.ts, LANGUAGE_KEY). */
+const LANGUAGE_KEY = "ecowitt-dashboard-language";
 
 /**
  * What the page shows when it works, measured in the browser. A level bar, the space between two
@@ -69,6 +72,21 @@ async function connect(onEvent) {
   return { send, close: () => socket.close() };
 }
 
+/** Load the page in a language, chosen as a visitor would, and list what is wrong with it. */
+async function load(browser, errors, language) {
+  errors.length = 0;
+  // The choice is kept per site, so it is set on the page itself, then the page loaded again.
+  await browser.send("Page.navigate", { url: page });
+  await new Promise((resolve) => setTimeout(resolve, 2_000));
+  const choose = `localStorage.setItem(${JSON.stringify(LANGUAGE_KEY)}, ${JSON.stringify(language)})`;
+  await browser.send("Runtime.evaluate", { expression: choose });
+  errors.length = 0;
+  await browser.send("Page.navigate", { url: page });
+  await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
+  const { result } = await browser.send("Runtime.evaluate", { expression: MEASURE, returnByValue: true });
+  return { measured: result.value, found: failures(result.value, errors, language) };
+}
+
 async function main() {
   const errors = [];
   const browser = await connect(({ method, params }) => {
@@ -81,17 +99,17 @@ async function main() {
   });
   await browser.send("Runtime.enable");
   await browser.send("Page.enable");
-  await browser.send("Page.navigate", { url: page });
-  await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
-  const { result } = await browser.send("Runtime.evaluate", { expression: MEASURE, returnByValue: true });
+  const found = [];
+  for (const language of Object.keys(LANGUAGES)) {
+    const run = await load(browser, errors, language);
+    if (language === "en") console.log(`Loaded in ${run.measured.userAgent}`);
+    found.push(...run.found);
+  }
   browser.close();
 
-  const measured = result.value;
-  console.log(`Loaded in ${measured.userAgent}`);
-  const found = failures(measured, errors);
   for (const failure of found) console.error(`FAIL ${failure}`);
   if (found.length) process.exit(1);
-  console.log("The legacy build ran: cards, a chart and the stylesheet's fallbacks are all there.");
+  console.log(`The legacy build ran in ${Object.keys(LANGUAGES).join(" and ")}: cards, a chart and the stylesheet's fallbacks are all there.`);
 }
 
 await main();
