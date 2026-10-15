@@ -288,6 +288,13 @@ CHANGELOG.md      every release's notes; new work goes under `## Unreleased`
   constants are evaluated before `main.ts` registers the strategies. Counts match exactly
   (`count=1`) and times carry their `hour` for Portuguese's "à 01:00"; Paraglide's `plural`
   selector needs `Intl.PluralRules`, which Chrome 59 lacks. A changed language reloads the page.
+- **Adding a language touches both halves.** For the page: its locale in
+  `project.inlang/settings.json`, a `messages/<locale>.json` with every message, and its name and
+  Intl locale in `language.ts`. For the API: `bin/messages.py --add <locale>`, then translate the
+  catalogue it starts. The API's tests fail until every message is translated with exactly its
+  placeholders; the page's only until every message exists and names no placeholder its English
+  lacks, so a message left in English passes there. Have a native speaker review both for
+  naturalness, not literal fidelity.
 - **The dashboard's page has a legacy build**, for browsers without ES modules down to Chrome 59
   (an Android 4.4 tablet): `@vitejs/plugin-legacy` compiles it down and polyfills it, and those
   browsers load it through `<script nomodule>`. What core-js cannot polyfill needs a fallback in
