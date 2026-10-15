@@ -20,7 +20,7 @@ from ecowitt.core import weathermodel, windheight
 from ecowitt.core.stationinfo import StationInfo
 from ecowitt.core.store.query import Buckets, Extreme, Extremes, Reader, Span
 from ecowitt.core.units import SYMBOLS, Kind, Units, convert, field_name
-from ecowitt.dashboard import forecast, models, weather
+from ecowitt.dashboard import forecast, messages, models, weather
 from ecowitt.dashboard.cache import TtlCache
 from ecowitt.dashboard.catalogue import (
     CHOICES,
@@ -301,7 +301,8 @@ class Dashboard:
                 coming, values, info, self.clock(), [r.delta for r in damp]
             )
         answer.sky = _sky(latest, stored)
-        answer.summary = _summary(answer, values.target)
+        answer.summary_parts = _summary(answer, values.target)
+        answer.summary = "".join(f"{part.text}. " for part in answer.summary_parts).strip()
         return answer
 
     async def forecast(
@@ -732,10 +733,12 @@ def _pressure(latest: _Latest, values: _Values, stored: Units) -> models.Pressur
     change = _pressure_change(latest, values, stored)
     trend = None
     if change is not None:
+        tendency = weather.tendency(change)
         trend = models.PressureTrend(
             change=values.from_metric(P, change),
             hours=round((span.last_time - span.first_time).total_seconds() / 3600, 1),
-            tendency=weather.tendency(change),
+            code=tendency,
+            tendency=messages.TENDENCIES[tendency],
         )
     return models.Pressure(
         sea_level=values.out(P, span.last.get(field_name("sea", P, stored))),
@@ -889,8 +892,10 @@ def _notices(
     """What deserves attention, card by card, judged in metric units."""
     found: dict[str, models.Notice] = {}
 
-    def warn(card: str, text: str = "") -> None:
-        found[card] = models.Notice(level="warning", text=text)
+    def warn(card: str, *codes: models.NoticeCode) -> None:
+        found[card] = models.Notice(level="warning")
+        for code in codes:
+            _say(found[card], models.NoticeItem(code=code, text=messages.notice(code)))
 
     if latest.outdoor is not None:
         T, H = Kind.TEMPERATURE, Kind.HUMIDITY
@@ -901,17 +906,17 @@ def _notices(
             speed = values.metric(
                 Kind.SPEED, latest.wind.last.get(field_name("speed", Kind.SPEED, stored))
             )
-        words = []
+        codes = []
         if temp is not None and temp <= weather.COLD_C:
-            words.append("Cold: frost is possible on clear nights.")
+            codes.append(models.NoticeCode.COLD)
         elif temp is not None and weather.feels_like(temp, humidity, speed) >= weather.HEAT_FEELS_C:
-            words.append("Heat: take care outdoors.")
+            codes.append(models.NoticeCode.HEAT)
         if humidity is not None and humidity >= weather.HUMID_AIR_PCT:
-            words.append("Very humid outside: fog and condensation likely.")
+            codes.append(models.NoticeCode.HUMID_AIR)
         elif humidity is not None and humidity <= weather.DRY_AIR_PCT:
-            words.append("Very dry air: fire risk.")
-        if words:
-            warn("outdoor", " ".join(words))
+            codes.append(models.NoticeCode.DRY_AIR)
+        if codes:
+            warn("outdoor", *codes)
 
     def strongest(groups: list[Extremes], base: str, kind: Kind) -> float:
         """The highest of the groups' maxima of a field, in metric units; 0 without one."""
@@ -922,16 +927,16 @@ def _notices(
     # The 10 m gust, the height the threshold is meant for; the measured one without it.
     recent = latest.recent_wind_10m or latest.recent_wind
     if strongest([recent] if recent else [], "gust", Kind.SPEED) > weather.STRONG_GUST_KMH:
-        warn("wind", "Strong gusts.")
+        warn("wind", models.NoticeCode.STRONG_GUSTS)
     if strongest(latest.recent_rain, "rate", Kind.RAIN_RATE) > weather.HEAVY_RAIN_MM_H:
-        warn("rain", "Heavy rain.")
+        warn("rain", models.NoticeCode.HEAVY_RAIN)
     change = _pressure_change(latest, values, stored)
     if change is not None and -change > weather.FAST_FALL_HPA:
-        warn("pressure", "Falling fast: a front or a storm is likely.")
+        warn("pressure", models.NoticeCode.PRESSURE_FALLING_FAST)
     if latest.solar is not None:
         uv = values.metric(Kind.UV_INDEX, latest.solar.last.get("uv_index"))
         if uv is not None and uv >= weather.UV_VERY_HIGH:
-            warn("sun", "Very high UV: seek shade at midday.")
+            warn("sun", models.NoticeCode.UV_VERY_HIGH)
     if now.airing is not None and now.airing.advice == "open":
         found["airing"] = models.Notice(level="good")
     elif now.airing is not None and now.airing.advice == "keep_closed":
@@ -941,7 +946,17 @@ def _notices(
         for flag in room.flags:
             flagged.setdefault(flag, []).append(room.name)
     if flagged:
-        warn("rooms", " ".join(f"{f.capitalize()}: {', '.join(n)}." for f, n in flagged.items()))
+        warn("rooms")
+        for flag, names in flagged.items():
+            text = messages.notice(
+                models.NoticeCode.ROOM_FLAG,
+                flag=messages.ROOM_FLAGS[flag],
+                rooms=", ".join(names),
+            )
+            item = models.NoticeItem(
+                code=models.NoticeCode.ROOM_FLAG, flag=flag, rooms=names, text=text
+            )
+            _say(found["rooms"], item)
     if any(s.battery_low or not s.updating for s in now.sensors):
         warn("sensors")
     return found
@@ -980,46 +995,55 @@ def _forecast_notices(
 
     def when(moment: datetime) -> str:
         local, today = moment.astimezone(zone), at.astimezone(zone).date()
-        prefix = "" if local.date() == today else "tomorrow "
-        return f"{prefix}{local:%H:%M}"
+        words = messages.TODAY if local.date() == today else messages.TOMORROW
+        return words.format(clock=f"{local:%H:%M}")
 
-    def say(card: str, text: str) -> None:
-        notice = now.notices.get(card)
-        if notice is None:
-            now.notices[card] = models.Notice(level="warning", text=text)
-        else:
-            notice.text = f"{notice.text} {text}".strip()
-
-    def show(kind: Kind, value: float) -> str:
-        return f"{values.from_metric(kind, value):g} {SYMBOLS[unit(kind, target)]}"
+    def say(
+        card: str,
+        code: models.NoticeCode,
+        time: datetime,
+        kind: Kind | None = None,
+        value: float | None = None,
+    ) -> None:
+        """Add a forecast item to a card's notice: what is coming, when, and how much."""
+        params = {"time": when(time)}
+        item = models.NoticeItem(code=code, time=time, text="")
+        if kind is not None and value is not None:
+            item.value, item.unit = values.from_metric(kind, value), unit(kind, target)
+            params["value"] = f"{item.value:g} {SYMBOLS[item.unit]}"
+        item.text = messages.notice(code, **params)
+        _say(now.notices.setdefault(card, models.Notice(level="warning")), item)
 
     raining = now.rain is not None and now.rain.raining
     rain = forecast.rain(coming, values, info, at)
     if rain is not None and not raining:
-        say(
-            "rain",
-            "Rain likely within the hour."
-            if rain.time <= at
-            else f"Rain likely from {when(rain.time)}.",
-        )
+        soon = rain.time <= at
+        say("rain", models.NoticeCode.RAIN_SOON if soon else models.NoticeCode.RAIN_FROM, rain.time)
     low = forecast.extreme(coming, values, info, at, "temp", Kind.TEMPERATURE, lowest=True)
     if low is not None and low.value <= forecast.FROST_C:
         # The forecast's frost is more precise than the present reading's hint of it.
         outdoor = now.notices.get("outdoor")
         if outdoor is not None:
-            outdoor.text = outdoor.text.replace(
-                "Cold: frost is possible on clear nights.", ""
-            ).strip()
-        say(
-            "outdoor",
-            f"Down to {show(Kind.TEMPERATURE, low.value)} at {when(low.time)}: frost possible.",
-        )
+            outdoor.items = [i for i in outdoor.items if i.code is not models.NoticeCode.COLD]
+            outdoor.text = _line(outdoor.items)
+        say("outdoor", models.NoticeCode.FROST_FORECAST, low.time, Kind.TEMPERATURE, low.value)
     high = forecast.extreme(coming, values, info, at, "temp", Kind.TEMPERATURE, lowest=False)
     if high is not None and high.value >= weather.HEAT_FEELS_C:
-        say("outdoor", f"Up to {show(Kind.TEMPERATURE, high.value)} at {when(high.time)}.")
+        say("outdoor", models.NoticeCode.HEAT_FORECAST, high.time, Kind.TEMPERATURE, high.value)
     gust = forecast.extreme(coming, values, info, at, "gust", Kind.SPEED, lowest=False)
     if gust is not None and gust.value > weather.STRONG_GUST_KMH and "wind" not in now.notices:
-        say("wind", f"Gusts to {show(Kind.SPEED, gust.value)} at {when(gust.time)}.")
+        say("wind", models.NoticeCode.GUSTS_FORECAST, gust.time, Kind.SPEED, gust.value)
+
+
+def _say(notice: models.Notice, item: models.NoticeItem) -> None:
+    """Add an item to a notice, and its words to the notice's line."""
+    notice.items.append(item)
+    notice.text = _line(notice.items)
+
+
+def _line(items: list[models.NoticeItem]) -> str:
+    """Items' words in one line."""
+    return " ".join(i.text for i in items)
 
 
 def _sky(latest: _Latest, stored: Units) -> models.Sky | None:
@@ -1047,28 +1071,35 @@ def _weather_model(info: StationInfo) -> models.WeatherModel | None:
     return models.WeatherModel(id=info.weather_model, label=label)
 
 
-def _summary(now: models.Now, units: Units) -> str:
-    """One line: the sky, temperature and feels-like, wind, rain, and the pressure trend."""
-    parts = [now.sky.description] if now.sky is not None else []
+def _summary(now: models.Now, units: Units) -> list[models.SummaryPart]:
+    """One line, part by part: the sky, temperature and feels-like, wind, rain, and the pressure
+    trend."""
+    Code = models.SummaryCode
+    parts = []
+    if now.sky is not None:
+        parts.append(models.SummaryPart(code=Code.SKY, text=now.sky.description))
     outdoor = now.outdoor
     if outdoor is not None and outdoor.temperature is not None:
         symbol = SYMBOLS[unit(Kind.TEMPERATURE, units)]
         text = f"{outdoor.temperature:g} {symbol}"
         if outdoor.feels_like is not None and abs(outdoor.feels_like - outdoor.temperature) >= 1:
-            text += f", feels like {round(outdoor.feels_like):g} {symbol}"
-        parts.append(text)
+            feels = f"{round(outdoor.feels_like):g} {symbol}"
+            text = messages.FEELS_LIKE.format(temperature=text, feels=feels)
+        parts.append(models.SummaryPart(code=Code.TEMPERATURE, text=text))
     wind = now.wind
     if wind is not None and wind.beaufort is not None:
-        if wind.beaufort == 0 or wind.compass is None:
-            parts.append(wind.description or "")
-        else:
-            parts.append(f"{wind.description} from the {wind.compass}")
+        text = wind.description or ""
+        if wind.beaufort != 0 and wind.compass is not None:
+            text = messages.WIND_FROM.format(description=text, compass=wind.compass)
+        parts.append(models.SummaryPart(code=Code.WIND, text=text))
     rain = now.rain
     if rain is not None and rain.raining and rain.rate is not None:
-        parts.append(f"Raining, {rain.rate:g} {SYMBOLS[unit(Kind.RAIN_RATE, units)]}")
+        rate = f"{rain.rate:g} {SYMBOLS[unit(Kind.RAIN_RATE, units)]}"
+        parts.append(models.SummaryPart(code=Code.RAIN, text=messages.RAINING.format(rate=rate)))
     if now.pressure is not None and now.pressure.trend is not None:
-        parts.append(f"Pressure {now.pressure.trend.tendency}")
-    return "".join(f"{part}. " for part in parts).strip()
+        text = messages.PRESSURE.format(tendency=now.pressure.trend.tendency)
+        parts.append(models.SummaryPart(code=Code.PRESSURE, text=text))
+    return parts
 
 
 def _online(latest: _Latest) -> bool:

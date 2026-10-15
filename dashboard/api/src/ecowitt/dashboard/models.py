@@ -7,8 +7,11 @@ what is worth showing. Times are UTC; a station's `timezone` says where its day 
 from __future__ import annotations
 
 from datetime import datetime
+from enum import Enum
 
 from pydantic import BaseModel, Field
+
+from ecowitt.dashboard.weather import Tendency
 
 
 class UnitsOut(BaseModel):
@@ -110,7 +113,9 @@ class PressureTrend(BaseModel):
 
     change: float
     hours: float
-    #: In the Met Office's words: steady, rising slowly, falling quickly...
+    #: In the Met Office's terms: steady, rising_slowly, falling_quickly...
+    code: Tendency
+    #: The same in words: steady, rising slowly, falling quickly...
     tendency: str
 
 
@@ -160,12 +165,59 @@ class AiringAdvice(BaseModel):
     dew_point_difference: float
 
 
+class NoticeCode(Enum):
+    """What a notice says, whatever language it is put in."""
+
+    #: Cold enough outdoors for frost on a clear night.
+    COLD = "cold"
+    #: Feels hot enough outdoors to take care.
+    HEAT = "heat"
+    #: Humid enough outdoors for fog and condensation.
+    HUMID_AIR = "humid_air"
+    #: Dry enough outdoors for fire risk.
+    DRY_AIR = "dry_air"
+    STRONG_GUSTS = "strong_gusts"
+    HEAVY_RAIN = "heavy_rain"
+    PRESSURE_FALLING_FAST = "pressure_falling_fast"
+    UV_VERY_HIGH = "uv_very_high"
+    #: The forecast's rain within the hour under way.
+    RAIN_SOON = "rain_soon"
+    #: The forecast's rain from `time`.
+    RAIN_FROM = "rain_from"
+    #: The forecast's low, `value` at `time`, cold enough for frost.
+    FROST_FORECAST = "frost_forecast"
+    #: The forecast's high, `value` at `time`, hot enough to take care.
+    HEAT_FORECAST = "heat_forecast"
+    #: The forecast's strongest gust, `value` at `time`.
+    GUSTS_FORECAST = "gusts_forecast"
+    #: The `rooms` with one of the rooms' `flag`s.
+    ROOM_FLAG = "room_flag"
+
+
+class NoticeItem(BaseModel):
+    """One thing a notice says, as a code with what it names."""
+
+    code: NoticeCode
+    #: The temperature or speed it names, in `unit`, one of the answer's units.
+    value: float | None = None
+    unit: str | None = None
+    #: When the forecast has it happen.
+    time: datetime | None = None
+    #: room_flag: cold, hot, damp or dry, as a room's `flags` name them, and the rooms by name.
+    flag: str | None = None
+    rooms: list[str] = Field(default_factory=list)
+    #: The same in words.
+    text: str
+
+
 class Notice(BaseModel):
     """Something on a card that deserves attention."""
 
     #: warning, or good for news worth acting on (a good time to air).
     level: str
-    #: What it is, in a few words; empty when the card says it already.
+    #: What it says, in order; none when the card says it already.
+    items: list[NoticeItem] = Field(default_factory=list)
+    #: The items' words in one line; empty when there are none.
     text: str = ""
 
 
@@ -210,6 +262,25 @@ class SensorHealth(BaseModel):
     updating: bool = True
 
 
+class SummaryCode(Enum):
+    """Which part of the summary a part is."""
+
+    SKY = "sky"
+    #: The temperature, and the feels-like one when it differs.
+    TEMPERATURE = "temperature"
+    #: The Beaufort force's name, and the direction when there is wind.
+    WIND = "wind"
+    RAIN = "rain"
+    PRESSURE = "pressure"
+
+
+class SummaryPart(BaseModel):
+    """One part of the summary, in words."""
+
+    code: SummaryCode
+    text: str
+
+
 class Now(BaseModel):
     """A station at a glance."""
 
@@ -221,6 +292,8 @@ class Now(BaseModel):
     units: UnitsOut
     #: One line in words: the sky, temperature, wind, rain and the pressure trend.
     summary: str
+    #: The same line, part by part, for a page that shows some of it elsewhere.
+    summary_parts: list[SummaryPart] = Field(default_factory=list)
     #: The sky from the weather model, when the station has one and its values are recent.
     sky: Sky | None = None
     outdoor: Outdoor | None = None

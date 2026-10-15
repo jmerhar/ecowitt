@@ -10,7 +10,9 @@ import pytest
 from ecowitt.core.stationinfo import StationInfo
 from ecowitt.core.store.query import ReadError
 from ecowitt.core.units import Units
+from ecowitt.dashboard import models
 from ecowitt.dashboard.service import RANGES, Dashboard, UnknownStation
+from ecowitt.dashboard.weather import Tendency
 
 from .conftest import INFO, LAST, MIDNIGHT, NOW, readings, row
 from .memory import MemoryReader
@@ -65,6 +67,7 @@ async def test_rain_pressure_and_sun(board: Dashboard) -> None:
     assert now.pressure is not None and now.pressure.trend is not None
     assert (now.pressure.sea_level, now.pressure.absolute) == (1012.0, 1000.0)
     assert now.pressure.trend.change == -3.0
+    assert now.pressure.trend.code is Tendency.FALLING
     assert now.pressure.trend.tendency == "falling"
     assert now.pressure.trend.hours == 3.0
     assert now.sun is not None
@@ -112,8 +115,15 @@ async def test_a_dry_night_does_not_flag_the_rain_gauge_or_light_sensor(
 
 
 async def test_the_summary_says_it_in_one_line(board: Dashboard) -> None:
-    summary = (await board.now("example")).summary
-    assert summary == "18 °C. Gentle breeze from the SE. Raining, 2.4 mm/h. Pressure falling."
+    now = await board.now("example")
+    assert now.summary == "18 °C. Gentle breeze from the SE. Raining, 2.4 mm/h. Pressure falling."
+    Code = models.SummaryCode
+    assert [(p.code, p.text) for p in now.summary_parts] == [
+        (Code.TEMPERATURE, "18 °C"),
+        (Code.WIND, "Gentle breeze from the SE"),
+        (Code.RAIN, "Raining, 2.4 mm/h"),
+        (Code.PRESSURE, "Pressure falling"),
+    ]
 
 
 async def test_units_can_be_chosen_per_quantity(board: Dashboard) -> None:
@@ -491,6 +501,20 @@ async def test_weather_worth_a_warning_is_flagged(reader: MemoryReader) -> None:
         "sun": "Very high UV: seek shade at midday.",
         "rooms": "Cold: Bathroom. Dry: Bathroom.",
     }
+    Code = models.NoticeCode
+    assert {card: [i.code for i in n.items] for card, n in notices.items()} == {
+        "outdoor": [Code.COLD, Code.HUMID_AIR],
+        "wind": [Code.STRONG_GUSTS],
+        "rain": [Code.HEAVY_RAIN],
+        "pressure": [Code.PRESSURE_FALLING_FAST],
+        "sun": [Code.UV_VERY_HIGH],
+        "rooms": [Code.ROOM_FLAG, Code.ROOM_FLAG],
+        "sensors": [],
+    }
+    assert [(i.flag, i.rooms) for i in notices["rooms"].items] == [
+        ("cold", ["Bathroom"]),
+        ("dry", ["Bathroom"]),
+    ]
 
 
 @pytest.mark.parametrize(("minutes", "flagged"), [(9, True), (11, False)])

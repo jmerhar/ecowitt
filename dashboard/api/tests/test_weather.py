@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 
 from ecowitt.dashboard import weather
-from ecowitt.dashboard.weather import Airing
+from ecowitt.dashboard.weather import Airing, Tendency
 
 from .conftest import REPO
 
@@ -90,21 +90,23 @@ def test_feels_like(temp: float, humidity: float | None, kmh: float | None, feel
 
 
 @pytest.mark.parametrize(
-    ("change", "words"),
+    ("change", "tendency"),
     [
-        (0.0, "steady"),
-        (-0.09, "steady"),
-        (0.1, "rising slowly"),
-        (-1.5, "falling slowly"),
-        (1.6, "rising"),
-        (-3.5, "falling"),
-        (3.6, "rising quickly"),
-        (-6.0, "falling quickly"),
-        (6.1, "rising very rapidly"),
+        (0.0, Tendency.STEADY),
+        (-0.09, Tendency.STEADY),
+        (0.1, Tendency.RISING_SLOWLY),
+        (-0.1, Tendency.FALLING_SLOWLY),
+        (-1.5, Tendency.FALLING_SLOWLY),
+        (1.6, Tendency.RISING),
+        (-3.5, Tendency.FALLING),
+        (3.6, Tendency.RISING_QUICKLY),
+        (-6.0, Tendency.FALLING_QUICKLY),
+        (6.1, Tendency.RISING_VERY_RAPIDLY),
+        (-6.1, Tendency.FALLING_VERY_RAPIDLY),
     ],
 )
-def test_tendency(change: float, words: str) -> None:
-    assert weather.tendency(change) == words
+def test_tendency(change: float, tendency: Tendency) -> None:
+    assert weather.tendency(change) is tendency
 
 
 @pytest.mark.parametrize(

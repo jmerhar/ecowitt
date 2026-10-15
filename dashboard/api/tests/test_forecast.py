@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from fastapi.testclient import TestClient
 
@@ -124,6 +124,9 @@ async def test_rain_coming_is_on_the_rain_card_while_it_is_dry() -> None:
 
     # The row at 17:00 UTC is the hour ending then, which begins at 17:00 in Lisbon.
     assert notices["rain"].text == "Rain likely from 17:00."
+    assert [(i.code, i.time) for i in notices["rain"].items] == [
+        (models.NoticeCode.RAIN_FROM, NOW + 2 * HOUR)
+    ]
 
 
 async def test_a_wet_hour_by_amount_counts_too_and_not_while_raining() -> None:
@@ -160,6 +163,14 @@ async def test_frost_heat_and_gusts_coming_are_on_their_cards() -> None:
         "Down to 1 °C at tomorrow 04:00: frost possible. Up to 33 °C at tomorrow 11:00."
     )
     assert notices["wind"].text == "Gusts to 72 km/h at 19:00."
+    Code = models.NoticeCode
+    assert [(i.code, i.value, i.unit, i.time) for i in notices["outdoor"].items] == [
+        (Code.FROST_FORECAST, 1.0, "c", NOW + 13 * HOUR),
+        (Code.HEAT_FORECAST, 33.0, "c", NOW + 20 * HOUR),
+    ]
+    assert [(i.code, i.value, i.unit) for i in notices["wind"].items] == [
+        (Code.GUSTS_FORECAST, 72.0, "kmh")
+    ]
 
 
 async def test_the_forecasts_frost_replaces_the_present_readings_hint() -> None:
@@ -173,6 +184,7 @@ async def test_the_forecasts_frost_replaces_the_present_readings_hint() -> None:
     ).now("example")
 
     assert found.notices["outdoor"].text == "Down to 0.5 °C at tomorrow 01:00: frost possible."
+    assert [i.code for i in found.notices["outdoor"].items] == [models.NoticeCode.FROST_FORECAST]
 
 
 async def test_a_drier_spell_ahead_is_given_while_the_advice_is_not_to_open() -> None:
@@ -298,19 +310,23 @@ async def test_no_drier_spell_without_the_models_present_dew_point() -> None:
 
 
 async def test_rain_in_the_hour_under_way_is_within_the_hour_and_past_rain_is_not() -> None:
-    """At 14:40, the row at 15:00 is the hour under way; the row at 14:00 is the hour gone."""
+    """At 14:40, the row at 15:00 is the hour under way; the row at 14:00 is the hour gone. At
+    14:00 itself the row at 15:00 is under way too, not coming."""
     dry = [r for r in readings() if r.table != "rain"]
     later = NOW + timedelta(minutes=40)
 
-    async def notices(at_hours: dict) -> dict:  # noqa: ANN001
+    async def notices(at_hours: dict, clock: datetime = later) -> dict:  # noqa: ANN001
         board = Dashboard(MemoryReader([*dry, *coming(**at_hours)], {"example": MODELLED}),
-                          clock=lambda: later)  # fmt: skip
+                          clock=lambda: clock)  # fmt: skip
         return (await board.now("example")).notices
 
     under_way = await notices({"1": {"precip_probability_pct": 80.0}})
+    on_the_hour = await notices({"1": {"precip_probability_pct": 80.0}}, clock=NOW)
     gone = await notices({"0": {"precip_probability_pct": 80.0}})
 
     assert under_way["rain"].text == "Rain likely within the hour."
+    assert [i.code for i in under_way["rain"].items] == [models.NoticeCode.RAIN_SOON]
+    assert [i.code for i in on_the_hour["rain"].items] == [models.NoticeCode.RAIN_SOON]
     assert "rain" not in gone
 
 

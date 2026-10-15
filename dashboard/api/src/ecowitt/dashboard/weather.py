@@ -133,19 +133,33 @@ def feels_like(temp_c: float, humidity_pct: float | None, speed_kmh: float | Non
     return temp_c
 
 
-def tendency(change_hpa: float) -> str:
-    """The words for a three-hour pressure change, in the Met Office's terms."""
+class Tendency(Enum):
+    """A three-hour pressure change, in the Met Office's terms."""
+
+    STEADY = "steady"
+    RISING_SLOWLY = "rising_slowly"
+    RISING = "rising"
+    RISING_QUICKLY = "rising_quickly"
+    RISING_VERY_RAPIDLY = "rising_very_rapidly"
+    FALLING_SLOWLY = "falling_slowly"
+    FALLING = "falling"
+    FALLING_QUICKLY = "falling_quickly"
+    FALLING_VERY_RAPIDLY = "falling_very_rapidly"
+
+
+def tendency(change_hpa: float) -> Tendency:
+    """The tendency of a three-hour pressure change."""
     size = abs(change_hpa)
     if size < 0.1:
-        return "steady"
-    direction = "rising" if change_hpa > 0 else "falling"
+        return Tendency.STEADY
+    rising = change_hpa > 0
     if size <= 1.5:
-        return f"{direction} slowly"
+        return Tendency.RISING_SLOWLY if rising else Tendency.FALLING_SLOWLY
     if size <= 3.5:
-        return direction
+        return Tendency.RISING if rising else Tendency.FALLING
     if size <= 6.0:
-        return f"{direction} quickly"
-    return f"{direction} very rapidly"
+        return Tendency.RISING_QUICKLY if rising else Tendency.FALLING_QUICKLY
+    return Tendency.RISING_VERY_RAPIDLY if rising else Tendency.FALLING_VERY_RAPIDLY
 
 
 class Airing(Enum):

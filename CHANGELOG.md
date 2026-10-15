@@ -24,6 +24,10 @@ rules to be imported again. Either is listed under *Upgrading*.
   download, with the command that loads the rules through Grafana's API. With Grafana's address,
   a service-account token (Editor role) and a data source saved there, it pushes the dashboard,
   the `ecowitt` rule group or both into a folder, each replacing what it sends.
+- The dashboard API's `/now` gives codes beside its words, so a client can act on an answer
+  without reading its English: each notice adds `items`, each with a `code` and the value, unit,
+  time or rooms it names; the pressure trend adds `code`; and `summary_parts` gives the summary
+  part by part.
 
 ### Changed
 
