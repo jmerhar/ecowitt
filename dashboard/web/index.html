@@ -15,6 +15,28 @@
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fbfaf7" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#16181a" />
     <title>Weather</title>
+    <!-- A page that fails to start says why, rather than staying blank: on a browser too old for
+         it there may be no console to look in. Once the page has drawn, errors are left alone.
+         Written for any browser, so in the oldest JavaScript. -->
+    <script>
+      (function () {
+        function show(text) {
+          var app = document.getElementById("app");
+          if (!app || app.firstChild) return;
+          var box = document.createElement("pre");
+          box.className = "page-error";
+          box.textContent = "The page could not start: " + text;
+          app.appendChild(box);
+        }
+        window.addEventListener("error", function (e) {
+          show(e.message + (e.filename ? " (" + e.filename + ":" + e.lineno + ")" : ""));
+        });
+        window.addEventListener("unhandledrejection", function (e) {
+          var r = e.reason;
+          show(String((r && (r.stack || r.message)) || r));
+        });
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>
