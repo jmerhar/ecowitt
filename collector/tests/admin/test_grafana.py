@@ -219,6 +219,26 @@ class TestPush:
         }
         assert "temp_f" in json.dumps(group)
 
+    @pytest.mark.parametrize(
+        ("part", "sent", "left", "said"),
+        [
+            ("dashboard", "/api/dashboards/db", "/rule-groups/", "Pushed the dashboard to"),
+            ("rules", "/rule-groups/", "/api/dashboards/db", "Pushed 10 alert rules to"),
+        ],
+    )
+    async def test_each_part_can_be_pushed_alone(
+        self, part: str, sent: str, left: str, said: str
+    ) -> None:
+        async with serving(stub(grafana_answers())) as s, httpx2.AsyncClient() as client:
+            done = await grafana.push(
+                client, {**SAVED, "url": s.url}, Units(), "9.9", grafana.PARTS[part]
+            )
+
+        paths = [r.path for r in s.requests]
+        assert done.startswith(said)
+        assert any(sent in p for p in paths)
+        assert not any(left in p for p in paths)
+
     async def test_a_folder_of_that_name_is_used_rather_than_a_new_one(self) -> None:
         folders = [{"uid": "f-other", "title": "Weather old"}, {"uid": "f-1", "title": "Weather"}]
         async with serving(stub(grafana_answers(folders=folders))) as s, httpx2.AsyncClient() as c:
@@ -337,6 +357,32 @@ class TestPushPage:
             "PUT",
             "/api/v1/provisioning/folder/new-folder/rule-groups/ecowitt",
         )
+
+    @pytest.mark.parametrize(
+        ("what", "last"),
+        [
+            ("dashboard", ("POST", "/api/dashboards/db")),
+            ("rules", ("PUT", "/api/v1/provisioning/folder/new-folder/rule-groups/ecowitt")),
+        ],
+    )
+    def test_each_button_pushes_its_part(self, rig: Rig, what: str, last: tuple[str, str]) -> None:
+        with fake_grafana(grafana_answers()) as fake:
+            _connected(rig, fake.url)
+            html = rig.client.get("/grafana").text
+            response = rig.post("/grafana/push", {"what": what})
+
+        assert f'name="what" value="{what}"' in html
+        assert response.status_code == 303
+        assert [(m, p) for m, p, _, _ in fake.requests][-1] == last
+
+    def test_an_unknown_part_is_refused(self, rig: Rig) -> None:
+        with fake_grafana(grafana_answers()) as fake:
+            _connected(rig, fake.url)
+            response = rig.post("/grafana/push", {"what": "everything"})
+
+        assert response.status_code == 400
+        assert "Choose what to push." in response.text
+        assert fake.requests == []
 
     def test_a_refused_push_is_shown(self, rig: Rig) -> None:
         with fake_grafana(lambda _method, _path: (403, {"message": "forbidden"})) as fake:

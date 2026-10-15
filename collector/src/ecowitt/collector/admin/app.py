@@ -472,11 +472,14 @@ def build_app(context: AdminContext) -> FastAPI:
         entry = context.document.grafana
         if entry is None:
             return _grafana_error(request, context, "Save a Grafana connection first.")
+        parts = grafana.PARTS.get(form.get("what", "both"))
+        if parts is None:
+            return _grafana_error(request, context, "Choose what to push.")
         try:
             done = await _with_client(
                 context,
                 lambda client: grafana.push(
-                    client, entry.model_dump(), context.document.units, VERSION
+                    client, entry.model_dump(), context.document.units, VERSION, parts
                 ),
             )
         except grafana.GrafanaError as exc:

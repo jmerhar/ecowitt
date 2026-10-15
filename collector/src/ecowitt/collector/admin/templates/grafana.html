@@ -25,11 +25,14 @@
       <code>{{ connection.datasource }}</code>.</p>
     <form method="post" action="/grafana/push" class="inline">
       <input type="hidden" name="csrf" value="{{ csrf }}">
-      <button type="submit">Push to Grafana</button>
+      <button type="submit" name="what" value="both">Push both</button>
+      <button class="secondary" type="submit" name="what" value="dashboard">Dashboard only</button>
+      <button class="secondary" type="submit" name="what" value="rules">Alert rules only</button>
     </form>
-    <p class="muted">A push replaces the dashboard and the <code>{{ group }}</code> rule group
-      whole: changes made to them in Grafana are overwritten, and a rule added to that group there
-      is deleted. Contact points and notification policies are left alone.</p>
+    <p class="muted">Each replaces what it sends whole, and leaves the other as it is: pushing the
+      dashboard overwrites changes made to it in Grafana, and pushing the rules overwrites the
+      <code>{{ group }}</code> rule group, deleting a rule added to it there. Contact points and
+      notification policies are left alone.</p>
   {% else %}
     <p class="muted">Give Grafana's address and a service-account token to push from here. In
       Grafana, <em>Administration → Users and access → Service accounts</em>: add one with the

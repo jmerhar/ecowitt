@@ -90,44 +90,62 @@ async def check(client: httpx2.AsyncClient, saved: Mapping[str, str]) -> str:
     return str(source.get("name") or uid)
 
 
+#: What a push can send, by the name the page's buttons give: the dashboard, the rules, or both.
+PARTS: dict[str, frozenset[str]] = {
+    "both": frozenset({"dashboard", "rules"}),
+    "dashboard": frozenset({"dashboard"}),
+    "rules": frozenset({"rules"}),
+}
+
+
 async def push(
-    client: httpx2.AsyncClient, saved: Mapping[str, str], units: Units, version: str
+    client: httpx2.AsyncClient,
+    saved: Mapping[str, str],
+    units: Units,
+    version: str,
+    parts: frozenset[str] = PARTS["both"],
 ) -> str:
-    """Push the dashboard and the alert rules, rendered for `units`; what was done."""
+    """Push the dashboard, the alert rules or both, rendered for `units`; what was done.
+
+    Each part replaces only its own: the dashboard leaves the rules as they are, and the
+    reverse.
+    """
     values = values_of(saved)
     name = await check(client, values)
     folder = await _folder(client, values)
-    dashboard = render.dashboard(units)
-    dashboard["id"] = None
-    for variable in dashboard["templating"]["list"]:
-        if variable["type"] == "datasource":
-            variable["current"] = {"text": name, "value": values["datasource"]}
-    await _call(
-        client,
-        values,
-        "POST",
-        "/api/dashboards/db",
-        json={
-            "dashboard": dashboard,
-            "folderUid": folder,
-            "overwrite": True,
-            "message": f"Pushed by Ecowitt Server {version}",
-        },
-    )
-    group = rule_group(units, values["datasource"])
-    await _call(
-        client,
-        values,
-        "PUT",
-        f"/api/v1/provisioning/folder/{quote(folder, safe='')}"
-        f"/rule-groups/{quote(group['title'], safe='')}",
-        json=group,
-        headers={"X-Disable-Provenance": "true"},
-    )
-    return (
-        f"Pushed the dashboard and {len(group['rules'])} alert rules to the "
-        f"{values['folder']} folder."
-    )
+    done = []
+    if "dashboard" in parts:
+        dashboard = render.dashboard(units)
+        dashboard["id"] = None
+        for variable in dashboard["templating"]["list"]:
+            if variable["type"] == "datasource":
+                variable["current"] = {"text": name, "value": values["datasource"]}
+        await _call(
+            client,
+            values,
+            "POST",
+            "/api/dashboards/db",
+            json={
+                "dashboard": dashboard,
+                "folderUid": folder,
+                "overwrite": True,
+                "message": f"Pushed by Ecowitt Server {version}",
+            },
+        )
+        done.append("the dashboard")
+    if "rules" in parts:
+        group = rule_group(units, values["datasource"])
+        await _call(
+            client,
+            values,
+            "PUT",
+            f"/api/v1/provisioning/folder/{quote(folder, safe='')}"
+            f"/rule-groups/{quote(group['title'], safe='')}",
+            json=group,
+            headers={"X-Disable-Provenance": "true"},
+        )
+        done.append(f"{len(group['rules'])} alert rules")
+    return f"Pushed {' and '.join(done)} to the {values['folder']} folder."
 
 
 async def _folder(client: httpx2.AsyncClient, values: Mapping[str, str]) -> str:
