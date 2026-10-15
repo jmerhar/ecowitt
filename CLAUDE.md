@@ -10,7 +10,7 @@ quantities the console does not send.
 
 ```
 core/src/ecowitt/core/   shared by the collector and the dashboard
-  units.py        conversions, and the Units preference
+  units.py        conversions, the Units preference, and each unit's symbol and decimals
   psychro.py      the formulas behind derive, pure and reference-tested
   readings.py     Reading, the canonical-unit value parse produces and derive consumes
   preferences.py  units, sensor names, altitude
@@ -56,9 +56,10 @@ collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init_
     staleness.py  how long each sensor's values have gone unchanged
 
   admin/          the admin listener
-    app.py        status and setup pages, the read API, the login and form checks
+    app.py        status, setup and Grafana pages, the read API, the login and form checks
     templates/    the pages, Jinja2 with autoescaping
-    static/       scripts the pages load, as files so they can be tested (geolocate.js)
+    static/       scripts the pages load, as files so they can be tested (geolocate.js,
+                  clipboard.js)
     auth.py       scrypt password hashes, Basic login, CSRF token and origin check
     configstore.py  the live configuration: validate, save, then apply and notify (the database
                     connection included, so a save takes effect without a restart)
@@ -73,6 +74,10 @@ collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init_
                   read it back, see README), hourly: `forecast` and `forecast_daily`, tagged
                   with how far ahead (`lead`) each row was made
     timezones.py  a station's time zone from its coordinates (offline, tzfpy), and validation
+    grafana.py    the Grafana page's files, and pushing them over Grafana's API
+
+  grafana/        the Grafana dashboard and alert rules as templates, every unit-dependent spot
+                  a %{...} placeholder; render.py writes them for the stored units
 
   delivery/       getting rows into the database (through a core Store)
     database.py   ConfiguredStore: the store config.yaml names, swapped in place on a save
@@ -86,8 +91,8 @@ collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init_
 collector/tests/  one folder per subpackage (ingest/, admin/, delivery/), plus
   server/         wiring: the two listeners, settings, the health probe
   common/         the top-level modules the listeners share
-  grafana/        the dashboard and alert rules checked against the golden output
-                  (grafana_sql.py holds the checks both share)
+  grafana/        the dashboard and alert rules checked against what the pipeline writes, in
+                  every choice of units (grafana_sql.py holds the checks they share)
   tooling/        the scripts in bin/ that have logic of their own
   js/             node:test suites for admin/static/, against stand-in DOM and browser APIs
   conftest.py     settings/state fixtures and the recorded console payloads
@@ -117,7 +122,8 @@ dashboard/web/    the dashboard's page: Svelte 5, Vite, TypeScript, uPlot; a thi
   src/testing.ts  API answers for the tests, and a fake Api
   icons/          app-icon.svg, the home-screen icon; bin/app-icons.sh renders public/icons/*.png
 dashboard/Dockerfile  builds the page in a Node stage and serves it from the API's image
-grafana/          weather.json, the dashboard, and alerts.json, the alert rules; a renamed table or
+grafana/          weather.json, the dashboard, and alerts.json, the alert rules: the collector's
+                  templates rendered for the default units (make grafana); a renamed table or
                   field fails tests/grafana rather than blanking a panel or silencing an alert
 TODO/             one note per planned feature; delete a note when its feature ships
 bin/              every script the Makefile and CI run; its Python is linted with the shared
@@ -125,7 +131,8 @@ bin/              every script the Makefile and CI run; its Python is linted wit
                   the page's package-lock.json; test-web.sh type-checks and tests the page;
                   version.py keeps every manifest's version and the compose file's major image
                   tag in step, release.sh cuts a release
-                  and github-release.sh (CI, on a tag) publishes its notes
+                  and github-release.sh (CI, on a tag) publishes its notes; grafana.py writes
+                  grafana/*.json from the templates
 CHANGELOG.md      every release's notes; new work goes under `## Unreleased`
 ```
 
@@ -169,6 +176,16 @@ CHANGELOG.md      every release's notes; new work goes under `## Unreleased`
   automatically, so without both any site the operator visits could post forms here. A new
   form route must use `_form`; `test_no_form_from_elsewhere_changes_anything` lists every
   route and must be extended with it.
+- **The Grafana files are rendered, not edited.** Change
+  `collector/src/ecowitt/collector/grafana/*.template.json`, writing anything that depends on
+  the units as a placeholder (`%{temp_c}`, `%{8 temperature}`, `%{2 temperature_delta}` for a
+  difference, `%{unit speed}`, `%{symbol speed}`, `%{decimals pressure}`), then `make grafana`.
+  Tests fail until `grafana/*.json` match the default render, and until no field, display unit
+  or unit word in the default units is written outside a placeholder.
+- **The rule file and the API spell a rule differently.** `grafana/alerts.json` is a
+  provisioning file, which reads `keepFiringFor` and silently drops keys it does not know; the
+  provisioning API takes `keep_firing_for` and the interval in seconds. `admin/grafana.py`
+  converts for a push; `test_every_rule_key_is_one_a_provisioning_file_reads` guards the file.
 - **Page scripts live in `static/` and are tested with `node --test`**, not inlined. Node's own
   coverage measures them -- no npm packages -- and `bin/lcov-to-istanbul.py` turns its lcov into
   the istanbul files the shared tooling reads, so they are the `pages` suite in `coverage.toml`
@@ -256,6 +273,7 @@ make web-install  # the dashboard page's node_modules, from the lockfile, via th
 make test-web     # the dashboard page: svelte-check and Vitest with coverage
 make dashboard-dev SERVER=host   # page :5173 and API :2553, both reloading; host's InfluxDB on :8181
 make lockfile     # regenerate dashboard/web/package-lock.json (the only way to)
+make grafana      # rewrite grafana/*.json after changing a template
 make check        # lint + every suite with coverage
 bin/release.sh 2.9.0   # date the changelog's Unreleased section, commit and tag; then push both
 UPDATE_GOLDEN=1 bin/test-python.sh collector tests/ingest/test_pipeline.py   # after an intended output change

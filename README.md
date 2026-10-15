@@ -225,7 +225,7 @@ exposed on its own listener:
 | Listener | Default publish | Serves |
 |---|---|---|
 | ingest | `0.0.0.0:2551` | the configured path, and nothing else |
-| admin | `127.0.0.1:2552` | status and setup pages, read API, health |
+| admin | `127.0.0.1:2552` | status, setup and Grafana pages, read API, health |
 
 The admin routes are not merely *refused* on the ingest listener — they are not mounted on it,
 so no mistake in a guard can expose them. Ask the ingest port for the status page and it
@@ -317,12 +317,11 @@ time zone or in your browser's, keeping the station and the time range.
 
 To install it, add an InfluxDB data source with query language **SQL**, the database this server
 writes to, and a token that can read it (`influxdb3 create token --permission
-"db:weather:read" --name grafana`). Then import the file under *Dashboards → New → Import* and
-choose that data source. It expects a data source named `weather` and offers a choice of the
-others.
-
-Its queries name fields in the default units (°C, hPa, km/h, mm). If you store other units,
-change the field names in the queries to match.
+"db:weather:read" --name grafana`). Then push the dashboard from the admin listener's
+[Grafana page](#the-grafana-page), or import it under *Dashboards → New → Import* and choose that
+data source: paste it from that page, which writes it for the units this server stores, or use
+the file here, written for the default ones (°C, hPa, km/h, mm). It expects a data source named
+`weather` and offers a choice of the others.
 
 ## Grafana alerts
 
@@ -341,9 +340,11 @@ one alert per room or station (*Close the windows* is one per station):
 | Heavy rain | a rain rate above 10 mm/h in the last 10 minutes | info |
 | Pressure falling fast | sea-level pressure more than 3 hPa lower than 3 hours ago | info |
 
-- The rules read the data source whose uid is `weather`. Give yours that uid, or replace it in
-  the file before loading it.
-- Load the file through Grafana's file provisioning or its alerting API.
+- Push them from the [Grafana page](#the-grafana-page), or load them through Grafana's file
+  provisioning or its alerting API; the page gives the file, and the command for the API, for
+  the units this server stores. The file here is written for the default units.
+- The file here reads the data source whose uid is `weather`: give yours that uid, or replace
+  it before loading the file. The Grafana page writes in the one saved there.
 - Routing is yours to set up. Every rule carries the labels `app=ecowitt` and `severity`
   (`warning` or `info`, the second suiting quiet hours); *Good time to air* also carries
   `resolve_message=off`, for a contact point that sends no message when the window closes, and
@@ -362,7 +363,24 @@ one alert per room or station (*Close the windows* is one per station):
   that stops uploading does not flag every sensor; watch the station itself with the heartbeat.
   A sensor silent for more than 7 days drops out of the rule.
 - A query that fails raises Grafana's own *DatasourceError* alert, with the rule's labels.
-- Like the dashboard, the queries name fields in the default units.
+
+### The Grafana page
+
+The admin listener's *Grafana* page writes the dashboard and the rules for the units this server
+stores -- their field names, thresholds, display units and messages -- and offers each to copy
+or download, with the command that loads the rules through Grafana's API.
+
+Save Grafana's address there, a service-account token, and the uid of the InfluxDB data source
+the rules should read, and *Push to Grafana* sends both: the dashboard, and the rules as the
+`ecowitt` group, into a folder (*Weather* unless another is named; created if Grafana has none
+by that name). A push replaces the dashboard and the group whole: changes made to them in Grafana
+are overwritten, and a rule added to the group there is deleted. The rules stay editable in
+Grafana. Contact points and notification policies are left alone.
+
+Grafana's open-source edition lets a service account load alert rules only with the **Editor**
+role: in Grafana, *Administration → Users and access → Service accounts*, add one with that role
+and a token for it. The token is kept in `config.yaml` beside the database's and never shown
+again.
 
 ## Public dashboard
 
@@ -512,6 +530,7 @@ make test-js      # the admin page scripts' suite, with coverage (needs Node 22 
 make web-install  # the dashboard page's dependencies, from its lockfile (needs Node 24)
 make test-web     # the dashboard page: type check and tests, with coverage
 make dashboard-dev SERVER=host   # the dashboard from the working copy, with host's InfluxDB
+make grafana      # rewrite grafana/*.json from the templates after changing one
 make check        # lint, every suite, coverage
 ```
 

@@ -16,6 +16,11 @@ rules to be imported again. Either is listed under *Upgrading*.
   estimated at 10 m: the wind card, chart and records then lead with the measured wind, with the
   estimate beneath it on the card. The API's `wind` answer adds `measured_beaufort` and
   `measured_description`, and `/extremes` adds `wind.measured_speed` and `wind.measured_gust`.
+- A *Grafana* page on the admin listener writes the Grafana dashboard and alert rules for the
+  units this server stores -- field names, thresholds, display units and messages -- to copy or
+  download, with the command that loads the rules through Grafana's API. With Grafana's address,
+  a service-account token (Editor role) and a data source saved there, *Push to Grafana* sends
+  both into a folder, replacing the dashboard and the `ecowitt` rule group.
 
 ### Changed
 
