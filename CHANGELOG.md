@@ -42,7 +42,11 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 - A deployment that pulls `latest` to follow `main` should pull `edge` instead; on `latest` it
   stays on the newest release.
-- Import `grafana/alerts.json` again for the new *Good time to air* message.
+- Import `grafana/alerts.json` again for the new *Good time to air* message, or push it from the
+  new *Grafana* page.
+- To go back to an earlier release after saving a Grafana connection, first remove the
+  `grafana:` section from `config.yaml`: an earlier release does not start with a section it
+  does not know.
 
 ## 2.8.1 — 2026-10-14
 

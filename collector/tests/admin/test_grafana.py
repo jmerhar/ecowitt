@@ -370,8 +370,7 @@ class TestPushPage:
         assert fake.requests
 
 
-def test_a_saved_connection_needs_station_free_documents_too() -> None:
-    """The Grafana entry sits beside stations without disturbing them."""
+def test_a_grafana_connection_sits_beside_the_stations() -> None:
     document = ConfigDocument(
         stations=[StationEntry(name="Home", passkey="K")],
         grafana=GrafanaEntry(url="http://g:3000", token="t"),

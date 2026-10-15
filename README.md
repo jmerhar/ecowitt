@@ -326,7 +326,8 @@ the file here, written for the default ones (°C, hPa, km/h, mm). It expects a d
 ## Grafana alerts
 
 [`grafana/alerts.json`](grafana/alerts.json) holds alert rules in Grafana's provisioning format,
-one alert per room or station (*Close the windows* is one per station):
+one alert per room or station (*Close the windows* is one per station). The thresholds below are
+in the default units; the [Grafana page](#the-grafana-page) converts them for others:
 
 | Rule | Fires when | Severity |
 |---|---|---|
