@@ -146,6 +146,26 @@ def test_a_rule_with_an_alert_per_room_lists_them_under_one_headline(rule: dict[
         assert annotations["item"].startswith("{{ $labels.room }}")
 
 
+@pytest.mark.parametrize("rule", BY_TITLE)
+def test_no_message_ends_in_a_stray_quote(rule: dict[str, Any]) -> None:
+    """Every line of a grouped message ends with one, so a stray character shows on each room."""
+    for name, text in rule["annotations"].items():
+        words = re.sub(r"\{\{.*?\}\}", "", text).rstrip()
+        assert not words.endswith(("'", '"', "`")), name
+
+
+def test_good_time_to_air_says_what_airing_would_do() -> None:
+    """Each room's line gives the humidity airing would leave it at, in words anyone reads, not
+    the dew point that decides the rule."""
+    rule = next(r for r in RULES if r["uid"] == "ecowitt-airing")
+    sql = {d["refId"]: d["model"].get("rawSql", "") for d in rule["data"]}
+    for name in ("summary", "item"):
+        text = rule["annotations"][name]
+        assert any("predicted_humidity_pct" in sql[ref] for ref in VALUE_REF.findall(text)), name
+    for name in ("summary", "headline", "item"):
+        assert "dew point" not in rule["annotations"][name].lower(), name
+
+
 def test_daily_rules_are_the_slow_house_conditions() -> None:
     daily = {r["title"] for r in RULES if r["labels"].get("notify") == "daily"}
     assert daily == {"Damp room", "Good time to air", "Close the windows"}

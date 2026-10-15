@@ -18,16 +18,20 @@ rules to be imported again. Either is listed under *Upgrading*.
 ### Changed
 
 - The images' `latest` tag is the newest release; every change to `main` is published as `edge`.
+- *Good time to air* gives each room's humidity now and the humidity airing would leave it at,
+  instead of how far its dew point is above the outdoor one.
 
 ### Fixed
 
 - The forecast's daily table draws each row's line straight across: the sky column's sat out of
   line with the others'.
+- *Good time to air* no longer ends each room's line with a stray `'`.
 
 ### Upgrading
 
 - A deployment that pulls `latest` to follow `main` should pull `edge` instead; on `latest` it
   stays on the newest release.
+- Import `grafana/alerts.json` again for the new *Good time to air* message.
 
 ## 2.8.1 — 2026-10-14
 

@@ -45,6 +45,22 @@
               }
             },
             {
+              "refId": "D",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "D",
+                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(name ORDER BY time) AS room,\n  last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(predicted_humidity_pct ORDER BY time) AS after\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station, rh.sensor, rh.room,\n  vent.after AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
               "refId": "C",
               "relativeTimeRange": {
                 "from": 0,
@@ -63,9 +79,9 @@
           "for": "15m",
           "keep_firing_for": "30m",
           "annotations": {
-            "summary": "{{ $labels.room }} is at {{ humanize $values.B.Value }}% humidity, and the outside air holds less water (its dew point is {{ printf \"%.1f\" $values.A.Value }} °C lower): warmed indoors, it would dry the room.",
-            "headline": "The outside air holds less water than these rooms: warmed indoors, it would dry them.",
-            "item": "{{ $labels.room }}: {{ humanize $values.B.Value }}% humidity, dew point {{ printf \"%.1f\" $values.A.Value }} °C above outdoors'",
+            "summary": "{{ $labels.room }} is at {{ printf \"%.0f\" $values.B.Value }}% humidity, and the outside air is drier: airing it now would bring it down to {{ printf \"%.0f\" $values.D.Value }}%.",
+            "headline": "The outside air is drier than these rooms: airing them now would bring their humidity down.",
+            "item": "{{ $labels.room }}: {{ printf \"%.0f\" $values.B.Value }}% now, {{ printf \"%.0f\" $values.D.Value }}% after airing",
             "description": "A room at 65% humidity or more, with the outdoor dew point at least 2 °C below the room's, for 15 minutes."
           },
           "labels": {
