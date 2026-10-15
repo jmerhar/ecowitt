@@ -6,6 +6,7 @@ export function failures(measured, errors) {
   if (!measured.legacy) out.push("the page did not mark itself as running the legacy build");
   if (measured.error) out.push(`the page could not start: ${measured.error}`);
   if (!measured.text.includes("Outdoors")) out.push("the cards were not drawn");
+  if (!measured.text.includes("Forecast")) out.push("the forecast was not drawn");
   if (measured.canvases < 1) out.push("no chart was drawn");
   if (measured.bar <= 0) out.push("a level bar has no height: the :where() fallbacks are missing");
   if (measured.cardGap <= 0) out.push("the cards touch: the grid-gap fallback is missing");

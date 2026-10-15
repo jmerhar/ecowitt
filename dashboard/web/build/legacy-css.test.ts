@@ -49,13 +49,13 @@ describe("legacyCss", () => {
     expect(rules(".f{display:flex;gap:.5rem 1rem}")).toEqual(as(
       ".f{grid-gap:.5rem 1rem;gap:.5rem 1rem;display:flex}",
       ".legacy .f>*+*{--legacy:1;margin-left:1rem}",
-      ".legacy .f>svg:only-child{--legacy:1;margin-right:1rem}",
+      ".legacy .f>svg:first-child{--legacy:1;margin-right:1rem}",
     ));
     expect(rules(".f{display:inline-flex;column-gap:3px}")).toContainEqual(sorted(".legacy .f>*+*{--legacy:1;margin-left:3px}"));
   });
 
   it("puts the gap after an icon that leads its text, which no selector can reach", () => {
-    expect(rules("h2{display:flex;gap:.4rem}")).toContainEqual(sorted(".legacy h2>svg:only-child{--legacy:1;margin-right:.4rem}"));
+    expect(rules("h2{display:flex;gap:.4rem}")).toContainEqual(sorted(".legacy h2>svg:first-child{--legacy:1;margin-right:.4rem}"));
     expect(rules(".f{display:flex;flex-direction:column;gap:1rem}").join()).not.toContain("svg");
     expect(rules(".f{display:flex;flex-wrap:wrap;gap:1rem}").join()).not.toContain("svg");
   });
@@ -84,14 +84,14 @@ describe("legacyCss", () => {
       "p:where(.svelte-x){grid-gap:1rem 1rem;gap:1rem;display:flex}",
       ".legacy p.svelte-x{--legacy:1;grid-gap:1rem 1rem;gap:1rem;display:flex}",
       ".legacy p.svelte-x>*+*{--legacy:1;margin-left:1rem}",
-      ".legacy p.svelte-x>svg:only-child{--legacy:1;margin-right:1rem}",
+      ".legacy p.svelte-x>svg:first-child{--legacy:1;margin-right:1rem}",
     ));
   });
 
   it("keeps a copy inside the media query of the rule it copies", () => {
     // Vite's own minifier prints the query for the build's targets afterwards.
     expect(legacyCss("@media (min-width:40rem){.f{display:flex;gap:1rem}}")).toMatch(
-      /^@media [^{]+\{\.f\{[^}]+\}\.legacy \.f>\*\+\*\{[^}]+\}\.legacy \.f>svg:only-child\{[^}]+\}\}$/,
+      /^@media [^{]+\{\.f\{[^}]+\}\.legacy \.f>\*\+\*\{[^}]+\}\.legacy \.f>svg:first-child\{[^}]+\}\}$/,
     );
   });
 

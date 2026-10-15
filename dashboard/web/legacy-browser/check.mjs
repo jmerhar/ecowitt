@@ -22,11 +22,16 @@ const MEASURE = `(function () {
   var app = document.getElementById("app");
   var bar = document.querySelector(".bar span");
   var cards = document.querySelectorAll(".glance > *");
-  var icon = document.querySelector("h2 > svg");
-  var label = icon && icon.nextSibling;
-  while (label && label.nodeType !== 3) label = label.nextSibling;
-  var text = document.createRange();
-  if (label) text.selectNodeContents(label);
+  // The narrowest space between a card title's icon and the text after it.
+  var iconGap = Infinity;
+  Array.prototype.forEach.call(document.querySelectorAll("h2 > svg"), function (icon) {
+    var label = icon.nextSibling;
+    while (label && label.nodeType !== 3) label = label.nextSibling;
+    if (!label) return;
+    var text = document.createRange();
+    text.selectNodeContents(label);
+    iconGap = Math.min(iconGap, text.getBoundingClientRect().left - icon.getBoundingClientRect().right);
+  });
   return {
     legacy: document.documentElement.className.indexOf("legacy") !== -1,
     text: app.innerText,
@@ -34,7 +39,7 @@ const MEASURE = `(function () {
     canvases: document.querySelectorAll("canvas").length,
     bar: bar ? bar.getBoundingClientRect().height : 0,
     cardGap: cards.length > 1 ? cards[1].getBoundingClientRect().left - cards[0].getBoundingClientRect().right : 0,
-    iconGap: label ? text.getBoundingClientRect().left - icon.getBoundingClientRect().right : 0,
+    iconGap: iconGap === Infinity ? 0 : iconGap,
     userAgent: navigator.userAgent
   };
 })()`;

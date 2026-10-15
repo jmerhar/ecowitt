@@ -121,7 +121,7 @@ function gridGap(d: Declaration): Declaration[] {
 /**
  * For a flex container with a gap, the rules whose margins stand in for it: a leading margin on
  * every child but the first in a single line, or a trailing one on every child of a container
- * that wraps. A selector cannot reach text, so in a row an icon that is the only element, as in
+ * that wraps. A selector cannot reach text, so in a row an icon that comes first, as in
  * `<h2><svg/> Wind</h2>`, also gets the gap after it: every icon on the page leads its text.
  */
 function flexSpacing(declarations: Declaration[]): { children: Selector; margins: Declaration[] }[] {
@@ -149,7 +149,7 @@ function flexSpacing(declarations: Declaration[]): { children: Selector; margins
   const icon: Selector = [
     { type: "combinator", value: "child" },
     { type: "type", name: "svg" },
-    { type: "pseudo-class", kind: "only-child" },
+    { type: "pseudo-class", kind: "first-child" },
   ];
   const rules = wrap
     ? [{ children: child, margins: [...margin("margin-right", col), ...margin("margin-bottom", row)] }]
