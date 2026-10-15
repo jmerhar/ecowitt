@@ -237,11 +237,13 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE }}${{ matrix.image }}
-          # A moving tag for deployments that follow the branch, an immutable one so a
-          # specific build can always be pinned or rolled back to, and on a release tag its
-          # version, minor and major line.
+          # edge for deployments that follow the branch, an immutable tag so a specific build
+          # can always be pinned or rolled back to, and on a release tag its version, minor and
+          # major line, and latest.
+          flavor: latest=false
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=edge
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
             type=sha,format=long
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}

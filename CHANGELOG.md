@@ -15,6 +15,15 @@ rules to be imported again. Either is listed under *Upgrading*.
   beneath it on the card. The API's `wind` answer adds `measured_beaufort` and
   `measured_description`, and `/extremes` adds `wind.measured_speed` and `wind.measured_gust`.
 
+### Changed
+
+- The images' `latest` tag is the newest release; every change to `main` is published as `edge`.
+
+### Upgrading
+
+- A deployment that pulls `latest` to follow `main` should pull `edge` instead; on `latest` it
+  stays on the newest release.
+
 ## 2.8.1 — 2026-10-14
 
 ### Changed

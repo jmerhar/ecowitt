@@ -491,9 +491,9 @@ decided by the compose file's publish addresses.
 ## Versions
 
 Both images carry one version, listed with what changed in [`CHANGELOG.md`](CHANGELOG.md), which
-also says what, if anything, to do on upgrading. Each image is published as `latest` (every change
-to `main`), as each release's version (`2.8.0`) and its minor and major lines (`2.8`, `2`), and by
-commit (`sha-…`). The shipped `docker-compose.yml` follows the major line, so `docker compose pull`
+also says what, if anything, to do on upgrading. Each image is published as each release's version
+(`2.8.0`), its minor and major lines (`2.8`, `2`) and `latest`, as `edge` for every change to
+`main`, and by commit (`sha-…`). The shipped `docker-compose.yml` follows the major line, so `docker compose pull`
 brings every release that keeps its settings and the stored data working; a new major is a change
 to that file. The collector's status page and the dashboard's footer show the version running.
 
