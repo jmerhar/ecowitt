@@ -372,11 +372,12 @@ stores -- their field names, thresholds, display units and messages -- and offer
 or download, with the command that loads the rules through Grafana's API.
 
 Save Grafana's address there, a service-account token, and the uid of the InfluxDB data source
-the rules should read, and *Push to Grafana* sends both: the dashboard, and the rules as the
-`ecowitt` group, into a folder (*Weather* unless another is named; created if Grafana has none
-by that name). A push replaces the dashboard and the group whole: changes made to them in Grafana
-are overwritten, and a rule added to the group there is deleted. The rules stay editable in
-Grafana. Contact points and notification policies are left alone.
+the rules should read, and the page pushes the dashboard, the rules as the `ecowitt` group, or
+both, into a folder (*Weather* unless another is named; created if Grafana has none by that
+name). Each replaces what it sends whole and leaves the other alone: pushing the dashboard
+overwrites changes made to it in Grafana, and pushing the rules overwrites the group, deleting a
+rule added to it there. The rules stay editable in Grafana. Contact points and notification
+policies are left alone.
 
 Grafana's open-source edition lets a service account load alert rules only with the **Editor**
 role: in Grafana, *Administration → Users and access → Service accounts*, add one with that role

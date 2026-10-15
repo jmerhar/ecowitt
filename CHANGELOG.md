@@ -22,8 +22,8 @@ rules to be imported again. Either is listed under *Upgrading*.
 - A *Grafana* page on the admin listener writes the Grafana dashboard and alert rules for the
   units this server stores -- field names, thresholds, display units and messages -- to copy or
   download, with the command that loads the rules through Grafana's API. With Grafana's address,
-  a service-account token (Editor role) and a data source saved there, *Push to Grafana* sends
-  both into a folder, replacing the dashboard and the `ecowitt` rule group.
+  a service-account token (Editor role) and a data source saved there, it pushes the dashboard,
+  the `ecowitt` rule group or both into a folder, each replacing what it sends.
 
 ### Changed
 
