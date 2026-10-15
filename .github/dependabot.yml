@@ -18,6 +18,11 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 14
+    # svelte-check names the TypeScript majors it supports as a peer dependency, so a new major
+    # cannot install until svelte-check accepts it; move both by hand then.
+    ignore:
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     groups:
       web:
         patterns:
