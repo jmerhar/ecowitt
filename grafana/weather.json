@@ -2879,7 +2879,7 @@
           "sort": "desc"
         }
       },
-      "description": "The station's ten-minute direction minus the weather model's, the short way round, only while the model has at least 10.8 km/h (3 m/s) of wind: below that a vane wanders. Within the shaded ±60° band is usual; a steady offset beyond it is a vane pointed wrongly or turned by a building."
+      "description": "The station's ten-minute direction minus the weather model's, the short way round, only while the model has at least 10.8 km/h of wind: below that a vane wanders. Within the shaded ±60° band is usual; a steady offset beyond it is a vane pointed wrongly or turned by a building."
     },
     {
       "id": 39,
