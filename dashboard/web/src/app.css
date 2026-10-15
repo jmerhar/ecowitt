@@ -58,14 +58,20 @@ body {
   color: var(--fg);
   font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
+/* A title's text sets its baseline and its icon is centred beside it, so a title lines up by
+   baseline with the words next to it; a flex row's baseline is otherwise its first item's, the
+   icon's bottom edge. */
 h2 {
   display: flex;
   gap: 0.4rem;
-  align-items: center;
+  align-items: baseline;
   font-size: 1rem;
   margin: 0 0 0.5rem;
   color: var(--muted);
   font-weight: 500;
+}
+h2 > svg {
+  align-self: center;
 }
 /* A card with something to act on: an edge in the notice's colour, and its words. */
 .card.warning {
@@ -210,13 +216,25 @@ button.link {
   border-color: var(--line);
   background: var(--bg);
 }
+/* The arrow is drawn rather than the browser's, which some place hard against the border
+   whatever the padding: two halves of a chevron, in the theme's muted colour. */
 select {
+  -webkit-appearance: none;
+  appearance: none;
   font: inherit;
   color: var(--fg);
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    right 0.85rem center,
+    right 0.55rem center;
+  background-size: 0.3rem 0.3rem;
+  background-repeat: no-repeat;
   border: 1px solid var(--line);
   border-radius: 0.3rem;
-  padding: 0.15rem 0.4rem;
+  padding: 0.15rem 1.5rem 0.15rem 0.4rem;
 }
 .visually-hidden {
   position: absolute;
