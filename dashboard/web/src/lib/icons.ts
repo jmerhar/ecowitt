@@ -24,6 +24,8 @@ const BY_QUANTITY: Record<string, Icon> = {
   airing_humidity: DropletsIcon,
   speed: WindIcon,
   gust: WindIcon,
+  measured_speed: WindIcon,
+  measured_gust: WindIcon,
   direction: WindIcon,
   rate: CloudRainIcon,
   daily: CloudRainIcon,

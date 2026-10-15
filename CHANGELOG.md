@@ -11,9 +11,9 @@ rules to be imported again. Either is listed under *Upgrading*.
 ### Added
 
 - The dashboard's *Units* menu offers *Wind at: The sensor*, for a station whose wind is estimated
-  at 10 m: the wind card and chart then lead with the measured wind, with the estimate beneath it,
-  and the wind's records, which stay at 10 m, say so. The API's `wind` answer adds
-  `measured_beaufort` and `measured_description`.
+  at 10 m: the wind card, chart and records then lead with the measured wind, with the estimate
+  beneath it on the card. The API's `wind` answer adds `measured_beaufort` and
+  `measured_description`, and `/extremes` adds `wind.measured_speed` and `wind.measured_gust`.
 
 ## 2.8.1 — 2026-10-14
 

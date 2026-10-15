@@ -77,6 +77,7 @@ describe("App", () => {
       ),
     );
     expect(JSON.parse(storage.getItem("ecowitt-dashboard")!).wind).toBe("sensor");
+    expect(await screen.findByText("Wind gust, measured", { selector: ".label" })).toBeInTheDocument();
   });
 
   it("offers no choice of the wind's height for a station that measures it as it is", async () => {

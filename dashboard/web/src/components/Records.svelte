@@ -20,31 +20,39 @@
     /** Changes whenever the page refreshes, which fetches the answer again. */
     tick?: number;
     period: string;
-    /** Which wind the page leads with: wind records are at 10 m, so say so where it is not. */
+    /** Which wind's records are shown: at 10 m, or as the sensor measured it. */
     wind?: WindHeight;
   };
   let { api, meta, station, units, timezone, tick = 0, period = $bindable(), wind = "10m" }: Props = $props();
 
   const PERIODS: Record<string, string> = { today: "Today", month: "This month", year: "This year" };
+  /** The wind's records at 10 m, and as the sensor measured it. */
+  const TEN_M = ["wind.speed", "wind.gust"];
+  const MEASURED = ["wind.measured_speed", "wind.measured_gust"];
 
   let answer = $state<ExtremesOut | null>(null);
   let error = $state("");
 
-  const labels = $derived(
-    Object.fromEntries(
-      meta.metrics.map((m) => [
-        m.id,
-        wind === "sensor" && (m.id === "wind.speed" || m.id === "wind.gust") ? `${m.label}, at 10 m` : m.label,
-      ]),
-    ),
-  );
+  const labels = $derived(Object.fromEntries(meta.metrics.map((m) => [m.id, m.label])));
+  /**
+   * The wind records not shown: the measured ones, or the 10 m ones for a visitor who leads with
+   * the sensor -- unless the chosen ones are missing, as for a station without an estimate.
+   */
+  const hidden = $derived.by(() => {
+    const present = new Set((answer?.extremes ?? []).map((e) => e.metric));
+    const [chosen, other] = wind === "sensor" ? [MEASURED, TEN_M] : [TEN_M, MEASURED];
+    return chosen.some((m) => present.has(m)) ? new Set(other) : new Set<string>();
+  });
   /**
    * The outdoor and station-wide records. A record that is only a highest and is zero -- no
    * rain, no sun at night -- says nothing.
    */
   const outdoor = $derived(
     (answer?.extremes ?? []).filter(
-      (e) => !e.metric.startsWith("rooms.") && !(e.min === null && (e.max?.value ?? 0) === 0),
+      (e) =>
+        !e.metric.startsWith("rooms.") &&
+        !hidden.has(e.metric) &&
+        !(e.min === null && (e.max?.value ?? 0) === 0),
     ),
   );
   /** One row per room: its temperature and humidity ranges. */

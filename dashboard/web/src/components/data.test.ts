@@ -128,10 +128,25 @@ describe("Records", () => {
     expect(screen.queryByText("Rain today")).not.toBeInTheDocument();
   });
 
-  it("marks the wind's records as at 10 m for a visitor who leads with the sensor", async () => {
+  it("shows the wind's records the visitor leads with, at 10 m or as measured", async () => {
+    const first = render(Records, { ...base, api: fakeApi(), period: "today" });
+    await screen.findByText("Wind gust", { selector: ".label" });
+    expect(screen.queryByText("Wind gust, measured", { selector: ".label" })).not.toBeInTheDocument();
+    first.unmount();
     render(Records, { ...base, api: fakeApi(), period: "today", wind: "sensor" });
-    expect(await screen.findByText("Wind gust, at 10 m", { selector: ".label" })).toBeInTheDocument();
+    const gust = (await screen.findByText("Wind gust, measured", { selector: ".label" })).closest(".tile")!;
+    expect(gust).toHaveTextContent("High 26.0 km/h 11:00");
+    expect(screen.queryByText("Wind gust", { selector: ".label" })).not.toBeInTheDocument();
     expect(screen.getByText("Temperature", { selector: ".label" })).toBeInTheDocument();
+  });
+
+  it("falls back to whichever wind records there are", async () => {
+    const api = fakeApi();
+    api.extremes.mockResolvedValue(extremes({
+      extremes: extremes().extremes.filter((e) => e.metric !== "wind.measured_gust"),
+    }));
+    render(Records, { ...base, api, period: "today", wind: "sensor" });
+    expect(await screen.findByText("Wind gust", { selector: ".label" })).toBeInTheDocument();
   });
 
   it("folds the rooms beneath, a tile each with temperature and humidity", async () => {

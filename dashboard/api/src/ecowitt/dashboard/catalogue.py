@@ -138,7 +138,8 @@ METRICS: dict[str, Metric] = {
             model_base="dewpoint",
         ),
         # Speed and gust are the estimates at 10 m (`windheight`), the height forecasts give;
-        # what the sensor measured is charted beside them, without records of its own.
+        # what the sensor measured is charted beside them, with records of its own for a page
+        # that leads with it.
         Metric(
             "wind.speed", "Wind speed", (_TEN,), "speed", Kind.SPEED,
             (Aggregate.MEAN, Aggregate.MAX), extremes=Sides.MAX, model_base="speed",
@@ -149,11 +150,11 @@ METRICS: dict[str, Metric] = {
         ),
         Metric(
             "wind.measured_speed", "Wind speed, measured", ("wind",), "speed", Kind.SPEED,
-            (Aggregate.MEAN,), extremes=Sides.NONE,
+            (Aggregate.MEAN,), extremes=Sides.MAX,
         ),
         Metric(
             "wind.measured_gust", "Wind gust, measured", ("wind",), "gust", Kind.SPEED,
-            (Aggregate.MAX,), extremes=Sides.NONE,
+            (Aggregate.MAX,), extremes=Sides.MAX,
         ),
         Metric(
             "wind.direction", "Wind direction", ("wind",), "dir", Kind.ANGLE,

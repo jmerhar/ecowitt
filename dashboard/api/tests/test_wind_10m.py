@@ -78,12 +78,17 @@ async def test_charts_lead_with_the_estimate_and_offer_the_measurement() -> None
     }
 
 
-async def test_records_are_the_estimates_alone() -> None:
+async def test_records_are_kept_at_10_m_and_as_measured() -> None:
     found = await board([ten(LAST, 30.0, 50.0)]).extremes("example", "today")
 
-    metrics = {e.metric for e in found.extremes}
-    assert "wind.gust" in metrics
-    assert not {"wind.measured_speed", "wind.measured_gust"} & metrics
+    highest = {
+        e.metric: e.max.value for e in found.extremes if e.metric.startswith("wind.") and e.max
+    }
+    assert highest["wind.gust"] == 50.0
+    assert highest["wind.measured_gust"] == 52.0
+    assert {e.metric: e.min for e in found.extremes if e.metric == "wind.measured_gust"} == {
+        "wind.measured_gust": None
+    }
 
 
 async def test_stations_publish_their_factor() -> None:

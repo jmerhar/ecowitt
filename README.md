@@ -213,8 +213,8 @@ moment keep their values, so after moving the anemometer give the moment it was 
 The dashboard leads with the 10 m figures -- speed, gusts, the Beaufort force, which is defined
 at 10 m, and the strong-gust warning -- marking an estimate as one, with what the sensor
 measured beneath it and faint behind the speed in the wind chart. A visitor can choose *Wind at:
-The sensor* in its *Units* menu to swap the two on the wind card and chart; the strong-gust
-warning and the wind's records stay at 10 m, labelled so. The choice is kept in that browser.
+The sensor* in its *Units* menu to swap the two on the wind card, chart and records; the
+strong-gust warning stays at 10 m. The choice is kept in that browser.
 
 ## Two ports, and why it matters
 

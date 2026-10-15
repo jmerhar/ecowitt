@@ -13,6 +13,7 @@ describe("icons", () => {
     expect(metricIcon("rooms.temperature")).toBe(ThermometerIcon);
     expect(metricIcon("outdoor.dew_point")).toBe(DropletIcon);
     expect(metricIcon("rain.daily")).toBe(CloudRainIcon);
+    expect(metricIcon("wind.measured_gust")).toBe(metricIcon("wind.gust"));
     expect(metricIcon("something.new")).toBe(SunIcon);
   });
 
