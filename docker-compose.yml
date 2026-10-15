@@ -9,7 +9,7 @@
 services:
   ecowitt:
     # The major version: every release that keeps these settings and the stored data working.
-    image: ghcr.io/jmerhar/ecowitt:2
+    image: ghcr.io/jmerhar/ecowitt:3
     container_name: ecowitt
     restart: unless-stopped
     # Runs as an ordinary user so the files under ./data belong to a real account on the host.
@@ -63,7 +63,7 @@ services:
   # holds dashboard.yaml it serves an unprotected setup page, so finish setup before the port
   # is reachable by anyone else.
   dashboard:
-    image: ghcr.io/jmerhar/ecowitt-dashboard:2
+    image: ghcr.io/jmerhar/ecowitt-dashboard:3
     container_name: ecowitt-dashboard
     profiles: [dashboard]
     restart: unless-stopped
