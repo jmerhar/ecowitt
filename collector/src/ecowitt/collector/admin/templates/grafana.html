@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Grafana · Ecowitt Server{% endblock %}
+{% block head %}
+<script src="/static/clipboard.js" defer></script>
+<style>
+  textarea.json { width: 100%; height: 14rem; font: .8rem ui-monospace, monospace; }
+  pre.command { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .85rem; }
+  .copy { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; margin-top: .5rem; }
+</style>
+{% endblock %}
+{% block content %}
+<section>
+  <h2>Grafana</h2>
+  <p>A dashboard and alert rules for this server's data, written for the units it stores:
+    <strong>{{ units }}</strong>. Push both to Grafana from here, or copy them below. Readings
+    stored before a change of units keep the field names of the old ones, so the panels show them
+    no longer.</p>
+</section>
+
+<section>
+  <h2>Push to Grafana</h2>
+  {% if connection.configured %}
+    <p>Pushing to <code>{{ connection.url }}</code>: the dashboard and the rules go to the
+      <strong>{{ connection.folder }}</strong> folder, and the rules read the data source
+      <code>{{ connection.datasource }}</code>.</p>
+    <form method="post" action="/grafana/push" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit">Push to Grafana</button>
+    </form>
+    <p class="muted">A push replaces the dashboard and the <code>{{ group }}</code> rule group
+      whole: changes made to them in Grafana are overwritten, and a rule added to that group there
+      is deleted. Contact points and notification policies are left alone.</p>
+  {% else %}
+    <p class="muted">Give Grafana's address and a service-account token to push from here. In
+      Grafana, <em>Administration → Users and access → Service accounts</em>: add one with the
+      <strong>Editor</strong> role, which provisioning alert rules needs, and a token for it.</p>
+  {% endif %}
+  <form method="post" action="/grafana/connection">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="fields">
+    {% for setting in settings %}
+      {% set typed = draft.get(setting.name) if draft else none %}
+      <div><label for="grafana-{{ setting.name }}">{{ setting.label }}{% if not setting.required %} ({{ setting.optional }}){% endif %}</label>
+      {% if setting.secret %}
+        <input id="grafana-{{ setting.name }}" name="{{ setting.name }}" type="password" autocomplete="off"
+               value="{{ typed or '' }}"
+               placeholder="{{ 'set; leave empty to keep it' if connection.token_set else setting.help }}">
+      {% else %}
+        <input id="grafana-{{ setting.name }}" name="{{ setting.name }}"
+               value="{{ typed if typed is not none else (connection[setting.name] if connection.configured else setting.default) }}"
+               placeholder="{{ setting.help }}">
+      {% endif %}
+      </div>
+    {% endfor %}
+    </div>
+    <button type="submit" name="action" value="save">Save</button>
+    <button class="secondary" type="submit" name="action" value="test">Test connection</button>
+    {% if connection.configured %}
+    <button class="danger" type="submit" name="action" value="clear">Remove</button>
+    {% endif %}
+  </form>
+</section>
+
+<section>
+  <h2>Dashboard</h2>
+  <p>In Grafana, <em>Dashboards → New → Import</em>: paste this, or upload the file, and choose the
+    InfluxDB data source that reads this server's database (with query language SQL).</p>
+  <textarea id="dashboard-json" class="json" readonly aria-label="Dashboard JSON">{{ dashboard }}</textarea>
+  <div class="copy">
+    <button type="button" class="secondary" data-copy="dashboard-json" data-status="dashboard-status">Copy</button>
+    <a href="/grafana/weather.json">Download weather.json</a>
+    <span id="dashboard-status" class="muted" role="status"></span>
+  </div>
+</section>
+
+<section>
+  <h2>Alert rules</h2>
+  <p>Grafana cannot take alert rules pasted into its pages. Push them from above, or load them one
+    of two ways:</p>
+  <h3 class="sub">As a provisioning file</h3>
+  <p class="muted">For a Grafana you run: save this in its <code>provisioning/alerting/</code>
+    directory and restart it. Rules loaded this way can be changed only in the file.</p>
+  <textarea id="alerts-json" class="json" readonly aria-label="Alert rules provisioning file">{{ provisioning }}</textarea>
+  <div class="copy">
+    <button type="button" class="secondary" data-copy="alerts-json" data-status="alerts-status">Copy</button>
+    <a href="/grafana/alerts.json">Download alerts.json</a>
+    <span id="alerts-status" class="muted" role="status"></span>
+  </div>
+  <h3 class="sub">Through Grafana's API</h3>
+  <p class="muted">Download <a href="/grafana/rule-group.json">rule-group.json</a> and send it with
+    a service-account token (Editor role) into a folder that exists; the folder's uid is the last
+    part of its address in Grafana.</p>
+  <pre class="command" id="api-command">curl -X PUT "{{ connection.url if connection.configured else 'https://grafana.example' }}/api/v1/provisioning/folder/FOLDER_UID/rule-groups/{{ group }}" \
+  -H "Authorization: Bearer $GRAFANA_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "X-Disable-Provenance: true" \
+  --data @rule-group.json</pre>
+</section>
+{% endblock %}

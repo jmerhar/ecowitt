@@ -77,6 +77,7 @@
     <a href="/" class="{% if request.url.path == '/' %}here{% endif %}">Status</a>
     <a href="/setup" class="{% if request.url.path.startswith('/setup') %}here{% endif %}">Setup
       {% if pending_count %}<span class="badge" title="stations reporting but not configured">{{ pending_count }}</span>{% endif %}</a>
+    <a href="/grafana" class="{% if request.url.path.startswith('/grafana') %}here{% endif %}">Grafana</a>
   </header>
   <main>
     {% if message %}<div class="notice ok">{{ message }}</div>{% endif %}

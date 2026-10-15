@@ -47,7 +47,7 @@ from pydantic import (
     model_validator,
 )
 
-from ecowitt.collector.admin import timezones
+from ecowitt.collector.admin import grafana, timezones
 from ecowitt.core import weathermodel, windheight
 from ecowitt.core.preferences import Preferences
 from ecowitt.core.store import settings
@@ -136,6 +136,25 @@ class AdminLogin(BaseModel):
     password_hash: str = Field(min_length=1)
 
 
+class GrafanaEntry(BaseModel):
+    """The Grafana the Grafana page pushes the dashboard and alert rules to, and its token."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    url: str
+    token: str
+    datasource: str = grafana.FILE_DATASOURCE
+    folder: str = "Weather"
+
+    @model_validator(mode="after")
+    def _declared(self) -> Self:
+        """Refuse a connection the Grafana settings would not accept."""
+        found = settings.check(grafana.SETTINGS, self.model_dump(), "Grafana")
+        if found:
+            raise ValueError("; ".join(found))
+        return self
+
+
 class ConfigDocument(BaseModel):
     """The whole file. Unknown keys are refused, so a misspelt one is not silently ignored."""
 
@@ -145,6 +164,7 @@ class ConfigDocument(BaseModel):
     store: StoreEntry | None = None
     stations: list[StationEntry] = Field(default_factory=list)
     admin: AdminLogin | None = None
+    grafana: GrafanaEntry | None = None
 
     @model_validator(mode="after")
     def _unique(self) -> Self:

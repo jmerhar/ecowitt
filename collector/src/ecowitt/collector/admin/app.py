@@ -30,7 +30,7 @@ from pydantic import ValidationError
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, RedirectResponse, Response
 
-from ecowitt.collector.admin import auth, lookups, timezones
+from ecowitt.collector.admin import auth, grafana, lookups, timezones
 from ecowitt.collector.admin.calibration import CalibrationMonitor
 from ecowitt.collector.admin.configstore import ConfigStore
 from ecowitt.collector.admin.modelcompare import judge
@@ -38,6 +38,7 @@ from ecowitt.collector.admin.modelfeed import ModelFeed
 from ecowitt.collector.admin.stationconfig import (
     AdminLogin,
     ConfigDocument,
+    GrafanaEntry,
     Station,
     StationEntry,
     StoreEntry,
@@ -46,6 +47,7 @@ from ecowitt.collector.config import Settings
 from ecowitt.collector.delivery.database import ConfiguredStore
 from ecowitt.collector.delivery.recompute import WindRecompute
 from ecowitt.collector.delivery.spool import Spool
+from ecowitt.collector.grafana import render
 from ecowitt.collector.http import BodyTooLarge, read_capped_body
 from ecowitt.collector.ingest.handler import StationHandler
 from ecowitt.collector.ingest.pending import PendingStations
@@ -53,7 +55,7 @@ from ecowitt.collector.state import State
 from ecowitt.core import weathermodel, windheight
 from ecowitt.core.ratelimit import RateLimiter
 from ecowitt.core.store import settings as store_settings
-from ecowitt.core.units import Units
+from ecowitt.core.units import SYMBOLS, Kind, Units, from_canonical
 
 logger = logging.getLogger(__name__)
 
@@ -439,6 +441,49 @@ def build_app(context: AdminContext) -> FastAPI:
             page="/",
         )
 
+    @app.get("/grafana")
+    async def grafana_page(request: Request) -> Response:
+        return _render(request, context, "grafana.html", _grafana_view(context))
+
+    @app.get("/grafana/{name}")
+    async def grafana_file(name: str) -> Response:
+        """One of the Grafana page's files, to download."""
+        files = _grafana_files(context)
+        if name not in files:
+            return PlainTextResponse("No such file.", status_code=404)
+        return Response(
+            render.dumps(files[name]),
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="{name}"'},
+        )
+
+    @app.post("/grafana/connection")
+    async def save_grafana(request: Request) -> Response:
+        form = await _form(request, context)
+        if isinstance(form, Response):
+            return form
+        return await _grafana_connection_action(request, context, form)
+
+    @app.post("/grafana/push")
+    async def push_grafana(request: Request) -> Response:
+        form = await _form(request, context)
+        if isinstance(form, Response):
+            return form
+        entry = context.document.grafana
+        if entry is None:
+            return _grafana_error(request, context, "Save a Grafana connection first.")
+        try:
+            done = await _with_client(
+                context,
+                lambda client: grafana.push(
+                    client, entry.model_dump(), context.document.units, VERSION
+                ),
+            )
+        except grafana.GrafanaError as exc:
+            return _grafana_error(request, context, f"Grafana refused: {exc}.")
+        logger.info("pushed to Grafana: %s", done)
+        return RedirectResponse(f"/grafana?{urlencode({'message': done})}", status_code=303)
+
     return app
 
 
@@ -486,6 +531,7 @@ def _status(context: AdminContext) -> dict[str, object]:
             "failures": state.forecast_failures,
         },
         "recompute": _recompute_status(context),
+        "grafana": _grafana_status(context),
     }
 
 
@@ -529,6 +575,124 @@ def _database_status(context: AdminContext) -> dict[str, object]:
         "last_error": database.last_error if database else None,
         **values,
     }
+
+
+def _grafana_status(context: AdminContext) -> dict[str, object]:
+    """The Grafana connection, with the token reduced to whether it is set."""
+    entry = context.document.grafana
+    if entry is None:
+        return {"configured": False}
+    return {
+        "configured": True,
+        "url": _without_credentials(entry.url),
+        "token_set": bool(entry.token),
+        "datasource": entry.datasource,
+        "folder": entry.folder,
+    }
+
+
+def _grafana_files(context: AdminContext) -> dict[str, dict[str, Any]]:
+    """The Grafana page's files, by download name, for the stored units and data source."""
+    units = context.document.units
+    entry = context.document.grafana
+    datasource = entry.datasource if entry else grafana.FILE_DATASOURCE
+    return {
+        "weather.json": render.dashboard(units),
+        "alerts.json": grafana.provisioning(units, datasource),
+        "rule-group.json": grafana.rule_group(units, datasource),
+    }
+
+
+def _grafana_view(
+    context: AdminContext,
+    *,
+    message: str | None = None,
+    error: str | None = None,
+    draft: dict[str, str] | None = None,
+) -> dict[str, object]:
+    """What the Grafana page shows: the files, and the connection they are pushed through."""
+    units = context.document.units
+    files = _grafana_files(context)
+    kinds = (Kind.TEMPERATURE, Kind.PRESSURE, Kind.RAIN, Kind.SPEED)
+    return {
+        "units": ", ".join(SYMBOLS[from_canonical(k, 0.0, units)[1]] for k in kinds),
+        "dashboard": render.dumps(files["weather.json"]),
+        "provisioning": render.dumps(files["alerts.json"]),
+        "group": files["rule-group.json"]["title"],
+        "settings": grafana.SETTINGS,
+        "connection": _grafana_status(context),
+        "draft": draft,
+        "message": message,
+        "error": error,
+    }
+
+
+async def _grafana_connection_action(
+    request: Request, context: AdminContext, form: dict[str, str]
+) -> Response:
+    """Save, test or remove the Grafana connection.
+
+    A token left empty keeps the saved one, as the database token does; it is never put back
+    into the page.
+    """
+    if form.get("action") == "clear":
+        return _save(
+            request,
+            context,
+            context.document.model_copy(update={"grafana": None}),
+            "Grafana connection removed.",
+            page="/grafana",
+        )
+    typed = {s.name: form.get(s.name, "").strip() for s in grafana.SETTINGS}
+    saved = context.document.grafana
+    values = grafana.values_of({**typed, "token": typed["token"] or (saved.token if saved else "")})
+    found = store_settings.check(grafana.SETTINGS, values, "Grafana")
+    if found:
+        return _grafana_error(request, context, "; ".join(found) + ".", draft=typed)
+    if form.get("action") == "test":
+        try:
+            name = await _with_client(context, lambda client: grafana.check(client, values))
+        except grafana.GrafanaError as exc:
+            return _grafana_error(request, context, f"Grafana refused: {exc}.", draft=typed)
+        return _render(
+            request,
+            context,
+            "grafana.html",
+            _grafana_view(
+                context,
+                message=f"Grafana accepts the token, and {name} is an InfluxDB data source. "
+                "Save to use it.",
+                draft=typed,
+            ),
+        )
+    return _save(
+        request,
+        context,
+        context.document.model_copy(update={"grafana": GrafanaEntry(**values)}),
+        "Saved the Grafana connection.",
+        page="/grafana",
+    )
+
+
+def _grafana_error(
+    request: Request, context: AdminContext, error: str, *, draft: dict[str, str] | None = None
+) -> Response:
+    """The Grafana page again, with the error and whatever was typed into its form."""
+    return _render(
+        request,
+        context,
+        "grafana.html",
+        _grafana_view(context, error=error, draft=draft),
+        status_code=400,
+    )
+
+
+async def _with_client(context: AdminContext, call: Any) -> Any:
+    """Run `call` with the shared HTTP client, or a short-lived one when there is none."""
+    if context.http is not None:
+        return await call(context.http)
+    async with httpx2.AsyncClient() as client:
+        return await call(client)
 
 
 def _spool_status(state: State, spool: Spool | None) -> dict[str, object] | None:
