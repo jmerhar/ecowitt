@@ -7,6 +7,7 @@
   import { Api, ApiError, type Meta, type Now, type Station, type UnitChoice } from "./lib/api";
   import { ago, today, zoneCity } from "./lib/format";
   import { load, save, type Prefs } from "./lib/prefs";
+  import { applyTheme, themeAt } from "./lib/theme";
   import NowCard from "./components/NowCard.svelte";
   import AiringCard from "./components/AiringCard.svelte";
   import WindCard from "./components/WindCard.svelte";
@@ -54,6 +55,10 @@
   /** The wind the page leads with: the visitor's choice, where the station gives one. */
   const windHeight = $derived(estimatesWind ? prefs.wind : "10m");
   const timezone = $derived(now?.timezone ?? station?.timezone ?? "UTC");
+  /** Light or dark, rechecked as the clock moves, so following the sun turns at sunset. */
+  const theme = $derived(themeAt(prefs.theme, now?.sun ?? null, clock));
+
+  $effect(() => applyTheme(theme));
 
   $effect(() => {
     save($state.snapshot(prefs), storage);
@@ -147,7 +152,8 @@
     {/if}
     {#if meta}
       <UnitsMenu {meta} chosen={prefs.units} onchange={chooseUnits}
-        wind={estimatesWind ? prefs.wind : null} onwind={(w) => (prefs.wind = w)} />
+        wind={estimatesWind ? prefs.wind : null} onwind={(w) => (prefs.wind = w)}
+        theme={prefs.theme} ontheme={(t) => (prefs.theme = t)} />
     {/if}
   </div>
 </header>

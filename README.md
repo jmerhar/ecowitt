@@ -213,7 +213,7 @@ moment keep their values, so after moving the anemometer give the moment it was 
 The dashboard leads with the 10 m figures -- speed, gusts, the Beaufort force, which is defined
 at 10 m, and the strong-gust warning -- marking an estimate as one, with what the sensor
 measured beneath it and faint behind the speed in the wind chart. A visitor can choose *Wind at:
-The sensor* in its *Units* menu to swap the two on the wind card, chart and records; the
+The sensor* in its *Settings* menu to swap the two on the wind card, chart and records; the
 strong-gust warning stays at 10 m. The choice is kept in that browser.
 
 ## Two ports, and why it matters
@@ -381,6 +381,11 @@ very dry air, strong gusts, heavy rain, pressure falling fast, very high UV, a r
 hot, damp or dry, a good time to air the house or one to keep its windows closed (when airing
 would leave the rooms at 65% or more and damper than they are), a sensor that needs attention —
 the thresholds of the [Grafana alerts](#grafana-alerts) where there is one. Visitors choose their own units; times are in the station's time zone.
+
+The page is light or dark as the device is. *Theme* in its *Settings* menu fixes either, or
+chooses *Dark at night*: dark from sunset to sunrise at the station, for a screen left on a wall
+or a browser that cannot tell the device's choice. Like the units, the choice is kept in that
+browser.
 
 For a station storing its model's [forecast](#forecast), the page shows it — the next 24 hours
 and the days ahead — and the cards say what is coming within the day: rain likely within six

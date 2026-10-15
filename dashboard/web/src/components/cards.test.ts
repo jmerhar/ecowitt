@@ -482,6 +482,16 @@ describe("UnitsMenu", () => {
     expect(screen.queryByLabelText("Wind at")).not.toBeInTheDocument();
   });
 
+  it("offers the theme and reports a choice", async () => {
+    const ontheme = vi.fn();
+    render(UnitsMenu, { meta: META, chosen: {}, onchange: vi.fn(), theme: "sun", ontheme });
+    const theme = screen.getByLabelText("Theme") as HTMLSelectElement;
+    expect(theme.value).toBe("sun");
+    expect([...theme.options].map((o) => o.value)).toEqual(["system", "light", "dark", "sun"]);
+    await fireEvent.change(theme, { target: { value: "dark" } });
+    expect(ontheme).toHaveBeenLastCalledWith("dark");
+  });
+
   it("copes with a quantity the API lists no units for", () => {
     render(UnitsMenu, { meta: { ...META, units: {} }, chosen: {}, onchange: vi.fn() });
     expect((screen.getByLabelText("Rain") as HTMLSelectElement).options).toHaveLength(1);

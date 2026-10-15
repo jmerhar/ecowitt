@@ -1,10 +1,12 @@
 <script lang="ts">
   /**
-   * The visitor's units, one choice per quantity; "station" leaves a quantity as stored. And, for
-   * a station whose wind is estimated at 10 m, whether the page leads with that or the measurement.
+   * The visitor's settings: units, one choice per quantity, where "station" leaves a quantity as
+   * stored; for a station whose wind is estimated at 10 m, whether the page leads with that or the
+   * measurement; and the theme.
    */
   import type { Meta, UnitChoice, Units } from "../lib/api";
   import type { WindHeight } from "../lib/prefs";
+  import type { ThemeChoice } from "../lib/theme";
 
   type Props = {
     meta: Meta;
@@ -13,8 +15,18 @@
     /** Which wind the page leads with; null hides the choice, for a station without an estimate. */
     wind?: WindHeight | null;
     onwind?: (wind: WindHeight) => void;
+    theme?: ThemeChoice;
+    ontheme?: (theme: ThemeChoice) => void;
   };
-  let { meta, chosen, onchange, wind = null, onwind = () => {} }: Props = $props();
+  let { meta, chosen, onchange, wind = null, onwind = () => {}, theme = "system", ontheme = () => {} }: Props =
+    $props();
+
+  const THEMES: Record<ThemeChoice, string> = {
+    system: "As the device",
+    light: "Light",
+    dark: "Dark",
+    sun: "Dark at night",
+  };
 
   const LABELS: Record<string, string> = {
     temperature: "Temperature",
@@ -32,7 +44,7 @@
 </script>
 
 <details class="menu">
-  <summary>Units</summary>
+  <summary>Settings</summary>
   <div class="panel">
     {#each Object.keys(LABELS) as quantity (quantity)}
       <label>
@@ -56,6 +68,12 @@
         </select>
       </label>
     {/if}
+    <label>
+      Theme
+      <select value={theme} onchange={(e) => ontheme(e.currentTarget.value as ThemeChoice)}>
+        {#each Object.entries(THEMES) as [code, label] (code)}<option value={code}>{label}</option>{/each}
+      </select>
+    </label>
   </div>
 </details>
 

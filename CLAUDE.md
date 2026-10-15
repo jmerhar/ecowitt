@@ -111,7 +111,8 @@ dashboard/api/tests/  against an in-memory Reader (memory.py) that answers as th
 dashboard/web/    the dashboard's page: Svelte 5, Vite, TypeScript, uPlot; a thin client of /api/v1
   src/lib/        api.ts (types mirroring the OpenAPI models, the client), format.ts (values and
                   station-time times), chart.ts (chart tabs, aligning series for uPlot, the
-                  model's dashed lines), prefs.ts, sky.ts (WMO code -> Meteocons icon)
+                  model's dashed lines), prefs.ts, sky.ts (WMO code -> Meteocons icon),
+                  theme.ts (light, dark, or dark from sunset to sunrise)
   src/components/ one per card or section; Chart.svelte is the only one that touches uPlot
   src/testing.ts  API answers for the tests, and a fake Api
   icons/          app-icon.svg, the home-screen icon; bin/app-icons.sh renders public/icons/*.png

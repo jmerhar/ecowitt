@@ -1,10 +1,11 @@
 /**
- * What a visitor chose last time -- station, units, chart -- kept in this browser only. Storage
+ * What a visitor chose last time -- station, units, chart, theme -- kept in this browser only. Storage
  * can be missing or refuse (private windows, blocked site data), so every access is guarded and
  * the defaults stand in.
  */
 
 import type { UnitChoice } from "./api";
+import { THEME_CHOICES, type ThemeChoice } from "./theme";
 
 export type Prefs = {
   station: string | null;
@@ -18,6 +19,8 @@ export type Prefs = {
   rooms: RoomSort | null;
   /** Which wind the wind card and chart lead with. */
   wind: WindHeight;
+  /** Light or dark: the system's, a fixed one, or the sun's. */
+  theme: ThemeChoice;
 };
 
 /** Wind estimated at the standard 10 m, or as the anemometer measured it at its own height. */
@@ -35,6 +38,7 @@ export const DEFAULTS: Prefs = {
   model: false,
   rooms: null,
   wind: "10m",
+  theme: "system",
 };
 
 const KEY = "ecowitt-dashboard";
@@ -53,6 +57,7 @@ export function load(storage: Storage | undefined = globalThis.localStorage): Pr
       model: typeof saved.model === "boolean" ? saved.model : DEFAULTS.model,
       rooms: roomSort(saved.rooms),
       wind: saved.wind === "10m" || saved.wind === "sensor" ? saved.wind : DEFAULTS.wind,
+      theme: THEME_CHOICES.includes(saved.theme as ThemeChoice) ? (saved.theme as ThemeChoice) : DEFAULTS.theme,
     };
   } catch {
     return { ...DEFAULTS };

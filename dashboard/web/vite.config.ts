@@ -22,6 +22,8 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["src/test-setup.ts"],
     include: ["src/**/*.test.ts"],
+    // Vitest empties every stylesheet it imports, ?raw included; theme.test.ts reads this one.
+    css: { include: [/app\.css/] },
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,svelte}"],

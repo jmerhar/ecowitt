@@ -165,6 +165,24 @@ describe("App", () => {
     expect(await screen.findByText("Sat 10 Oct, 14:21 Lisbon time")).toBeInTheDocument();
   });
 
+  it("turns dark at sunset when following the sun, and remembers the choice", async () => {
+    // The fixture's sun sets at 18:07 UTC.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-10-10T18:06:00Z"));
+    const storage = memory();
+    const shown = render(App, { api: fakeApi(), storage, clockMs: 1000 });
+    const root = document.documentElement;
+    await fireEvent.change(await screen.findByLabelText("Theme"), { target: { value: "sun" } });
+    await waitFor(() => expect(root.dataset.theme).toBe("light"));
+    vi.setSystemTime(new Date("2026-10-10T18:07:30Z"));
+    await vi.advanceTimersByTimeAsync(1100);
+    await waitFor(() => expect(root.dataset.theme).toBe("dark"));
+    expect(JSON.parse(storage.getItem("ecowitt-dashboard")!).theme).toBe("sun");
+    await fireEvent.change(screen.getByLabelText("Theme"), { target: { value: "system" } });
+    await waitFor(() => expect(root.dataset.theme).toBeUndefined());
+    shown.unmount();
+  });
+
   it("remembers how the rooms are sorted", async () => {
     const storage = memory();
     render(App, { api: fakeApi(), storage });

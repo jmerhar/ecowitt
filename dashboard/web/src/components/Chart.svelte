@@ -122,6 +122,20 @@
     return () => observer?.disconnect();
   });
 
+  $effect(() => {
+    // uPlot keeps the colours it was drawn with, so a change of theme -- chosen on the page, or
+    // the system's -- draws the chart again.
+    const theme = new MutationObserver(() => draw());
+    theme.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    const scheme = globalThis.matchMedia?.("(prefers-color-scheme: dark)");
+    const redraw = () => draw();
+    scheme?.addEventListener?.("change", redraw);
+    return () => {
+      theme.disconnect();
+      scheme?.removeEventListener?.("change", redraw);
+    };
+  });
+
   onDestroy(() => plot?.destroy());
 </script>
 

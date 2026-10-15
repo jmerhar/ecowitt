@@ -62,6 +62,40 @@ describe("Chart", () => {
     expect(made[0].sizes).toHaveLength(1);
   });
 
+  it("draws again in the new colours when the theme changes", async () => {
+    const view = viewFor("temperature");
+    const data = align(view, series(), {});
+    const shown = render(Chart, { view, data, symbols: SYMBOLS, timezone: "UTC" });
+    expect(made).toHaveLength(1);
+    document.documentElement.dataset.theme = "dark";
+    await vi.waitFor(() => expect(made).toHaveLength(2));
+    expect(made[0].destroyed).toBe(true);
+    shown.unmount();
+    delete document.documentElement.dataset.theme;
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(made).toHaveLength(2);
+  });
+
+  it("draws again when the system switches between light and dark", () => {
+    const listeners: (() => void)[] = [];
+    const removed: unknown[] = [];
+    globalThis.matchMedia = (() => ({
+      addEventListener: (_: string, fn: () => void) => listeners.push(fn),
+      removeEventListener: (_: string, fn: unknown) => removed.push(fn),
+    })) as never;
+    try {
+      const view = viewFor("temperature");
+      const shown = render(Chart, { view, data: align(view, series(), {}), symbols: SYMBOLS, timezone: "UTC" });
+      expect(listeners).toHaveLength(1);
+      listeners[0]();
+      expect(made).toHaveLength(2);
+      shown.unmount();
+      expect(removed).toEqual(listeners);
+    } finally {
+      delete (globalThis as { matchMedia?: unknown }).matchMedia;
+    }
+  });
+
   it("draws points without a line and bars with uPlot's bar paths", () => {
     const wind = viewFor("wind");
     const points = align(wind, series({

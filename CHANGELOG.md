@@ -10,13 +10,16 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ### Added
 
-- The dashboard's *Units* menu offers *Wind at: The sensor*, for a station whose wind is estimated
-  at 10 m: the wind card, chart and records then lead with the measured wind, with the estimate
-  beneath it on the card. The API's `wind` answer adds `measured_beaufort` and
+- The dashboard's *Settings* menu offers a *Theme*: as the device (the default), light, dark, or
+  *Dark at night*, which turns dark at the station's sunset and light at its sunrise.
+- The dashboard's *Settings* menu offers *Wind at: The sensor*, for a station whose wind is
+  estimated at 10 m: the wind card, chart and records then lead with the measured wind, with the
+  estimate beneath it on the card. The API's `wind` answer adds `measured_beaufort` and
   `measured_description`, and `/extremes` adds `wind.measured_speed` and `wind.measured_gust`.
 
 ### Changed
 
+- The dashboard's *Units* menu is called *Settings*, since it holds more than units.
 - The images' `latest` tag is the newest release; every change to `main` is published as `edge`.
 - *Good time to air* gives each room's humidity now and the humidity airing would leave it at,
   instead of how far its dew point is above the outdoor one.
