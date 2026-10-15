@@ -88,8 +88,14 @@ def problems(kind: str, values: Mapping[str, str]) -> list[str]:
     declared = KINDS.get(kind)
     if declared is None:
         return [f"unknown kind of database {kind!r}"]
+    return check(declared.settings, values, declared.label)
+
+
+def check(declared: tuple[Setting, ...], values: Mapping[str, str], label: str) -> list[str]:
+    """What is wrong with values for `declared` settings, in words a person can act on; `label`
+    names what they connect to, for a setting it does not have."""
     found = []
-    for setting in declared.settings:
+    for setting in declared:
         value = values.get(setting.name, "").strip() or setting.default
         if setting.required and not value:
             found.append(f"{setting.label} is required")
@@ -102,10 +108,8 @@ def problems(kind: str, values: Mapping[str, str]) -> list[str]:
                 continue
             if parts.scheme not in {"http", "https"} or not parts.hostname:
                 found.append(f"{setting.label} must start with http:// or https:// and name a host")
-    known = {s.name for s in declared.settings}
-    found += [
-        f"{name} is not a setting of {declared.label}" for name in values if name not in known
-    ]
+    known = {s.name for s in declared}
+    found += [f"{name} is not a setting of {label}" for name in values if name not in known]
     return found
 
 
