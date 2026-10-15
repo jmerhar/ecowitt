@@ -8,6 +8,11 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ## Unreleased
 
+### Changed
+
+- The dashboard's *Settings* menu opens from a sliders icon instead of the word, which stays as
+  the button's name for screen readers and its tooltip.
+
 ### Fixed
 
 - A dashboard card's title lines up with the words beside it, as in the *Sensors* card and the

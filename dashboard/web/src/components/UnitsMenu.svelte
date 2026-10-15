@@ -5,6 +5,7 @@
    * measurement; the theme; full screen, where the browser offers it; and the page's language,
    * or the browser's.
    */
+  import SlidersHorizontalIcon from "@lucide/svelte/icons/sliders-horizontal";
   import type { Meta, UnitChoice, Units } from "../lib/api";
   import type { WindHeight } from "../lib/prefs";
   import type { ThemeChoice } from "../lib/theme";
@@ -65,7 +66,9 @@
 </script>
 
 <details class="menu">
-  <summary>{m.settings()}</summary>
+  <summary aria-label={m.settings()} title={m.settings()}>
+    <SlidersHorizontalIcon size={18} aria-hidden="true" />
+  </summary>
   <div class="panel">
     {#each Object.keys(LABELS) as quantity (quantity)}
       <label>
@@ -117,12 +120,23 @@
   .menu {
     position: relative;
   }
+  /* An icon, in a square big enough to tap; the word is its name for screen readers and its
+     tooltip. */
   summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    box-sizing: border-box;
     cursor: pointer;
+    color: var(--muted);
     border: 1px solid var(--line);
     border-radius: 0.3rem;
-    padding: 0.2rem 0.6rem;
     list-style: none;
+  }
+  summary:hover {
+    color: var(--fg);
   }
   /* Chrome before 89 and Safari draw the triangle as this, which list-style does not reach. */
   summary::-webkit-details-marker {
@@ -131,7 +145,7 @@
   .panel {
     position: absolute;
     right: 0;
-    top: 2.2rem;
+    top: calc(100% + 0.35rem);
     z-index: 2;
     background: var(--card);
     border: 1px solid var(--line);

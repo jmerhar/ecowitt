@@ -511,7 +511,7 @@ describe("in European Portuguese", () => {
   it("names the settings in the language", () => {
     speaking("pt-PT");
     render(UnitsMenu, { meta: META, chosen: {}, onchange: vi.fn() });
-    expect(screen.getByText("Definições")).toBeInTheDocument();
+    expect(screen.getByLabelText("Definições")).toHaveAttribute("title", "Definições");
     expect((screen.getByLabelText("Idioma") as HTMLSelectElement).options[0].textContent).toBe("Do navegador");
   });
 });

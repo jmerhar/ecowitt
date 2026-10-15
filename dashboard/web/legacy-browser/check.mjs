@@ -43,8 +43,9 @@ const MEASURE = `(function () {
     bar: bar ? bar.getBoundingClientRect().height : 0,
     cardGap: cards.length > 1 ? cards[1].getBoundingClientRect().left - cards[0].getBoundingClientRect().right : 0,
     iconGap: iconGap === Infinity ? 0 : iconGap,
-    // Summaries styled without their list marker whose WebKit triangle still shows: their first
-    // content starts right of their content edge, where the triangle sits.
+    // Summaries styled without their list marker whose WebKit triangle still shows: laid out from
+    // the start for the measurement, their first content starts right of their content edge,
+    // where the triangle sits.
     markers: Array.prototype.filter.call(document.querySelectorAll("summary"), function (summary) {
       var style = getComputedStyle(summary);
       if (style.listStyleType !== "none") return false;
@@ -52,10 +53,13 @@ const MEASURE = `(function () {
       while (first && first.nodeType === 3 && !first.textContent.trim()) first = first.nextSibling;
       while (first && first.nodeType === 8) first = first.nextSibling;
       if (!first) return false;
+      var justify = summary.style.justifyContent;
+      summary.style.justifyContent = "flex-start";
       var range = document.createRange();
       range.selectNodeContents(first);
       var start = (first.nodeType === 1 ? first.getBoundingClientRect() : range.getBoundingClientRect()).left;
       var edge = summary.getBoundingClientRect().left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft);
+      summary.style.justifyContent = justify;
       return start - edge > 2;
     }).length,
     userAgent: navigator.userAgent
