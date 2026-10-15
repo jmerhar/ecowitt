@@ -124,7 +124,22 @@ def test_weather_rules_hold_before_resolving(uid: str) -> None:
     crossing sends a firing and a resolved message."""
     rule = next(r for r in RULES if r["uid"] == uid)
 
-    assert rule.get("keep_firing_for", "0s") not in {"", "0s"}
+    assert rule.get("keepFiringFor", "0s") not in {"", "0s"}
+
+
+#: The keys a rule may carry in a provisioning file, as Grafana reads them
+#: (pkg/services/provisioning/alerting/rules_types.go). The HTTP API spells some differently
+#: (keep_firing_for), and a key the file format does not know is dropped without a word.
+FILE_RULE_KEYS = {
+    "uid", "title", "condition", "data", "dashboardUid", "panelId", "noDataState",
+    "execErrState", "for", "keepFiringFor", "missing_series_evals_to_resolve", "annotations",
+    "labels", "isPaused", "notification_settings", "record",
+}  # fmt: skip
+
+
+@pytest.mark.parametrize("rule", BY_TITLE)
+def test_every_rule_key_is_one_a_provisioning_file_reads(rule: dict[str, Any]) -> None:
+    assert set(rule) <= FILE_RULE_KEYS
 
 
 def test_a_silent_sensor_is_measured_against_the_station_not_the_clock() -> None:

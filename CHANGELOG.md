@@ -29,6 +29,9 @@ rules to be imported again. Either is listed under *Upgrading*.
 - The forecast's daily table draws each row's line straight across: the sky column's sat out of
   line with the others'.
 - *Good time to air* no longer ends each room's line with a stray `'`.
+- `grafana/alerts.json` spells each rule's hold `keepFiringFor`, as Grafana's provisioning files
+  read it: loaded as a provisioning file, the rules lost their hold and resolved the moment a
+  condition dipped, sending a message each time.
 
 ### Upgrading
 

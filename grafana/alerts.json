@@ -77,7 +77,7 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "for": "15m",
-          "keep_firing_for": "30m",
+          "keepFiringFor": "30m",
           "annotations": {
             "summary": "{{ $labels.room }} is at {{ printf \"%.0f\" $values.B.Value }}% humidity, and the outside air is drier: airing it now would bring it down to {{ printf \"%.0f\" $values.D.Value }}%.",
             "headline": "The outside air is drier than these rooms: airing them now would bring their humidity down.",
@@ -162,7 +162,7 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "for": "30m",
-          "keep_firing_for": "30m",
+          "keepFiringFor": "30m",
           "annotations": {
             "summary": "Airing would leave the house damp: the rooms, at {{ printf \"%.0f\" $values.B.Value }}% humidity, would settle at {{ printf \"%.0f\" $values.A.Value }}% with the outside air. Keep the windows closed.",
             "description": "Airing would leave the rooms at a median of 65% humidity or more, and at least 5 points damper than they are (less is within the sensors' error), for 30 minutes, while no room would be dried by airing (which Good time to air announces instead): the outside air holds more moisture than theirs."
@@ -223,7 +223,7 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "for": "0s",
-          "keep_firing_for": "0s",
+          "keepFiringFor": "0s",
           "annotations": {
             "summary": "{{ $labels.room }} has stayed at 70% humidity or more for 6 hours (lowest {{ humanize $values.A.Value }}%). Mould grows in air this damp.",
             "headline": "These rooms have stayed at 70% humidity or more for 6 hours. Mould grows in air this damp.",
@@ -285,7 +285,7 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "for": "0s",
-          "keep_firing_for": "0s",
+          "keepFiringFor": "0s",
           "annotations": {
             "summary": "{{ $labels.room }} has reported the same readings for {{ humanizeDuration $values.A.Value }}: its battery or radio has probably failed.",
             "headline": "These sensors have reported the same readings for 3 hours or more: a battery or radio has probably failed.",
@@ -346,7 +346,7 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "for": "1h",
-          "keep_firing_for": "0s",
+          "keepFiringFor": "0s",
           "annotations": {
             "summary": "{{ $labels.room }}'s battery is low.",
             "headline": "These sensors' batteries are low.",
@@ -407,7 +407,7 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "for": "15m",
-          "keep_firing_for": "0s",
+          "keepFiringFor": "0s",
           "annotations": {
             "summary": "{{ $labels.room }} is at {{ printf \"%.1f\" $values.A.Value }} °C.",
             "headline": "These rooms are below 8 °C: pipes and plants are at risk.",
@@ -468,7 +468,7 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "for": "15m",
-          "keep_firing_for": "0s",
+          "keepFiringFor": "0s",
           "annotations": {
             "summary": "{{ $labels.room }} is at {{ printf \"%.1f\" $values.A.Value }} °C.",
             "headline": "These rooms are above 32 °C.",
@@ -529,7 +529,7 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "for": "0s",
-          "keep_firing_for": "30m",
+          "keepFiringFor": "30m",
           "annotations": {
             "summary": "Gusts of {{ humanize $values.A.Value }} km/h at 10 m at {{ $labels.station }}.",
             "description": "A gust above 60 km/h at 10 m (the estimate the wind_10m table holds) in the last 10 minutes."
@@ -588,7 +588,7 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "for": "0s",
-          "keep_firing_for": "30m",
+          "keepFiringFor": "30m",
           "annotations": {
             "summary": "Rain at {{ humanize $values.A.Value }} mm/h at {{ $labels.station }}.",
             "description": "A rain rate above 10 mm/h in the last 10 minutes."
@@ -647,7 +647,7 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "for": "0s",
-          "keep_firing_for": "1h",
+          "keepFiringFor": "1h",
           "annotations": {
             "summary": "Pressure at {{ $labels.station }} has fallen {{ printf \"%.1f\" $values.A.Value }} hPa in 3 hours: a storm or a front is likely.",
             "description": "Sea-level pressure more than 3 hPa lower than 3 hours ago."
