@@ -31,6 +31,7 @@ from ecowitt.dashboard.catalogue import (
     rounded,
     unit,
 )
+from ecowitt.dashboard.i18n import ENGLISH, Language
 from ecowitt.dashboard.sun import sun_times
 
 #: The units calculations are made in.
@@ -86,17 +87,6 @@ ONLINE_AT_LEAST = timedelta(minutes=5)
 #: The weather model's sky is shown while its newest values are younger than this: the model
 #: writes every 15 minutes, so older means the collector has stopped fetching.
 SKY_FRESH = timedelta(hours=1)
-
-
-#: Names for the sensors a console has one of, which nobody names on the setup page.
-SENSOR_NAMES = {
-    "indoor": "Indoor",
-    "outdoor": "Outdoor",
-    "pressure": "Barometer",
-    "rain": "Rain gauge",
-    "solar": "Light sensor",
-    "wind": "Wind sensor",
-}
 
 
 class UnknownStation(LookupError):
@@ -218,7 +208,7 @@ class Dashboard:
             raise UnknownStation(station)
         return info
 
-    async def stations(self) -> list[models.Station]:
+    async def stations(self, language: Language = ENGLISH) -> list[models.Station]:
         """Every shown station with its settings."""
         found = []
         for name in await self.station_names():
@@ -231,13 +221,13 @@ class Dashboard:
                     altitude_m=info.altitude_m,
                     timezone=info.timezone or "UTC",
                     units=_units(info.units),
-                    weather_model=_weather_model(info),
+                    weather_model=_weather_model(info, language),
                     wind_factor=info.wind_factor,
                 )
             )
         return found
 
-    def meta(self) -> models.Meta:
+    def meta(self, language: Language = ENGLISH) -> models.Meta:
         """The metrics, units, ranges and periods there are."""
         return models.Meta(
             title=self.title,
@@ -245,7 +235,7 @@ class Dashboard:
             metrics=[
                 models.MetricInfo(
                     id=m.id,
-                    label=m.label,
+                    label=messages.metric(language, m.label),
                     quantity=m.quantity,
                     unit=None if m.quantity else unit(m.kind, METRIC),
                     aggregates=[a.value for a in m.aggregates],
@@ -264,7 +254,9 @@ class Dashboard:
             periods=list(PERIODS),
         )
 
-    async def now(self, station: str, choice: Mapping[str, str] | None = None) -> models.Now:
+    async def now(
+        self, station: str, choice: Mapping[str, str] | None = None, language: Language = ENGLISH
+    ) -> models.Now:
         """A station at a glance."""
         info = await self.info(station)
         latest = await self.cache.get(
@@ -284,38 +276,38 @@ class Dashboard:
             return answer
         stored = info.units
         answer.outdoor = _outdoor(latest, values, stored)
-        answer.wind = _wind(latest, values, stored, info)
+        answer.wind = _wind(latest, values, stored, info, language)
         answer.rain = _rain(latest, values, stored)
-        answer.pressure = _pressure(latest, values, stored)
+        answer.pressure = _pressure(latest, values, stored, language)
         answer.sun = _sun(latest, values, stored, info, zone)
-        air = _room_air(latest, values, stored, info)
+        air = _room_air(latest, values, stored, info, language)
         answer.airing = _house(air, values)
-        answer.rooms = _rooms(latest, values, stored, info, air)
-        answer.sensors = _health(latest, info)
-        answer.notices = _notices(latest, values, stored, answer)
+        answer.rooms = _rooms(latest, values, stored, info, air, language)
+        answer.sensors = _health(latest, info, language)
+        answer.notices = _notices(latest, values, stored, answer, language)
         coming = await self._stored_forecast(station, info)
-        _forecast_notices(answer, coming, values, info, zone, self.clock())
+        _forecast_notices(answer, coming, values, info, zone, self.clock(), language)
         if answer.airing is not None and answer.airing.advice != "open":
             damp = [r for r in air if r.humidity >= weather.AIRING_HUMIDITY_PCT]
             answer.airing.drier_from = forecast.drier_from(
                 coming, values, info, self.clock(), [r.delta for r in damp]
             )
-        answer.sky = _sky(latest, stored)
-        answer.summary_parts = _summary(answer, values.target)
+        answer.sky = _sky(latest, stored, language)
+        answer.summary_parts = _summary(answer, values.target, language)
         answer.summary = "".join(f"{part.text}. " for part in answer.summary_parts).strip()
         return answer
 
     async def forecast(
-        self, station: str, choice: Mapping[str, str] | None = None
+        self, station: str, choice: Mapping[str, str] | None = None, language: Language = ENGLISH
     ) -> models.ForecastOut:
         """The station's latest forecast: the next 24 hours and the days its model reaches."""
         info = await self.info(station)
         stored = await self._stored_forecast(station, info)
         values = _Values(info.units, _target(info.units, choice))
-        hours, days = forecast.answer(stored, values, info)
+        hours, days = forecast.answer(stored, values, info, language)
         return models.ForecastOut(
             station=station,
-            model=_weather_model(info),
+            model=_weather_model(info, language),
             issued=stored.issued,
             units=_units(values.target),
             hours=hours,
@@ -338,6 +330,7 @@ class Dashboard:
         choice: Mapping[str, str] | None = None,
         *,
         model: bool = False,
+        language: Language = ENGLISH,
     ) -> models.SeriesOut:
         """Metrics over a range, in buckets aligned to the station's midnight.
 
@@ -362,7 +355,7 @@ class Dashboard:
                         models.Series(
                             metric=metric.id,
                             sensor=_group(group.tags),
-                            name=_name(info, group.tags, group.name),
+                            name=_name(info, group.tags, group.name, language),
                             unit=unit(metric.kind, values.target),
                             t=[int(t.timestamp()) for t in group.times],
                             values=columns,
@@ -396,7 +389,11 @@ class Dashboard:
         )
 
     async def extremes(
-        self, station: str, period: str, choice: Mapping[str, str] | None = None
+        self,
+        station: str,
+        period: str,
+        choice: Mapping[str, str] | None = None,
+        language: Language = ENGLISH,
     ) -> models.ExtremesOut:
         """The extremes of today, this month or this year, in the station's time."""
         info = await self.info(station)
@@ -416,7 +413,7 @@ class Dashboard:
                     models.Extreme(
                         metric=metric.id,
                         sensor=_group(group.tags),
-                        name=_name(info, group.tags, group.name),
+                        name=_name(info, group.tags, group.name, language),
                         unit=unit(metric.kind, values.target),
                         min=values.at(metric.kind, group.minimum[name])
                         if metric.extremes is Sides.BOTH
@@ -639,7 +636,9 @@ def _outdoor(latest: _Latest, values: _Values, stored: Units) -> models.Outdoor 
     )
 
 
-def _wind(latest: _Latest, values: _Values, stored: Units, info: StationInfo) -> models.Wind | None:
+def _wind(
+    latest: _Latest, values: _Values, stored: Units, info: StationInfo, language: Language
+) -> models.Wind | None:
     """The wind section: led by the estimate at 10 m, with what the sensor measured beside it.
 
     A station whose 10 m estimate has not been written for the latest report -- one running a
@@ -664,9 +663,9 @@ def _wind(latest: _Latest, values: _Values, stored: Units, info: StationInfo) ->
         speed=None if speed is None else values.from_metric(S, speed),
         gust=values.out(S, lead.get(gust_field)),
         direction=None if direction is None else round(direction),
-        compass=None if direction is None else weather.compass(direction),
+        compass=None if direction is None else messages.compass(language, direction),
         beaufort=force,
-        description=None if force is None else weather.BEAUFORT_NAMES[force],
+        description=None if force is None else messages.beaufort(language, force),
         max_gust_today=values.at(S, today.maximum[gust_field])
         if today and gust_field in today.maximum
         else None,
@@ -680,7 +679,7 @@ def _wind(latest: _Latest, values: _Values, stored: Units, info: StationInfo) ->
         measured_beaufort=measured_force,
         measured_description=None
         if measured_force is None
-        else weather.BEAUFORT_NAMES[measured_force],
+        else messages.beaufort(language, measured_force),
     )
 
 
@@ -724,7 +723,9 @@ def _pressure_change(latest: _Latest, values: _Values, stored: Units) -> float |
     return None if first is None or last is None else last - first
 
 
-def _pressure(latest: _Latest, values: _Values, stored: Units) -> models.Pressure | None:
+def _pressure(
+    latest: _Latest, values: _Values, stored: Units, language: Language
+) -> models.Pressure | None:
     """The pressure section, with the trend when the last three hours are covered."""
     span = latest.pressure
     if span is None:
@@ -738,7 +739,7 @@ def _pressure(latest: _Latest, values: _Values, stored: Units) -> models.Pressur
             change=values.from_metric(P, change),
             hours=round((span.last_time - span.first_time).total_seconds() / 3600, 1),
             code=tendency,
-            tendency=messages.TENDENCIES[tendency],
+            tendency=messages.tendency(language, tendency),
         )
     return models.Pressure(
         sea_level=values.out(P, span.last.get(field_name("sea", P, stored))),
@@ -780,7 +781,9 @@ class _RoomAir:
     after: float | None
 
 
-def _room_air(latest: _Latest, values: _Values, stored: Units, info: StationInfo) -> list[_RoomAir]:
+def _room_air(
+    latest: _Latest, values: _Values, stored: Units, info: StationInfo, language: Language
+) -> list[_RoomAir]:
     """Each room with both its humidity and a comparison with the outdoor air."""
     H, D = Kind.HUMIDITY, Kind.TEMPERATURE_DELTA
     vents = {s.sensor: s.last for s in latest.ventilation}
@@ -793,7 +796,7 @@ def _room_air(latest: _Latest, values: _Values, stored: Units, info: StationInfo
         if humidity is None or delta is None:
             continue
         after = values.metric(H, vent.get(field_name("predicted_humidity", H, stored)))
-        name = _name(info, span.tags, span.name) or sensor
+        name = _name(info, span.tags, span.name, language) or sensor
         found.append(_RoomAir(sensor, name, humidity, delta, after))
     return found
 
@@ -821,7 +824,12 @@ def _house(air: list[_RoomAir], values: _Values) -> models.HouseAiring | None:
 
 
 def _rooms(
-    latest: _Latest, values: _Values, stored: Units, info: StationInfo, air: list[_RoomAir]
+    latest: _Latest,
+    values: _Values,
+    stored: Units,
+    info: StationInfo,
+    air: list[_RoomAir],
+    language: Language,
 ) -> list[models.Room]:
     """Each room, indoor sensor first, with its airing advice."""
     T, H = Kind.TEMPERATURE, Kind.HUMIDITY
@@ -843,7 +851,7 @@ def _rooms(
         rooms.append(
             models.Room(
                 sensor=sensor,
-                name=_name(info, span.tags, span.name) or sensor,
+                name=_name(info, span.tags, span.name, language) or sensor,
                 temperature=None if temp is None else values.from_metric(T, temp),
                 humidity=None if humidity is None else values.from_metric(H, humidity),
                 dew_point=values.out(T, dew_points.get(sensor)),
@@ -854,7 +862,7 @@ def _rooms(
     return rooms
 
 
-def _health(latest: _Latest, info: StationInfo) -> list[models.SensorHealth]:
+def _health(latest: _Latest, info: StationInfo, language: Language) -> list[models.SensorHealth]:
     """Every sensor that reports staleness or a battery, in natural order."""
     unchanged = {s.sensor: s for s in latest.derived if s.sensor and "unchanged_s" in s.last}
     batteries = {s.sensor: s for s in latest.battery if s.sensor and "low" in s.last}
@@ -867,7 +875,7 @@ def _health(latest: _Latest, info: StationInfo) -> list[models.SensorHealth]:
         found.append(
             models.SensorHealth(
                 sensor=sensor,
-                name=_name(info, span.tags, span.name) or sensor,
+                name=_name(info, span.tags, span.name, language) or sensor,
                 battery_low=None if low is None else bool(low),
                 unchanged_s=seconds,
                 updating=not _judged(sensor) or seconds is None or seconds < weather.STALE_AFTER_S,
@@ -887,7 +895,7 @@ def _judged(sensor: str) -> bool:
 
 
 def _notices(
-    latest: _Latest, values: _Values, stored: Units, now: models.Now
+    latest: _Latest, values: _Values, stored: Units, now: models.Now, language: Language
 ) -> dict[str, models.Notice]:
     """What deserves attention, card by card, judged in metric units."""
     found: dict[str, models.Notice] = {}
@@ -895,7 +903,7 @@ def _notices(
     def warn(card: str, *codes: models.NoticeCode) -> None:
         found[card] = models.Notice(level="warning")
         for code in codes:
-            _say(found[card], models.NoticeItem(code=code, text=messages.notice(code)))
+            _say(found[card], models.NoticeItem(code=code, text=messages.notice(language, code)))
 
     if latest.outdoor is not None:
         T, H = Kind.TEMPERATURE, Kind.HUMIDITY
@@ -949,8 +957,9 @@ def _notices(
         warn("rooms")
         for flag, names in flagged.items():
             text = messages.notice(
+                language,
                 models.NoticeCode.ROOM_FLAG,
-                flag=messages.ROOM_FLAGS[flag],
+                flag=messages.room_flag(language, flag),
                 rooms=", ".join(names),
             )
             item = models.NoticeItem(
@@ -985,6 +994,7 @@ def _forecast_notices(
     info: StationInfo,
     zone: tzinfo,
     at: datetime,
+    language: Language,
 ) -> None:
     """Add to the cards' notices what the forecast says is coming within the day.
 
@@ -992,11 +1002,7 @@ def _forecast_notices(
     wind card while they are not blowing already. Times are in the station's time.
     """
     target = values.target
-
-    def when(moment: datetime) -> str:
-        local, today = moment.astimezone(zone), at.astimezone(zone).date()
-        words = messages.TODAY if local.date() == today else messages.TOMORROW
-        return words.format(clock=f"{local:%H:%M}")
+    today = at.astimezone(zone).date()
 
     def say(
         card: str,
@@ -1006,12 +1012,16 @@ def _forecast_notices(
         value: float | None = None,
     ) -> None:
         """Add a forecast item to a card's notice: what is coming, when, and how much."""
-        params = {"time": when(time)}
         item = models.NoticeItem(code=code, time=time, text="")
-        if kind is not None and value is not None:
-            item.value, item.unit = values.from_metric(kind, value), unit(kind, target)
-            params["value"] = f"{item.value:g} {SYMBOLS[item.unit]}"
-        item.text = messages.notice(code, **params)
+        if code in messages.NOTICES_AT:
+            params = {}
+            if kind is not None and value is not None:
+                item.value, item.unit = values.from_metric(kind, value), unit(kind, target)
+                params["value"] = f"{language.number(item.value)} {SYMBOLS[item.unit]}"
+            local = time.astimezone(zone)
+            item.text = messages.notice_at(language, code, local, local.date() != today, **params)
+        else:
+            item.text = messages.notice(language, code)
         _say(now.notices.setdefault(card, models.Notice(level="warning")), item)
 
     raining = now.rain is not None and now.rain.raining
@@ -1046,7 +1056,7 @@ def _line(items: list[models.NoticeItem]) -> str:
     return " ".join(i.text for i in items)
 
 
-def _sky(latest: _Latest, stored: Units) -> models.Sky | None:
+def _sky(latest: _Latest, stored: Units, language: Language) -> models.Sky | None:
     """The sky from the weather model's newest values, or None without a weather code."""
     span = latest.sky
     code = span.last.get("weather_code") if span else None
@@ -1056,22 +1066,22 @@ def _sky(latest: _Latest, stored: Units) -> models.Sky | None:
     cloud = span.last.get(field_name("cloud_cover", Kind.PERCENT, stored))
     return models.Sky(
         code=int(code),
-        description=weathermodel.describe(int(code)),
+        description=messages.sky(language, int(code)),
         is_day=is_day if isinstance(is_day, bool) else None,
         cloud_cover=float(cloud) if isinstance(cloud, int | float) else None,
         time=span.last_time,
     )
 
 
-def _weather_model(info: StationInfo) -> models.WeatherModel | None:
+def _weather_model(info: StationInfo, language: Language) -> models.WeatherModel | None:
     """The station's weather model, named, or None when it has none."""
     if info.weather_model is None:
         return None
-    label = weathermodel.MODELS.get(info.weather_model, info.weather_model)
+    label = messages.model(language, info.weather_model)
     return models.WeatherModel(id=info.weather_model, label=label)
 
 
-def _summary(now: models.Now, units: Units) -> list[models.SummaryPart]:
+def _summary(now: models.Now, units: Units, language: Language) -> list[models.SummaryPart]:
     """One line, part by part: the sky, temperature and feels-like, wind, rain, and the pressure
     trend."""
     Code = models.SummaryCode
@@ -1081,23 +1091,24 @@ def _summary(now: models.Now, units: Units) -> list[models.SummaryPart]:
     outdoor = now.outdoor
     if outdoor is not None and outdoor.temperature is not None:
         symbol = SYMBOLS[unit(Kind.TEMPERATURE, units)]
-        text = f"{outdoor.temperature:g} {symbol}"
+        text = f"{language.number(outdoor.temperature)} {symbol}"
         if outdoor.feels_like is not None and abs(outdoor.feels_like - outdoor.temperature) >= 1:
-            feels = f"{round(outdoor.feels_like):g} {symbol}"
-            text = messages.FEELS_LIKE.format(temperature=text, feels=feels)
+            feels = f"{language.number(round(outdoor.feels_like))} {symbol}"
+            text = messages.summary(language, "feels_like", temperature=text, feels=feels)
         parts.append(models.SummaryPart(code=Code.TEMPERATURE, text=text))
     wind = now.wind
     if wind is not None and wind.beaufort is not None:
         text = wind.description or ""
         if wind.beaufort != 0 and wind.compass is not None:
-            text = messages.WIND_FROM.format(description=text, compass=wind.compass)
+            text = messages.summary(language, "wind_from", description=text, compass=wind.compass)
         parts.append(models.SummaryPart(code=Code.WIND, text=text))
     rain = now.rain
     if rain is not None and rain.raining and rain.rate is not None:
-        rate = f"{rain.rate:g} {SYMBOLS[unit(Kind.RAIN_RATE, units)]}"
-        parts.append(models.SummaryPart(code=Code.RAIN, text=messages.RAINING.format(rate=rate)))
+        rate = f"{language.number(rain.rate)} {SYMBOLS[unit(Kind.RAIN_RATE, units)]}"
+        text = messages.summary(language, "raining", rate=rate)
+        parts.append(models.SummaryPart(code=Code.RAIN, text=text))
     if now.pressure is not None and now.pressure.trend is not None:
-        text = messages.PRESSURE.format(tendency=now.pressure.trend.tendency)
+        text = messages.summary(language, "pressure", tendency=now.pressure.trend.tendency)
         parts.append(models.SummaryPart(code=Code.PRESSURE, text=text))
     return parts
 
@@ -1122,7 +1133,9 @@ def _group(tags: dict[str, str]) -> str | None:
     return tags.get("sensor") or tags.get("gauge")
 
 
-def _name(info: StationInfo, tags: dict[str, str], written: str | None) -> str | None:
+def _name(
+    info: StationInfo, tags: dict[str, str], written: str | None, language: Language
+) -> str | None:
     """A sensor's current name: the station's settings, then its newest rows, then a default.
 
     A sensor nobody named is written under its own identifier, which is no name at all.
@@ -1134,7 +1147,7 @@ def _name(info: StationInfo, tags: dict[str, str], written: str | None) -> str |
         return info.sensors[sensor]
     if written and written != sensor:
         return written
-    return SENSOR_NAMES.get(sensor, sensor)
+    return messages.sensor(language, sensor)
 
 
 def _natural(sensor: str) -> tuple[int, int, str]:

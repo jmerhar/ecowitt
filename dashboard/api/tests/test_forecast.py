@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from fastapi.testclient import TestClient
 
 from ecowitt.dashboard import models
+from ecowitt.dashboard.i18n import LANGUAGES
 from ecowitt.dashboard.service import Dashboard
 
 from .conftest import INFO, MIDNIGHT, NOW, readings, row
@@ -371,3 +372,20 @@ async def test_a_past_or_present_hours_frost_is_the_stations_to_report() -> None
             MemoryReader([*readings(), *frost], {"example": MODELLED}), clock=lambda c=clock: c
         ).now("example")
         assert "frost" not in found.notices.get("outdoor", models.Notice(level="x", text="")).text
+
+
+async def test_the_forecast_and_its_notices_are_in_the_language_asked_for() -> None:
+    portuguese = LANGUAGES["pt-PT"]
+    rows = coming(**{"13": {"temp_c": 1.0}, "20": {"temp_c": 33.0}, "5": {"gust_kmh": 72.0}})
+    dashboard = board(*rows, day(MIDNIGHT, 0))
+
+    notices = (await dashboard.now("example", language=portuguese)).notices
+    found = await dashboard.forecast("example", language=portuguese)
+
+    assert notices["outdoor"].text == (
+        "Mínima de 1 °C amanhã às 04:00: possibilidade de geada. Máxima de 33 °C amanhã às 11:00."
+    )
+    assert notices["wind"].text == "Rajadas até 72 km/h às 19:00."
+    assert (found.hours[0].description, found.hours[0].compass) == ("Céu encoberto", "N")
+    assert (found.days[0].description, found.days[0].compass) == ("Chuva fraca", "N")
+    assert found.model is not None and found.model.label == "Melhor para este local"

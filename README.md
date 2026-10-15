@@ -463,6 +463,11 @@ Every answer is in the station's stored units unless the request asks otherwise,
 `?temperature=f&wind=mph&pressure=inhg&rain=in`. Answers are cached for everyone alike for up to
 a minute (longer for long ranges), and each visitor's address has a request budget.
 
+An answer's words -- notices, the summary, the sky, wind and compass names, labels -- are in
+English or European Portuguese: `?lang=pt-PT`, else the request's `Accept-Language`, else
+English. `Content-Language` says which. Each code beside them (a notice's `code`, the trend's
+`code`, `summary_parts`) is the same in every language.
+
 | Variable | Default | |
 |---|---|---|
 | `PORT` | `2553` | inside the container |
@@ -547,6 +552,7 @@ make test-web     # the dashboard page: type check and tests, with coverage
 make test-legacy-browser   # the dashboard page's legacy build, loaded in Chromium 59 (needs Docker)
 make dashboard-dev SERVER=host   # the dashboard from the working copy, with host's InfluxDB
 make grafana      # rewrite grafana/*.json from the templates after changing one
+make messages     # bring the dashboard API's translation catalogues up to date with its messages
 make check        # lint, every suite, coverage
 ```
 

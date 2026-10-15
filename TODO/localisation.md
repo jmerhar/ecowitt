@@ -136,7 +136,7 @@ the client: they are needed before any answer arrives, and each client has scree
 
 1. Codes in the API, English only, beside the English fields. *Done.*
 2. The page uses the codes and stops parsing prose. *Done.*
-3. Server-side catalogue, language negotiation and `text`.
+3. Server-side catalogue, language negotiation and `text`. *Done, with European Portuguese.*
 4. The page's own catalogue and language preference.
 5. First additional language.
 

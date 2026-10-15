@@ -105,6 +105,10 @@ dashboard/api/src/ecowitt/dashboard/   the public dashboard's read-only API
   catalogue.py    the metrics served: table, base field, kind, aggregates, which sensors, and
                   the weather model's field for the same quantity
   weather.py      compass, Beaufort, feels-like, pressure tendency, airing advice
+  messages.py     every word an answer carries, in English, and each in a request's language;
+                  template() is the gettext template the catalogues are kept against
+  i18n.py         the languages: locale/<locale>/LC_MESSAGES/messages.po read with Babel, and
+                  the choice of one per request (?lang=, then Accept-Language, then English)
   forecast.py     the stored forecast read back (the newest row per hour and day), and what the
                   cards warn of from it: rain, frost, heat, gusts, a drier spell for airing
   sun.py          sunrise, solar noon and sunset (NOAA's equations)
@@ -135,7 +139,7 @@ bin/              every script the Makefile and CI run; its Python is linted wit
                   version.py keeps every manifest's version and the compose file's major image
                   tag in step, release.sh cuts a release
                   and github-release.sh (CI, on a tag) publishes its notes; grafana.py writes
-                  grafana/*.json from the templates
+                  grafana/*.json from the templates; messages.py updates the API's catalogues
 CHANGELOG.md      every release's notes; new work goes under `## Unreleased`
 ```
 
@@ -257,6 +261,13 @@ CHANGELOG.md      every release's notes; new work goes under `## Unreleased`
   reaches `/setup` configures the site; once it is written the setup routes are absent (404) for
   the life of the file. Its test connection reports only success or failure, with a short
   timeout, since an anonymous caller chooses the address it connects to.
+- **The dashboard API's words are gettext messages, and so are some of core's.** Its English
+  is the message id: `messages.py`, and the tables it reads -- `weather.COMPASS` and
+  `BEAUFORT_NAMES`, the metric labels in `catalogue.py`, and core's `weathermodel.WEATHER_CODES`
+  and `MODELS`. Changing any of them needs `make messages` and a translation in every catalogue;
+  `test_i18n` fails until each is current, fully translated and keeps its placeholders. A message
+  naming a time of day has plural forms chosen by its hour, for Portuguese's "à 01:00" / "às
+  02:00". The page asks for its own language with `lang`, so the API's words always match it.
 - **The dashboard's page formats times itself, day first with a 24-hour clock** (`format.ts`
   `LOCALE`), in the station's time zone, rather than following the browser's locale: an American
   locale writes `10/11` and `12:56 AM`.
@@ -286,6 +297,7 @@ make test-legacy-browser   # the page's legacy build in Chromium 59 (Docker; slo
 make dashboard-dev SERVER=host   # page :5173 and API :2553, both reloading; host's InfluxDB on :8181
 make lockfile     # regenerate dashboard/web/package-lock.json (the only way to)
 make grafana      # rewrite grafana/*.json after changing a template
+make messages     # update the API's .po catalogues after changing a message, then translate
 make check        # lint + every suite with coverage
 bin/release.sh 2.9.0   # date the changelog's Unreleased section, commit and tag; then push both
 UPDATE_GOLDEN=1 bin/test-python.sh collector tests/ingest/test_pipeline.py   # after an intended output change

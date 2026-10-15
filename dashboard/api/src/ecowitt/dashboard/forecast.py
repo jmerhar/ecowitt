@@ -18,7 +18,8 @@ from ecowitt.core import weathermodel
 from ecowitt.core.stationinfo import StationInfo
 from ecowitt.core.store.query import Point, Reader
 from ecowitt.core.units import Kind, field_name
-from ecowitt.dashboard import models, weather
+from ecowitt.dashboard import messages, models, weather
+from ecowitt.dashboard.i18n import Language
 
 #: How far ahead the hours run.
 HOURS = 24
@@ -135,9 +136,10 @@ class Values(Protocol):
 
 
 def answer(
-    stored: Stored, values: Values, info: StationInfo
+    stored: Stored, values: Values, info: StationInfo, language: Language
 ) -> tuple[list[models.ForecastHour], list[models.ForecastDay]]:
-    """The forecast section: the hours from the one under way, and the days from today."""
+    """The forecast section: the hours from the one under way, and the days from today, its
+    words in `language`."""
     units = info.units
     T, S = Kind.TEMPERATURE, Kind.SPEED
 
@@ -160,12 +162,12 @@ def answer(
                     Kind.PERCENT, v.get(f("precip_probability", Kind.PERCENT))
                 ),
                 weather_code=code,
-                description=None if code is None else weathermodel.describe(code),
+                description=None if code is None else messages.sky(language, code),
                 is_day=v.get("is_day") if isinstance(v.get("is_day"), bool) else None,
                 wind_speed=values.out(S, v.get(f("speed", S))),
                 wind_gust=values.out(S, v.get(f("gust", S))),
                 wind_direction=None if direction is None else round(direction),
-                compass=None if direction is None else weather.compass(direction),
+                compass=None if direction is None else messages.compass(language, direction),
             )
         )
     days = []
@@ -177,7 +179,7 @@ def answer(
             models.ForecastDay(
                 date=p.time,
                 weather_code=code,
-                description=None if code is None else weathermodel.describe(code),
+                description=None if code is None else messages.sky(language, code),
                 temperature_max=values.out(T, v.get(f("temp_max", T))),
                 temperature_min=values.out(T, v.get(f("temp_min", T))),
                 precipitation=values.out(Kind.RAIN, v.get(f("precip", Kind.RAIN))),
@@ -187,7 +189,7 @@ def answer(
                 wind_speed_max=values.out(S, v.get(f("speed_max", S))),
                 wind_gust_max=values.out(S, v.get(f("gust_max", S))),
                 wind_direction=None if direction is None else round(direction),
-                compass=None if direction is None else weather.compass(direction),
+                compass=None if direction is None else messages.compass(language, direction),
                 uv_index_max=values.out(Kind.UV_INDEX, v.get(f("uv_index_max", Kind.UV_INDEX))),
                 humidity=values.out(Kind.HUMIDITY, v.get(f("humidity_mean", Kind.HUMIDITY))),
             )

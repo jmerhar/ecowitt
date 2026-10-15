@@ -1,0 +1,543 @@
+# Portuguese (Portugal) for the Ecowitt Server dashboard's API.
+# Kept up to date with its messages by bin/messages.py.
+msgid ""
+msgstr ""
+"Project-Id-Version: Ecowitt Server dashboard 1\n"
+"Report-Msgid-Bugs-To: https://github.com/jmerhar/ecowitt/issues\n"
+"POT-Creation-Date: 2026-10-15 15:49+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: Ecowitt Server\n"
+"Language: pt_PT\n"
+"Language-Team: Portuguese (Portugal)\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+msgctxt "notice"
+msgid "Cold: frost is possible on clear nights."
+msgstr "Frio: pode formar-se geada nas noites de céu limpo."
+
+msgctxt "notice"
+msgid "Heat: take care outdoors."
+msgstr "Calor: cuidado ao ar livre."
+
+msgctxt "notice"
+msgid "Very humid outside: fog and condensation likely."
+msgstr "Ar exterior muito húmido: provável formação de nevoeiro e condensação."
+
+msgctxt "notice"
+msgid "Very dry air: fire risk."
+msgstr "Ar muito seco: risco de incêndio."
+
+msgctxt "notice"
+msgid "Strong gusts."
+msgstr "Rajadas fortes."
+
+msgctxt "notice"
+msgid "Heavy rain."
+msgstr "Chuva forte."
+
+msgctxt "notice"
+msgid "Falling fast: a front or a storm is likely."
+msgstr "Descida rápida: provável aproximação de uma frente ou tempestade."
+
+msgctxt "notice"
+msgid "Very high UV: seek shade at midday."
+msgstr "UV muito elevado: procure sombra nas horas centrais do dia."
+
+msgctxt "notice"
+msgid "Rain likely within the hour."
+msgstr "Chuva provável na próxima hora."
+
+#, python-brace-format
+msgctxt "notice"
+msgid "{flag}: {rooms}."
+msgstr "{flag}: {rooms}."
+
+msgctxt "room flag"
+msgid "Cold"
+msgstr "Frio"
+
+msgctxt "room flag"
+msgid "Hot"
+msgstr "Quente"
+
+msgctxt "room flag"
+msgid "Damp"
+msgstr "Húmido"
+
+msgctxt "room flag"
+msgid "Dry"
+msgstr "Seco"
+
+msgctxt "pressure tendency"
+msgid "steady"
+msgstr "estável"
+
+msgctxt "pressure tendency"
+msgid "rising slowly"
+msgstr "a subir lentamente"
+
+msgctxt "pressure tendency"
+msgid "rising"
+msgstr "a subir"
+
+msgctxt "pressure tendency"
+msgid "rising quickly"
+msgstr "a subir rapidamente"
+
+msgctxt "pressure tendency"
+msgid "rising very rapidly"
+msgstr "a subir muito rapidamente"
+
+msgctxt "pressure tendency"
+msgid "falling slowly"
+msgstr "a descer lentamente"
+
+msgctxt "pressure tendency"
+msgid "falling"
+msgstr "a descer"
+
+msgctxt "pressure tendency"
+msgid "falling quickly"
+msgstr "a descer rapidamente"
+
+msgctxt "pressure tendency"
+msgid "falling very rapidly"
+msgstr "a descer muito rapidamente"
+
+#, python-brace-format
+msgctxt "summary"
+msgid "{temperature}, feels like {feels}"
+msgstr "{temperature}, sensação térmica de {feels}"
+
+#, python-brace-format
+msgctxt "summary"
+msgid "{description} from the {compass}"
+msgstr "{description} de {compass}"
+
+#, python-brace-format
+msgctxt "summary"
+msgid "Raining, {rate}"
+msgstr "A chover, {rate}"
+
+#, python-brace-format
+msgctxt "summary"
+msgid "Pressure {tendency}"
+msgstr "Pressão {tendency}"
+
+msgctxt "compass point"
+msgid "N"
+msgstr "N"
+
+msgctxt "compass point"
+msgid "NNE"
+msgstr "NNE"
+
+msgctxt "compass point"
+msgid "NE"
+msgstr "NE"
+
+msgctxt "compass point"
+msgid "ENE"
+msgstr "ENE"
+
+msgctxt "compass point"
+msgid "E"
+msgstr "E"
+
+msgctxt "compass point"
+msgid "ESE"
+msgstr "ESE"
+
+msgctxt "compass point"
+msgid "SE"
+msgstr "SE"
+
+msgctxt "compass point"
+msgid "SSE"
+msgstr "SSE"
+
+msgctxt "compass point"
+msgid "S"
+msgstr "S"
+
+msgctxt "compass point"
+msgid "SSW"
+msgstr "SSO"
+
+msgctxt "compass point"
+msgid "SW"
+msgstr "SO"
+
+msgctxt "compass point"
+msgid "WSW"
+msgstr "OSO"
+
+msgctxt "compass point"
+msgid "W"
+msgstr "O"
+
+msgctxt "compass point"
+msgid "WNW"
+msgstr "ONO"
+
+msgctxt "compass point"
+msgid "NW"
+msgstr "NO"
+
+msgctxt "compass point"
+msgid "NNW"
+msgstr "NNO"
+
+msgctxt "Beaufort force"
+msgid "Calm"
+msgstr "Calma"
+
+msgctxt "Beaufort force"
+msgid "Light air"
+msgstr "Aragem"
+
+msgctxt "Beaufort force"
+msgid "Light breeze"
+msgstr "Vento fraco"
+
+msgctxt "Beaufort force"
+msgid "Gentle breeze"
+msgstr "Vento bonançoso"
+
+msgctxt "Beaufort force"
+msgid "Moderate breeze"
+msgstr "Vento moderado"
+
+msgctxt "Beaufort force"
+msgid "Fresh breeze"
+msgstr "Vento fresco"
+
+msgctxt "Beaufort force"
+msgid "Strong breeze"
+msgstr "Vento muito fresco"
+
+msgctxt "Beaufort force"
+msgid "Near gale"
+msgstr "Vento forte"
+
+msgctxt "Beaufort force"
+msgid "Gale"
+msgstr "Vento muito forte"
+
+msgctxt "Beaufort force"
+msgid "Strong gale"
+msgstr "Vento duro"
+
+msgctxt "Beaufort force"
+msgid "Storm"
+msgstr "Vento muito duro"
+
+msgctxt "Beaufort force"
+msgid "Violent storm"
+msgstr "Vento tempestuoso"
+
+msgctxt "Beaufort force"
+msgid "Hurricane force"
+msgstr "Furacão"
+
+msgctxt "sky"
+msgid "Clear"
+msgstr "Céu limpo"
+
+msgctxt "sky"
+msgid "Mostly clear"
+msgstr "Céu pouco nublado"
+
+msgctxt "sky"
+msgid "Partly cloudy"
+msgstr "Céu parcialmente nublado"
+
+msgctxt "sky"
+msgid "Overcast"
+msgstr "Céu encoberto"
+
+msgctxt "sky"
+msgid "Fog"
+msgstr "Nevoeiro"
+
+msgctxt "sky"
+msgid "Freezing fog"
+msgstr "Nevoeiro gelado"
+
+msgctxt "sky"
+msgid "Light drizzle"
+msgstr "Chuvisco fraco"
+
+msgctxt "sky"
+msgid "Drizzle"
+msgstr "Chuvisco"
+
+msgctxt "sky"
+msgid "Heavy drizzle"
+msgstr "Chuvisco forte"
+
+msgctxt "sky"
+msgid "Light freezing drizzle"
+msgstr "Chuvisco gelado fraco"
+
+msgctxt "sky"
+msgid "Freezing drizzle"
+msgstr "Chuvisco gelado"
+
+msgctxt "sky"
+msgid "Light rain"
+msgstr "Chuva fraca"
+
+msgctxt "sky"
+msgid "Rain"
+msgstr "Chuva"
+
+msgctxt "sky"
+msgid "Heavy rain"
+msgstr "Chuva forte"
+
+msgctxt "sky"
+msgid "Light freezing rain"
+msgstr "Chuva gelada fraca"
+
+msgctxt "sky"
+msgid "Freezing rain"
+msgstr "Chuva gelada"
+
+msgctxt "sky"
+msgid "Light snow"
+msgstr "Neve fraca"
+
+msgctxt "sky"
+msgid "Snow"
+msgstr "Neve"
+
+msgctxt "sky"
+msgid "Heavy snow"
+msgstr "Neve forte"
+
+msgctxt "sky"
+msgid "Snow grains"
+msgstr "Grãos de neve"
+
+msgctxt "sky"
+msgid "Light showers"
+msgstr "Aguaceiros fracos"
+
+msgctxt "sky"
+msgid "Showers"
+msgstr "Aguaceiros"
+
+msgctxt "sky"
+msgid "Heavy showers"
+msgstr "Aguaceiros fortes"
+
+msgctxt "sky"
+msgid "Light snow showers"
+msgstr "Aguaceiros de neve fracos"
+
+msgctxt "sky"
+msgid "Snow showers"
+msgstr "Aguaceiros de neve"
+
+msgctxt "sky"
+msgid "Thunderstorm"
+msgstr "Trovoada"
+
+msgctxt "sky"
+msgid "Thunderstorm with hail"
+msgstr "Trovoada com granizo"
+
+msgctxt "sky"
+msgid "Thunderstorm with heavy hail"
+msgstr "Trovoada com granizo forte"
+
+#, python-brace-format
+msgctxt "sky"
+msgid "Weather code {code}"
+msgstr "Código meteorológico {code}"
+
+msgctxt "weather model"
+msgid "Best for this location"
+msgstr "Melhor para este local"
+
+msgctxt "weather model"
+msgid "ICON (DWD, Germany)"
+msgstr "ICON (DWD, Alemanha)"
+
+msgctxt "weather model"
+msgid "ECMWF IFS (Europe's centre)"
+msgstr "ECMWF IFS (centro europeu)"
+
+msgctxt "weather model"
+msgid "ARPEGE and AROME (Météo-France)"
+msgstr "ARPEGE e AROME (Météo-France)"
+
+msgctxt "weather model"
+msgid "GFS (NOAA, United States)"
+msgstr "GFS (NOAA, Estados Unidos)"
+
+msgctxt "weather model"
+msgid "Unified Model (UK Met Office)"
+msgstr "Unified Model (Met Office, Reino Unido)"
+
+msgctxt "chart metric"
+msgid "Temperature"
+msgstr "Temperatura"
+
+msgctxt "chart metric"
+msgid "Humidity"
+msgstr "Humidade"
+
+msgctxt "chart metric"
+msgid "Dew point"
+msgstr "Ponto de orvalho"
+
+msgctxt "chart metric"
+msgid "Wind speed"
+msgstr "Velocidade do vento"
+
+msgctxt "chart metric"
+msgid "Wind gust"
+msgstr "Rajada"
+
+msgctxt "chart metric"
+msgid "Wind speed, measured"
+msgstr "Velocidade do vento, medida"
+
+msgctxt "chart metric"
+msgid "Wind gust, measured"
+msgstr "Rajada, medida"
+
+msgctxt "chart metric"
+msgid "Wind direction"
+msgstr "Direção do vento"
+
+msgctxt "chart metric"
+msgid "Rain rate"
+msgstr "Intensidade da chuva"
+
+msgctxt "chart metric"
+msgid "Rain today"
+msgstr "Chuva hoje"
+
+msgctxt "chart metric"
+msgid "Pressure"
+msgstr "Pressão"
+
+msgctxt "chart metric"
+msgid "Station pressure"
+msgstr "Pressão ao nível da estação"
+
+msgctxt "chart metric"
+msgid "Solar radiation"
+msgstr "Radiação solar"
+
+msgctxt "chart metric"
+msgid "UV index"
+msgstr "Índice UV"
+
+msgctxt "chart metric"
+msgid "Humidity after airing"
+msgstr "Humidade após arejamento"
+
+msgctxt "sensor"
+msgid "Indoor"
+msgstr "Interior"
+
+msgctxt "sensor"
+msgid "Outdoor"
+msgstr "Exterior"
+
+msgctxt "sensor"
+msgid "Barometer"
+msgstr "Barómetro"
+
+msgctxt "sensor"
+msgid "Rain gauge"
+msgstr "Pluviómetro"
+
+msgctxt "sensor"
+msgid "Light sensor"
+msgstr "Sensor de luz"
+
+msgctxt "sensor"
+msgid "Wind sensor"
+msgstr "Sensor de vento"
+
+#. {clock} is a time of day, 00:00 to 23:59. The plural forms are chosen by its hour, for a
+#. language whose words agree with it.
+#, python-brace-format
+msgctxt "notice"
+msgid "Rain likely from {clock}."
+msgid_plural "Rain likely from {clock}."
+msgstr[0] "Chuva provável a partir da {clock}."
+msgstr[1] "Chuva provável a partir das {clock}."
+
+#. {clock} is a time of day, 00:00 to 23:59. The plural forms are chosen by its hour, for a
+#. language whose words agree with it.
+#, python-brace-format
+msgctxt "notice"
+msgid "Rain likely from tomorrow {clock}."
+msgid_plural "Rain likely from tomorrow {clock}."
+msgstr[0] "Chuva provável amanhã a partir da {clock}."
+msgstr[1] "Chuva provável amanhã a partir das {clock}."
+
+#. {clock} is a time of day, 00:00 to 23:59. The plural forms are chosen by its hour, for a
+#. language whose words agree with it.
+#, python-brace-format
+msgctxt "notice"
+msgid "Down to {value} at {clock}: frost possible."
+msgid_plural "Down to {value} at {clock}: frost possible."
+msgstr[0] "Mínima de {value} à {clock}: possibilidade de geada."
+msgstr[1] "Mínima de {value} às {clock}: possibilidade de geada."
+
+#. {clock} is a time of day, 00:00 to 23:59. The plural forms are chosen by its hour, for a
+#. language whose words agree with it.
+#, python-brace-format
+msgctxt "notice"
+msgid "Down to {value} at tomorrow {clock}: frost possible."
+msgid_plural "Down to {value} at tomorrow {clock}: frost possible."
+msgstr[0] "Mínima de {value} amanhã à {clock}: possibilidade de geada."
+msgstr[1] "Mínima de {value} amanhã às {clock}: possibilidade de geada."
+
+#. {clock} is a time of day, 00:00 to 23:59. The plural forms are chosen by its hour, for a
+#. language whose words agree with it.
+#, python-brace-format
+msgctxt "notice"
+msgid "Up to {value} at {clock}."
+msgid_plural "Up to {value} at {clock}."
+msgstr[0] "Máxima de {value} à {clock}."
+msgstr[1] "Máxima de {value} às {clock}."
+
+#. {clock} is a time of day, 00:00 to 23:59. The plural forms are chosen by its hour, for a
+#. language whose words agree with it.
+#, python-brace-format
+msgctxt "notice"
+msgid "Up to {value} at tomorrow {clock}."
+msgid_plural "Up to {value} at tomorrow {clock}."
+msgstr[0] "Máxima de {value} amanhã à {clock}."
+msgstr[1] "Máxima de {value} amanhã às {clock}."
+
+#. {clock} is a time of day, 00:00 to 23:59. The plural forms are chosen by its hour, for a
+#. language whose words agree with it.
+#, python-brace-format
+msgctxt "notice"
+msgid "Gusts to {value} at {clock}."
+msgid_plural "Gusts to {value} at {clock}."
+msgstr[0] "Rajadas até {value} à {clock}."
+msgstr[1] "Rajadas até {value} às {clock}."
+
+#. {clock} is a time of day, 00:00 to 23:59. The plural forms are chosen by its hour, for a
+#. language whose words agree with it.
+#, python-brace-format
+msgctxt "notice"
+msgid "Gusts to {value} at tomorrow {clock}."
+msgid_plural "Gusts to {value} at tomorrow {clock}."
+msgstr[0] "Rajadas até {value} amanhã à {clock}."
+msgstr[1] "Rajadas até {value} amanhã às {clock}."
+

@@ -92,6 +92,42 @@ def test_now_with_chosen_units(client: TestClient) -> None:
     assert response.headers["cache-control"] == "public, max-age=30"
 
 
+ROUTES = [
+    "/api/v1/meta",
+    "/api/v1/stations",
+    "/api/v1/stations/example/now",
+    "/api/v1/stations/example/series?metrics=outdoor.temperature",
+    "/api/v1/stations/example/forecast",
+    "/api/v1/stations/example/extremes",
+]
+
+
+@pytest.mark.parametrize("route", ROUTES)
+def test_every_answer_says_its_language_and_varies_by_it(client: TestClient, route: str) -> None:
+    english = client.get(route)
+    asked = client.get(f"{route}{'&' if '?' in route else '?'}lang=pt-PT")
+    accepted = client.get(route, headers={"Accept-Language": "pt-PT,pt;q=0.9,en;q=0.8"})
+
+    assert [r.status_code for r in (english, asked, accepted)] == [200, 200, 200]
+    assert english.headers["content-language"] == "en"
+    assert asked.headers["content-language"] == accepted.headers["content-language"] == "pt-PT"
+    assert all(r.headers["vary"] == "Accept-Language" for r in (english, asked, accepted))
+
+
+def test_the_answers_words_are_in_the_language_asked_for(client: TestClient) -> None:
+    meta = client.get("/api/v1/meta", params={"lang": "pt"}).json()
+    now = client.get("/api/v1/stations/example/now", headers={"Accept-Language": "pt"}).json()
+    # The lang parameter wins over the header.
+    english = client.get(
+        "/api/v1/stations/example/now", params={"lang": "en"}, headers={"Accept-Language": "pt"}
+    ).json()
+
+    labels = {m["id"]: m["label"] for m in meta["metrics"]}
+    assert labels["outdoor.dew_point"] == "Ponto de orvalho"
+    assert now["summary"] == "18 °C. Vento bonançoso de SE. A chover, 2,4 mm/h. Pressão a descer."
+    assert english["summary"].startswith("18 °C. Gentle breeze from the SE.")
+
+
 def test_an_unknown_unit_is_refused(client: TestClient) -> None:
     assert client.get("/api/v1/stations/example/now?temperature=k").status_code == 422
 

@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Annotated, Literal
 from urllib.parse import parse_qsl
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi import Path as PathParam
 from fastapi.responses import (
     FileResponse,
@@ -32,8 +32,9 @@ from ecowitt.core.ratelimit import RateLimiter
 from ecowitt.core.store import settings as store_settings
 from ecowitt.core.store.query import Reader, ReadError
 from ecowitt.core.units import DistanceUnit, PressureUnit, RainUnit, TemperatureUnit, WindUnit
-from ecowitt.dashboard import models, siteconfig
+from ecowitt.dashboard import i18n, models, siteconfig
 from ecowitt.dashboard.catalogue import METRICS
+from ecowitt.dashboard.i18n import Language
 from ecowitt.dashboard.service import PERIODS, RANGES, Dashboard, UnknownStation
 from ecowitt.dashboard.settings import Settings
 from ecowitt.dashboard.siteconfig import AlreadyConfigured, SiteConfig
@@ -99,9 +100,27 @@ def _units(
     return {k: v for k, v in chosen.items() if v is not None}
 
 
+def _language(
+    response: Response,
+    lang: Annotated[
+        str | None,
+        Query(description=f"The language to answer in: {', '.join(i18n.LANGUAGES)}"),
+    ] = None,
+    accept_language: Annotated[str | None, Header()] = None,
+) -> Language:
+    """The language an answer's words are in: `lang`, else Accept-Language, else English.
+    Content-Language says which it is, and Vary keeps a cache from serving one language's
+    answer to a client that asked for another."""
+    language = i18n.negotiate(lang, accept_language)
+    response.headers["Content-Language"] = language.tag
+    response.headers["Vary"] = "Accept-Language"
+    return language
+
+
 Board = Annotated[Dashboard, Depends(_dashboard)]
 Station = Annotated[str, PathParam(description="A station's name, as /stations lists it")]
 Choice = Annotated[dict[str, str], Depends(_units)]
+Lang = Annotated[Language, Depends(_language)]
 
 
 async def access(request: Request) -> None:
@@ -217,28 +236,31 @@ def build_app(
     router = APIRouter(prefix=API, dependencies=[Depends(access)])
 
     @router.get("/meta")
-    async def meta(board: Board, response: Response) -> models.Meta:
+    async def meta(board: Board, language: Lang, response: Response) -> models.Meta:
         """The metrics, units, chart ranges and extremes periods the API offers."""
         response.headers["Cache-Control"] = "public, max-age=300"
-        return board.meta()
+        return board.meta(language)
 
     @router.get("/stations")
-    async def stations(board: Board, response: Response) -> list[models.Station]:
+    async def stations(board: Board, language: Lang, response: Response) -> list[models.Station]:
         """Every station shown, with its location, time zone and stored units."""
         response.headers["Cache-Control"] = "public, max-age=300"
-        return await board.stations()
+        return await board.stations(language)
 
     @router.get("/stations/{station}/now")
-    async def now(board: Board, station: Station, choice: Choice, response: Response) -> models.Now:
+    async def now(
+        board: Board, station: Station, choice: Choice, language: Lang, response: Response
+    ) -> models.Now:
         """A station at a glance: current conditions, today's range, rooms and sensor health."""
         response.headers["Cache-Control"] = "public, max-age=30"
-        return await board.now(station, choice)
+        return await board.now(station, choice, language)
 
     @router.get("/stations/{station}/series")
     async def series(
         board: Board,
         station: Station,
         choice: Choice,
+        language: Lang,
         response: Response,
         metrics: Annotated[str, Query(description="Metric ids from /meta, comma-separated")],
         range_: Annotated[str, Query(alias="range", description=", ".join(RANGES))] = "24h",
@@ -256,22 +278,23 @@ def build_app(
         if range_ not in RANGES:
             raise HTTPException(422, f"range must be one of {', '.join(RANGES)}")
         response.headers["Cache-Control"] = f"public, max-age={int(RANGES[range_].ttl)}"
-        return await board.series(station, chosen, range_, choice, model=model)
+        return await board.series(station, chosen, range_, choice, model=model, language=language)
 
     @router.get("/stations/{station}/forecast")
     async def forecast(
-        board: Board, station: Station, choice: Choice, response: Response
+        board: Board, station: Station, choice: Choice, language: Lang, response: Response
     ) -> models.ForecastOut:
         """The station's weather forecast, from its weather model: the next 24 hours and the
         days the model reaches."""
         response.headers["Cache-Control"] = "public, max-age=300"
-        return await board.forecast(station, choice)
+        return await board.forecast(station, choice, language)
 
     @router.get("/stations/{station}/extremes")
     async def extremes(
         board: Board,
         station: Station,
         choice: Choice,
+        language: Lang,
         response: Response,
         period: Annotated[str, Query(description=", ".join(PERIODS))] = "today",
     ) -> models.ExtremesOut:
@@ -279,7 +302,7 @@ def build_app(
         if period not in PERIODS:
             raise HTTPException(422, f"period must be one of {', '.join(PERIODS)}")
         response.headers["Cache-Control"] = f"public, max-age={int(PERIODS[period])}"
-        return await board.extremes(station, period, choice)
+        return await board.extremes(station, period, choice, language)
 
     app.include_router(router)
     if index_page.is_file():

@@ -1,4 +1,4 @@
-.PHONY: help install web-install lockfile app-icons grafana dev dashboard-dev up down logs shell build test test-js test-web test-legacy-browser coverage lint check clean
+.PHONY: help install web-install lockfile app-icons grafana messages dev dashboard-dev up down logs shell build test test-js test-web test-legacy-browser coverage lint check clean
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*##|^##@' $(MAKEFILE_LIST) | \
@@ -23,6 +23,9 @@ app-icons: ## Render the dashboard's home-screen icons from dashboard/web/icons/
 
 grafana: ## Render grafana/weather.json and alerts.json from the templates in the collector package
 	.venv/bin/python bin/grafana.py
+
+messages: ## Bring the dashboard API's translation catalogues up to date with its messages
+	.venv/bin/python bin/messages.py
 
 ##@ Development
 

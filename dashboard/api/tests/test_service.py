@@ -11,6 +11,7 @@ from ecowitt.core.stationinfo import StationInfo
 from ecowitt.core.store.query import ReadError
 from ecowitt.core.units import Units
 from ecowitt.dashboard import models
+from ecowitt.dashboard.i18n import LANGUAGES
 from ecowitt.dashboard.service import RANGES, Dashboard, UnknownStation
 from ecowitt.dashboard.weather import Tendency
 
@@ -459,6 +460,48 @@ async def test_a_room_without_a_prediction_still_counts(reader: MemoryReader) ->
     reader.rows.append(row("ventilation", LAST, {"dewpoint_delta_c": -1.0}, sensor="indoor"))
     now = await Dashboard(reader, clock=lambda: NOW).now("example")
     assert now.airing is not None and now.airing.humidity_after is None
+
+
+async def test_the_words_are_in_the_language_asked_for(board: Dashboard) -> None:
+    portuguese = LANGUAGES["pt-PT"]
+    now = await board.now("example", language=portuguese)
+
+    assert [p.text for p in now.summary_parts] == [
+        "18 °C",
+        "Vento bonançoso de SE",
+        "A chover, 2,4 mm/h",
+        "Pressão a descer",
+    ]
+    assert now.wind is not None and (now.wind.description, now.wind.compass) == (
+        "Vento bonançoso",
+        "SE",
+    )
+    assert now.pressure is not None and now.pressure.trend is not None
+    assert now.pressure.trend.tendency == "a descer"
+    assert now.notices["rooms"].text == "Húmido: Bathroom."
+    names = {s.sensor: s.name for s in now.sensors}
+    assert names["pressure"] == "Barómetro", "a sensor nobody named takes its kind's name"
+
+
+async def test_every_answer_names_an_unnamed_sensor_in_the_language_asked_for() -> None:
+    """The outdoor sensor written under its own id, as one nobody has named is."""
+    rows = [
+        dataclasses.replace(
+            r, tags=tuple((k, "outdoor" if v == "Garden" else v) for k, v in r.tags)
+        )
+        for r in readings()
+    ]
+    info = dataclasses.replace(INFO, sensors={})
+    board = Dashboard(MemoryReader(rows, {"example": info}), clock=lambda: NOW)
+    portuguese = LANGUAGES["pt-PT"]
+
+    now = await board.now("example", language=portuguese)
+    series = await board.series("example", ["outdoor.temperature"], "24h", language=portuguese)
+    extremes = await board.extremes("example", "today", language=portuguese)
+
+    assert {s.name for s in now.sensors if s.sensor == "outdoor"} == {"Exterior"}
+    assert {s.name for s in series.series} == {"Exterior"}
+    assert {e.name for e in extremes.extremes if e.sensor == "outdoor"} == {"Exterior"}
 
 
 async def test_notices_point_at_what_deserves_attention(board: Dashboard) -> None:
