@@ -82,10 +82,10 @@ page depends on the API's exact wording.
   - The wording and how sentences are assembled exist once, not once per client.
   - An older Android app that gets a code it does not know still shows its `text`.
   - A new language or a corrected translation ships with a server deploy, not an app release.
-- **Catalogue:** ICU MessageFormat, which has the plurals and selects that notices need
-  (`"Damp: {rooms}"` with a list of names, `"{n} rooms"`). It needs a Python implementation
-  that supports this, or gettext with Babel if plural forms are enough. The catalogue lives in
-  `dashboard/api`.
+- **Catalogue:** gettext `.po` files managed with Babel, Python's standard i18n toolchain,
+  in `dashboard/api`. `messages.py` holds the English source strings each code is worded
+  with. Babel also formats what goes into them by the language's rules: `format_list` for the
+  rooms (`"Kitchen and Bedroom"`), and times and numbers.
 - **Cache:** the service caches what it reads in stored units and converts each answer per
   request. Text is rendered at the same stage, after the cache, so the cache does not grow per
   language.
@@ -98,9 +98,10 @@ page depends on the API's exact wording.
 Tab names, button labels, the units menu, `"Feels like"`, `"just now"` and `"Today"` stay in
 the client: they are needed before any answer arrives, and each client has screens of its own.
 
-- **Web page:** a small typed dictionary with `t(key, params)`, matching how few dependencies
-  the page has, or Paraglide if checked keys and tree-shaking justify a dependency. Adding one
-  means regenerating the lockfile with `bin/lockfile.sh`.
+- **Web page:** Paraglide JS, the i18n library Svelte's own CLI sets up (`sv add paraglide`).
+  Its messages compile to typed functions, so a missing key fails `svelte-check`. Adding it
+  means regenerating the lockfile with `bin/lockfile.sh`, and the legacy build must still pass
+  `make test-legacy-browser`.
   - The language comes from `navigator.languages` by default. The menu offers an override,
     stored with the other preferences in `prefs.ts`.
   - `LOCALE` in `format.ts` becomes the chosen language's locale, with day-first dates and a
@@ -109,7 +110,7 @@ the client: they are needed before any answer arrives, and each client has scree
 - **Android:** `strings.xml` with its plural resources, and `java.time` with the chosen locale.
   Android 13's per-app language setting replaces the web page's menu override.
 - **One source for both** (optional): once both clients exist and share most of their
-  interface, generate the web dictionary and `strings.xml` from one ICU MessageFormat file. This
+  interface, generate Paraglide's messages and `strings.xml` from one source file. This
   is easiest if the Android app lives in this repository.
 
 ### Not translated
@@ -133,9 +134,8 @@ the client: they are needed before any answer arrives, and each client has scree
 
 ## Order
 
-1. Codes in the API, English only. This is an `/api/v1` change: keep the English fields beside
-   the codes for one release if anyone else reads the API, and note the change in the changelog.
-2. The page uses the codes and stops parsing prose.
+1. Codes in the API, English only, beside the English fields. *Done.*
+2. The page uses the codes and stops parsing prose. *Done.*
 3. Server-side catalogue, language negotiation and `text`.
 4. The page's own catalogue and language preference.
 5. First additional language.
