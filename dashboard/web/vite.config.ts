@@ -1,6 +1,6 @@
 // The dashboard's pages: built into dist/, which the dashboard API serves beside /api/v1.
-// `npm run dev` serves them with hot reloading and hands /api and /setup to an API running
-// locally on its default port.
+// The dev server (`make dashboard-dev`) serves them with hot reloading and hands /api and /setup
+// to an API running locally on its default port.
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { svelteTesting } from "@testing-library/svelte/vite";
 import { defineConfig } from "vitest/config";

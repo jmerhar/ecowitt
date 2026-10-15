@@ -506,9 +506,16 @@ make test         # the Python suites
 make test-js      # the admin page scripts' suite, with coverage (needs Node 22 or later)
 make web-install  # the dashboard page's dependencies, from its lockfile (needs Node 24)
 make test-web     # the dashboard page: type check and tests, with coverage
-make web-dev      # the dashboard page with hot reload, against a dashboard API on :2553
+make dashboard-dev SERVER=host   # the dashboard from the working copy, with host's InfluxDB
 make check        # lint, every suite, coverage
 ```
+
+`make dashboard-dev` serves the page at `http://localhost:5173` with hot reload and the API
+behind it on :2553, restarted when its Python changes. It forwards port 8181 on the server's
+loopback to the same port here over ssh while they run, and keeps its settings in
+`data-dashboard/`. On the first run, finish setup at `http://localhost:5173/setup` with the
+database at `http://127.0.0.1:8181` and a token that can read it. Leave out `SERVER` to use the
+database `dashboard.yaml` already names.
 
 The dashboard page's `package-lock.json` is written only by `make lockfile`, which installs in a
 Linux container (so it records the binaries CI and the image build need) and keeps every package

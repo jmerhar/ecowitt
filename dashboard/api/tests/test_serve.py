@@ -24,6 +24,17 @@ def test_main_serves_with_the_settings(monkeypatch: pytest.MonkeyPatch, tmp_path
     assert ran["app"].state.site.dashboard is None
 
 
+def test_the_app_can_be_built_from_the_environment(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("LOG_LEVEL", "DEBUG")
+    logging.getLogger("httpx2").setLevel(logging.NOTSET)
+    app = serve.from_environment()
+    assert app.state.site.dashboard is None
+    assert logging.getLogger("httpx2").level == logging.WARNING
+
+
 def test_chatty_libraries_are_quieted() -> None:
     serve.configure_logging("DEBUG")
     assert logging.getLogger("httpx2").level == logging.WARNING

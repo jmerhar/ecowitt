@@ -1,4 +1,4 @@
-.PHONY: help install web-install lockfile app-icons dev web-dev up down logs shell build test test-js test-web coverage lint check clean
+.PHONY: help install web-install lockfile app-icons dev dashboard-dev up down logs shell build test test-js test-web coverage lint check clean
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*##|^##@' $(MAKEFILE_LIST) | \
@@ -26,8 +26,8 @@ app-icons: ## Render the dashboard's home-screen icons from dashboard/web/icons/
 dev: ## Serve from the working copy with debug logging (ingest :2551, admin :2552)
 	DATA_DIR=data LOG_LEVEL=DEBUG .venv/bin/python -m ecowitt.collector
 
-web-dev: ## Serve the dashboard pages with hot reload; /api goes to a dashboard API on :2553
-	cd dashboard/web && npm run dev
+dashboard-dev: ## Serve the dashboard, reloading (page :5173, API :2553); SERVER=host for its InfluxDB
+	bin/dashboard-dev.sh $(SERVER)
 
 up: ## Build and start the stack
 	docker compose -f docker-compose.yml -f docker-compose.build.yml up --build -d

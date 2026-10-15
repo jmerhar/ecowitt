@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 import uvicorn
+from fastapi import FastAPI
 
 from ecowitt.dashboard.app import build_app
 from ecowitt.dashboard.settings import Settings
@@ -22,6 +23,14 @@ def configure_logging(level: str) -> None:
     configured = logging.getLevelNamesMapping()[level.upper()]
     for name in CHATTY_LOGGERS:
         logging.getLogger(name).setLevel(max(logging.WARNING, configured))
+
+
+def from_environment() -> FastAPI:
+    """The application with its settings from the environment, for a server that imports it by
+    name, as uvicorn's --reload does (`make dashboard-dev`)."""
+    settings = Settings()
+    configure_logging(settings.log_level)
+    return build_app(settings)
 
 
 def main(settings: Settings | None = None) -> None:

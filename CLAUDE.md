@@ -253,6 +253,7 @@ make test ARGS="tests/ingest/test_ingest.py -k slash"
 make test-js      # the admin page scripts' tests, with coverage (needs node)
 make web-install  # the dashboard page's node_modules, from the lockfile, via this machine's registry
 make test-web     # the dashboard page: svelte-check and Vitest with coverage
+make dashboard-dev SERVER=host   # page :5173 and API :2553, both reloading; host's InfluxDB on :8181
 make lockfile     # regenerate dashboard/web/package-lock.json (the only way to)
 make check        # lint + every suite with coverage
 bin/release.sh 2.9.0   # date the changelog's Unreleased section, commit and tag; then push both
