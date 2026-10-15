@@ -12,7 +12,7 @@ install: ## Create the shared virtualenv and install every project with its test
 	.venv/bin/pip install --quiet -e "core[test]" -e "collector[test]" -e "dashboard/api[test]"
 	@echo "Installed. 'make test' runs the suite, 'make dev' serves locally."
 
-web-install: ## Install the dashboard pages' node_modules from the lockfile (needs node)
+web-install: ## Install the dashboard pages' node_modules from the lockfile (needs Node 24)
 	cd dashboard/web && npm ci --no-audit --no-fund --registry="$$(cd / && npm config get registry)"
 
 lockfile: ## Regenerate the pages' package-lock.json (Linux binaries, public registry URLs)
@@ -23,31 +23,31 @@ app-icons: ## Render the dashboard's home-screen icons from dashboard/web/icons/
 
 ##@ Development
 
-dev: ## Serve from the working copy with debug logging (ingest :2551, admin :2552)
+dev: ## Serve the collector from the working copy, debug logging (ingest :2551, admin :2552)
 	DATA_DIR=data LOG_LEVEL=DEBUG .venv/bin/python -m ecowitt.collector
 
 dashboard-dev: ## Serve the dashboard, reloading (page :5173, API :2553); SERVER=host for its InfluxDB
 	bin/dashboard-dev.sh $(SERVER)
 
-up: ## Build and start the stack
-	docker compose -f docker-compose.yml -f docker-compose.build.yml up --build -d
-	@echo "Status page: http://127.0.0.1:2552"
+up: ## Build and start the stack, the dashboard included
+	docker compose -f docker-compose.yml -f docker-compose.build.yml --profile dashboard up --build -d
+	@echo "Status page: http://127.0.0.1:2552  Dashboard: http://127.0.0.1:2553"
 
 down: ## Stop the stack, keeping the data
-	docker compose down
+	docker compose --profile dashboard down
 
-logs: ## Follow the container's log
-	docker compose logs -f
+logs: ## Follow the containers' logs
+	docker compose --profile dashboard logs -f
 
-shell: ## Open a shell in the running container
+shell: ## Open a shell in the running collector container
 	docker compose exec ecowitt sh
 
-build: ## Build the image without starting anything
-	docker compose -f docker-compose.yml -f docker-compose.build.yml build
+build: ## Build both images without starting anything
+	docker compose -f docker-compose.yml -f docker-compose.build.yml --profile dashboard build
 
 ##@ Testing
 
-test: ## Run every project's suite (ARGS pass through to pytest, e.g. ARGS="-k slash")
+test: ## Run the Python suites (ARGS pass through to pytest, e.g. ARGS="-k slash")
 	bin/test-python.sh core $(ARGS)
 	bin/test-python.sh collector $(ARGS)
 	bin/test-python.sh dashboard/api $(ARGS)
@@ -58,13 +58,13 @@ test-js: ## Run the page script tests with coverage (needs node)
 test-web: ## Type-check and test the dashboard pages with coverage (after make web-install)
 	bin/test-web.sh
 
-coverage: ## Run the suite with coverage and print the summary
+coverage: ## Run every suite with coverage and print the summary
 	bin/coverage.sh --format md
 
-lint: ## ShellCheck, ruff, and the compose files
+lint: ## ShellCheck, ruff, the lockfile's registry, the versions, and the compose files
 	bin/lint.sh
 
-check: lint test coverage ## Everything (gate a commit on this; coverage runs every suite)
+check: lint coverage ## Everything (gate a commit on this; coverage runs every suite)
 
 ##@ Housekeeping
 

@@ -131,13 +131,9 @@ jobs:
       - name: Ruff
         run: bin/ci-ruff.sh
 
-      # Catches a typo in a compose file before a deployment does. The runner has Docker, so
-      # `config` resolves and validates all three combinations the README documents.
+      # The runner has Docker, so `config` resolves and validates each combination run.
       - name: Compose files parse
-        run: |
-          docker compose -f docker-compose.yml config -q
-          docker compose -f docker-compose.yml -f docker-compose.build.yml config -q
-          docker compose -f docker-compose.yml -f docker-compose.dev.yml config -q
+        run: bin/check-compose.sh
 
   coverage:
     needs: [test, test-js, test-web]
