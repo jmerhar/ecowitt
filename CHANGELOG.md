@@ -15,8 +15,8 @@ rules to be imported again. Either is listed under *Upgrading*.
 - The dashboard works in browsers without ES modules, down to Chrome 59 on an Android 4.4 tablet:
   they load a second build of the page, compiled down and polyfilled, and the stylesheet carries
   fallbacks for them. A page that cannot start says why instead of staying blank.
-- The dashboard's *Settings* menu offers *Full screen from the home screen*: the page, added to
-  a home screen from that browser afterwards, opens without the system's bars.
+- The dashboard's *Settings* menu offers *Full screen*: it fills the screen at once, and the page,
+  added to a home screen from that browser while it is on, opens without the system's bars.
 - The dashboard's *Settings* menu offers *Wind at: The sensor*, for a station whose wind is
   estimated at 10 m: the wind card, chart and records then lead with the measured wind, with the
   estimate beneath it on the card. The API's `wind` answer adds `measured_beaufort` and
