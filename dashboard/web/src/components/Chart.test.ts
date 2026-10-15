@@ -96,6 +96,17 @@ describe("Chart", () => {
     }
   });
 
+  it("follows the window's size where there is no ResizeObserver", () => {
+    delete (globalThis as { ResizeObserver?: unknown }).ResizeObserver;
+    const view = viewFor("temperature");
+    const shown = render(Chart, { view, data: align(view, series(), {}), symbols: SYMBOLS, timezone: "UTC" });
+    window.dispatchEvent(new Event("resize"));
+    expect(made[0].sizes).toHaveLength(1);
+    shown.unmount();
+    window.dispatchEvent(new Event("resize"));
+    expect(made[0].sizes).toHaveLength(1);
+  });
+
   it("draws points without a line and bars with uPlot's bar paths", () => {
     const wind = viewFor("wind");
     const points = align(wind, series({

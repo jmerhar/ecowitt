@@ -117,7 +117,14 @@
   });
 
   $effect(() => {
-    observer = new ResizeObserver(() => plot?.setSize({ width: element.clientWidth, height }));
+    const fit = () => plot?.setSize({ width: element.clientWidth, height });
+    // A browser without ResizeObserver follows the window instead, which is what changes a page
+    // left open on a tablet: turning it.
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", fit);
+      return () => window.removeEventListener("resize", fit);
+    }
+    observer = new ResizeObserver(fit);
     observer.observe(element);
     return () => observer?.disconnect();
   });
