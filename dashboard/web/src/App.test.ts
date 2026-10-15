@@ -183,19 +183,53 @@ describe("App", () => {
     shown.unmount();
   });
 
-  it("points the home screen at a full-screen app when asked, and remembers that", async () => {
+  it("fills the screen when asked, and points the home screen at a full-screen app", async () => {
+    // jsdom has no full screen: a stand-in for the browser's, which reports its changes.
+    const root = document.documentElement as HTMLElement & { requestFullscreen: () => Promise<void> };
+    const set = (element: Element | null) => {
+      Object.defineProperty(document, "fullscreenElement", { value: element, configurable: true });
+      document.dispatchEvent(new Event("fullscreenchange"));
+    };
+    Object.defineProperty(document, "fullscreenEnabled", { value: true, configurable: true });
+    root.requestFullscreen = vi.fn(async () => set(root));
+    document.exitFullscreen = vi.fn(async () => set(null));
     const link = Object.assign(document.createElement("link"), { rel: "manifest", href: "/manifest.webmanifest" });
     document.head.append(link);
     const storage = memory();
     const shown = render(App, { api: fakeApi(), storage });
-    await waitFor(() => expect(link.getAttribute("href")).toBe("/manifest.webmanifest"));
-    await fireEvent.click(await screen.findByLabelText("Full screen from the home screen"));
-    await waitFor(() => expect(link.getAttribute("href")).toBe("/manifest.webmanifest?display=fullscreen"));
-    expect(JSON.parse(storage.getItem("ecowitt-dashboard")!).fullscreen).toBe(true);
-    await fireEvent.click(screen.getByLabelText("Full screen from the home screen"));
-    await waitFor(() => expect(link.getAttribute("href")).toBe("/manifest.webmanifest"));
-    shown.unmount();
-    link.remove();
+    try {
+      const box = (await screen.findByLabelText("Full screen")) as HTMLInputElement;
+      expect(box.checked).toBe(false);
+      await fireEvent.click(box);
+      expect(root.requestFullscreen).toHaveBeenCalled();
+      await waitFor(() => expect(box.checked).toBe(true));
+      expect(link.getAttribute("href")).toBe("/manifest.webmanifest?display=fullscreen");
+      expect(JSON.parse(storage.getItem("ecowitt-dashboard")!).fullscreen).toBe(true);
+
+      // Left by the browser's own means, as a back gesture does: the home screen's choice stays.
+      set(null);
+      await waitFor(() => expect(box.checked).toBe(false));
+      expect(link.getAttribute("href")).toBe("/manifest.webmanifest?display=fullscreen");
+
+      await fireEvent.click(box);
+      await fireEvent.click(box);
+      expect(document.exitFullscreen).toHaveBeenCalled();
+      await waitFor(() => expect(link.getAttribute("href")).toBe("/manifest.webmanifest"));
+      expect(JSON.parse(storage.getItem("ecowitt-dashboard")!).fullscreen).toBe(false);
+    } finally {
+      shown.unmount();
+      link.remove();
+      set(null);
+      for (const name of ["fullscreenEnabled", "fullscreenElement"]) delete (document as unknown as Record<string, unknown>)[name];
+      delete (root as Partial<typeof root>).requestFullscreen;
+      delete (document as Partial<Document>).exitFullscreen;
+    }
+  });
+
+  it("offers no full screen where the browser has none", async () => {
+    render(App, { api: fakeApi(), storage: memory() });
+    await screen.findByLabelText("Theme");
+    expect(screen.queryByLabelText("Full screen")).not.toBeInTheDocument();
   });
 
   it("opens in the sun's last theme before the station's sun times arrive", async () => {

@@ -8,6 +8,7 @@
   import { ago, today, zoneCity } from "./lib/format";
   import { load, save, type Prefs } from "./lib/prefs";
   import { applyTheme, themeAt } from "./lib/theme";
+  import { canFullscreen, enterFullscreen, exitFullscreen, isFullscreen, onFullscreenChange } from "./lib/fullscreen";
   import NowCard from "./components/NowCard.svelte";
   import AiringCard from "./components/AiringCard.svelte";
   import WindCard from "./components/WindCard.svelte";
@@ -39,6 +40,9 @@
   let now = $state<Now | null>(null);
   let error = $state("");
   let clock = $state(new Date());
+  /** Whether the page fills the screen, which the browser may change on its own (a back gesture). */
+  let fullscreen = $state(isFullscreen());
+  let stopWatchingFullscreen: (() => void) | undefined;
   /** Counts the refreshes, so the charts and records fetch again on each as well. */
   let tick = $state(0);
   let timer: ReturnType<typeof setInterval> | undefined;
@@ -59,7 +63,8 @@
   const theme = $derived(themeAt(prefs.theme, now?.sun ?? null, clock, prefs.sunTheme));
 
   // The manifest a home screen reads when the page is added to it: one that opens the app
-  // without the system's bars, where the visitor asked for that.
+  // without the system's bars, while the visitor's last choice was full screen. Leaving full
+  // screen some other way keeps it, since that is how the browser's menu is reached to add it.
   $effect(() => {
     const href = prefs.fullscreen ? "/manifest.webmanifest?display=fullscreen" : "/manifest.webmanifest";
     document.querySelector('link[rel="manifest"]')?.setAttribute("href", href);
@@ -123,6 +128,13 @@
     void refresh();
   }
 
+  /** Fill the screen now, or leave it, and remember the choice for the home screen. */
+  function chooseFullscreen(on: boolean): void {
+    prefs.fullscreen = on;
+    if (on) enterFullscreen();
+    else exitFullscreen();
+  }
+
   function drill(view: string): void {
     prefs.view = view;
     document.getElementById("history")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -130,11 +142,13 @@
 
   onMount(() => {
     ticker = setInterval(() => (clock = new Date()), clockMs);
+    stopWatchingFullscreen = onFullscreenChange(() => (fullscreen = isFullscreen()));
     void start();
   });
   onDestroy(() => {
     clearInterval(timer);
     clearInterval(ticker);
+    stopWatchingFullscreen?.();
   });
 </script>
 
@@ -164,7 +178,7 @@
       <UnitsMenu {meta} chosen={prefs.units} onchange={chooseUnits}
         wind={estimatesWind ? prefs.wind : null} onwind={(w) => (prefs.wind = w)}
         theme={prefs.theme} ontheme={(t) => (prefs.theme = t)}
-        fullscreen={prefs.fullscreen} onfullscreen={(f) => (prefs.fullscreen = f)} />
+        fullscreen={canFullscreen() || fullscreen ? fullscreen : null} onfullscreen={chooseFullscreen} />
     {/if}
   </div>
 </header>

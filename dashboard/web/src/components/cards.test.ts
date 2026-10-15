@@ -501,13 +501,16 @@ describe("UnitsMenu", () => {
     expect(ontheme).toHaveBeenLastCalledWith("dark");
   });
 
-  it("offers to open the home-screen app full screen and reports the choice", async () => {
+  it("offers full screen where the browser can, showing whether the page is, and reports a choice", async () => {
     const onfullscreen = vi.fn();
-    render(UnitsMenu, { meta: META, chosen: {}, onchange: vi.fn(), fullscreen: false, onfullscreen });
-    const box = screen.getByLabelText("Full screen from the home screen") as HTMLInputElement;
+    const shown = render(UnitsMenu, { meta: META, chosen: {}, onchange: vi.fn(), fullscreen: false, onfullscreen });
+    const box = screen.getByLabelText("Full screen") as HTMLInputElement;
     expect(box.checked).toBe(false);
     await fireEvent.click(box);
     expect(onfullscreen).toHaveBeenLastCalledWith(true);
+    shown.unmount();
+    render(UnitsMenu, { meta: META, chosen: {}, onchange: vi.fn() });
+    expect(screen.queryByLabelText("Full screen")).not.toBeInTheDocument();
   });
 
   it("copes with a quantity the API lists no units for", () => {
