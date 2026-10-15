@@ -1,0 +1,12 @@
+meta {
+  name: Dashboard API
+  seq: 1
+}
+
+docs {
+  The public dashboard's read-only API, /api/v1. Answers are in the station's stored units unless
+  a unit parameter asks otherwise: enable them on a request (temperature c|f, pressure
+  hpa|inhg|mmhg, rain mm|in, wind kmh|ms|mph|kn, distance km|mi). `lang` (en, pt-PT) picks the
+  language of the words; without it, Accept-Language decides. Run Stations first: it sets
+  `station` to the first station the dashboard shows.
+}

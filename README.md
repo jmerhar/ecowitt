@@ -554,6 +554,7 @@ make test-js      # the admin page scripts' suite, with coverage (needs Node 22 
 make web-install  # the dashboard page's dependencies, from its lockfile (needs Node 24)
 make test-web     # the dashboard page: type check and tests, with coverage
 make test-legacy-browser   # the dashboard page's legacy build, loaded in Chromium 59 (needs Docker)
+make test-bruno   # the Bruno collection's dashboard requests, against the API over test data
 make dashboard-dev SERVER=host   # the dashboard from the working copy, with host's InfluxDB
 make grafana      # rewrite grafana/*.json from the templates after changing one
 make messages     # bring the dashboard API's translation catalogues up to date with its messages
@@ -566,6 +567,14 @@ loopback to the same port here over ssh while they run, and keeps its settings i
 `data-dashboard/`. On the first run, finish setup at `http://localhost:5173/setup` with the
 database at `http://127.0.0.1:8181` and a token that can read it. Leave out `SERVER` to use the
 database `dashboard.yaml` already names.
+
+`bruno/` is a [Bruno](https://www.usebruno.com) collection with a request for every read
+endpoint: the dashboard's API, its health, manifest and OpenAPI routes, and the admin listener's
+health, status, readings and Grafana files. Open the folder in Bruno and choose an environment:
+`local` is the default ports, where `make dev` and `make dashboard-dev` listen, and `example` a
+template for a deployment. Add your own deployment's environment beside them; `.gitignore` keeps
+it out of the repository. Every request asserts its answer, so `make test-bruno` runs the
+dashboard's against the API over the tests' example station, and CI does the same.
 
 The dashboard page's `package-lock.json` is written only by `make lockfile`, which installs in a
 Linux container (so it records the binaries CI and the image build need) and keeps every package

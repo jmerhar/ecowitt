@@ -130,6 +130,29 @@ jobs:
           PYTHON: python
         run: bin/test-legacy-browser.sh
 
+  # The Bruno collection's dashboard requests, with their assertions, against the API over the
+  # tests' example station.
+  test-bruno:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Install
+        run: pip install -e core -e "dashboard/api[test]"
+
+      - name: Run the collection
+        env:
+          PYTHON: python
+        run: bin/test-bruno.sh
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -234,7 +257,7 @@ jobs:
     # Only after everything is green: the image a deployment pulls is never built from code
     # whose tests did not pass. A pull request builds both images without pushing them, since
     # nothing else builds the dashboard's page or installs either image's dependencies.
-    needs: [coverage, lint, test-legacy-browser]
+    needs: [coverage, lint, test-legacy-browser, test-bruno]
     runs-on: ubuntu-latest
     permissions:
       contents: read

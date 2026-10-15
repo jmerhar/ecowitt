@@ -1,0 +1,15 @@
+meta {
+  name: Error - unknown station
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{dashboard_url}}/api/v1/stations/no-such-station/now
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 404
+}

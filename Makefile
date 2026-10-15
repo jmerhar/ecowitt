@@ -1,4 +1,4 @@
-.PHONY: help install web-install lockfile app-icons grafana messages dev dashboard-dev up down logs shell build test test-js test-web test-legacy-browser coverage lint check clean
+.PHONY: help install web-install lockfile app-icons grafana messages dev dashboard-dev up down logs shell build test test-js test-web test-legacy-browser test-bruno coverage lint check clean
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*##|^##@' $(MAKEFILE_LIST) | \
@@ -66,6 +66,9 @@ test-web: ## Type-check and test the dashboard pages with coverage (after make w
 
 test-legacy-browser: ## Load the pages' legacy build in Chromium 59 (needs Docker; slow off x64)
 	bin/test-legacy-browser.sh
+
+test-bruno: ## Run the Bruno collection's dashboard requests against the API over test data (needs Node)
+	bin/test-bruno.sh
 
 coverage: ## Run every suite with coverage and print the summary
 	bin/coverage.sh --format md

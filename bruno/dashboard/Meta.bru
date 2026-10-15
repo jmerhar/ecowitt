@@ -1,0 +1,21 @@
+meta {
+  name: Meta
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{dashboard_url}}/api/v1/meta?lang={{lang}}
+  body: none
+  auth: none
+}
+
+params:query {
+  lang: {{lang}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.metrics: isArray
+  res.body.ranges: isArray
+}

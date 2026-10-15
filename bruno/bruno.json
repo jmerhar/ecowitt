@@ -1,0 +1,6 @@
+{
+  "version": "1",
+  "name": "Ecowitt Server",
+  "type": "collection",
+  "ignore": ["node_modules", ".git"]
+}

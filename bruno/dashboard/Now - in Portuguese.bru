@@ -1,0 +1,24 @@
+meta {
+  name: Now - in Portuguese
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{dashboard_url}}/api/v1/stations/{{station}}/now?lang=pt-PT
+  body: none
+  auth: none
+}
+
+params:query {
+  lang: pt-PT
+}
+
+assert {
+  res.status: eq 200
+  res.body.summary: isString
+}
+
+docs {
+  The same answer with its words in European Portuguese.
+}

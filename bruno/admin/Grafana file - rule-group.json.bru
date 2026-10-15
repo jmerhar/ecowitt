@@ -1,0 +1,15 @@
+meta {
+  name: Grafana file - rule-group.json
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{admin_url}}/grafana/rule-group.json
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+}

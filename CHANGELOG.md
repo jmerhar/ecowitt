@@ -37,6 +37,9 @@ rules to be imported again. Either is listed under *Upgrading*.
   `?lang=pt-PT` or its `Accept-Language`, and each answer says its language in
   `Content-Language`; error messages stay in English. Added to a home screen, the app is
   described in the browser's language.
+- `bruno/` holds a [Bruno](https://www.usebruno.com) collection with a request for every read
+  endpoint of the dashboard and the admin listener, each asserting its answer, with `local` and
+  `example` environments. `make test-bruno` and CI run the dashboard's against test data.
 
 ### Changed
 

@@ -140,6 +140,9 @@ dashboard/Dockerfile  builds the page in a Node stage and serves it from the API
 grafana/          weather.json, the dashboard, and alerts.json, the alert rules: the collector's
                   templates rendered for the default units (make grafana); a renamed table or
                   field fails tests/grafana rather than blanking a panel or silencing an alert
+bruno/            the Bruno collection: a request, with assertions, for every read endpoint of
+                  the dashboard and the admin listener; environments/ keeps only local and example
+                  (tests/test_bruno.py in dashboard/api and collector/tests/server guard both)
 TODO/             one note per planned feature; delete a note when its feature ships
 bin/              every script the Makefile and CI run; its Python is linted with the shared
                   ruff.toml (bin/ci-ruff.sh). lockfile.sh / check-lockfile.sh write and guard
@@ -322,6 +325,7 @@ make test-js      # the admin page scripts' tests, with coverage (needs node)
 make web-install  # the dashboard page's node_modules, from the lockfile, via this machine's registry
 make test-web     # the dashboard page: svelte-check and Vitest with coverage
 make test-legacy-browser   # the page's legacy build in Chromium 59 (Docker; slow off x64)
+make test-bruno   # the Bruno collection's dashboard requests against the API over test data
 make dashboard-dev SERVER=host   # page :5173 and API :2553, both reloading; host's InfluxDB on :8181
 make lockfile     # regenerate dashboard/web/package-lock.json (the only way to)
 make grafana      # rewrite grafana/*.json after changing a template

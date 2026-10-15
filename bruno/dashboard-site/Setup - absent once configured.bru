@@ -1,0 +1,15 @@
+meta {
+  name: Setup - absent once configured
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{dashboard_url}}/setup
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 404
+}

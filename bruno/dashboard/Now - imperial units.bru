@@ -1,0 +1,26 @@
+meta {
+  name: Now - imperial units
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{dashboard_url}}/api/v1/stations/{{station}}/now?temperature=f&pressure=inhg&rain=in&wind=mph&distance=mi&lang={{lang}}
+  body: none
+  auth: none
+}
+
+params:query {
+  temperature: f
+  pressure: inhg
+  rain: in
+  wind: mph
+  distance: mi
+  lang: {{lang}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.units.temperature: eq f
+  res.body.units.wind: eq mph
+}

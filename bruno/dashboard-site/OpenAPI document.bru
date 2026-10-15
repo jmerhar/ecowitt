@@ -1,0 +1,16 @@
+meta {
+  name: OpenAPI document
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{dashboard_url}}/api/v1/openapi.json
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.paths: isDefined
+}

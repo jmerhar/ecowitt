@@ -34,3 +34,8 @@ coverage-upload/
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Bruno: only the collection's own environments; a deployment's stays on the machine that uses it
+bruno/environments/*
+!bruno/environments/local.bru
+!bruno/environments/example.bru

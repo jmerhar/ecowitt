@@ -1,0 +1,21 @@
+meta {
+  name: Extremes - this month
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{dashboard_url}}/api/v1/stations/{{station}}/extremes?period=month&lang={{lang}}
+  body: none
+  auth: none
+}
+
+params:query {
+  period: month
+  lang: {{lang}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.period: eq month
+}

@@ -1,0 +1,20 @@
+meta {
+  name: Readings
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{admin_url}}/api/readings
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body.stations: isArray
+}
+
+docs {
+  Each station's latest report, in the operator's units, with its warnings.
+}

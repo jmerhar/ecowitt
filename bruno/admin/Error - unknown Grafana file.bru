@@ -1,0 +1,15 @@
+meta {
+  name: Error - unknown Grafana file
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{admin_url}}/grafana/nope.json
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 404
+}

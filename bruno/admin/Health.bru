@@ -1,0 +1,16 @@
+meta {
+  name: Health
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{admin_url}}/healthz
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body.ingest_serving: isBoolean
+}

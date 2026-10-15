@@ -1,0 +1,20 @@
+meta {
+  name: Error - unknown range
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{dashboard_url}}/api/v1/stations/{{station}}/series?metrics=outdoor.temperature&range=2w
+  body: none
+  auth: none
+}
+
+params:query {
+  metrics: outdoor.temperature
+  range: 2w
+}
+
+assert {
+  res.status: eq 422
+}
