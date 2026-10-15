@@ -1,6 +1,8 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { chooseLanguage, chosenLanguage, intlLocale, LANGUAGE_KEY, match, useLanguageStrategies } from "./language";
-import { getLocale } from "../paraglide/runtime.js";
+import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
+import { chooseLanguage, chosenLanguage, intlLocale, LANGUAGE_KEY, match, settleLanguage, useLanguageStrategies } from "./language";
+import { browserStorage, load, save, DEFAULTS } from "./prefs";
+import { getLocale, overwriteGetLocale } from "../paraglide/runtime.js";
+import { m } from "../paraglide/messages.js";
 
 function memory(entries: Record<string, string> = {}): Storage {
   const data = new Map(Object.entries(entries));
@@ -89,6 +91,46 @@ describe("the page's language", () => {
     const reload = vi.fn();
     chooseLanguage("pt-PT", refusing, reload);
     expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("follows the browser's own languages when given none", () => {
+    const languages = vi.spyOn(navigator, "languages", "get").mockReturnValue(["pt", "en"]);
+    useLanguageStrategies();
+    expect(getLocale()).toBe("pt-PT");
+    languages.mockRestore();
+  });
+
+  it("stays settled for as long as the page is open", () => {
+    const pageLocale = getLocale;
+    onTestFinished(() => overwriteGetLocale(pageLocale));
+    useLanguageStrategies(() => ["en"]);
+    expect(settleLanguage()).toBe("en");
+    localStorage.setItem(LANGUAGE_KEY, "pt-PT");
+    expect([getLocale(), m.settings()]).toEqual(["en", "Settings"]);
+  });
+
+  it("starts, in the browser's language, where the browser refuses its storage", () => {
+    const original = Object.getOwnPropertyDescriptor(window, "localStorage")!;
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      get: () => {
+        throw new DOMException("denied", "SecurityError");
+      },
+    });
+    try {
+      const reload = vi.fn();
+      expect(browserStorage()).toBeUndefined();
+      useLanguageStrategies(() => ["pt"]);
+      expect([getLocale(), m.settings()]).toEqual(["pt-PT", "Definições"]);
+      expect(chosenLanguage()).toBeNull();
+      chooseLanguage("pt-PT", undefined, reload);
+      expect(reload).toHaveBeenCalled();
+      expect(load()).toEqual(DEFAULTS);
+      expect(() => save(DEFAULTS)).not.toThrow();
+    } finally {
+      // Before afterEach, which clears the stored choice.
+      Object.defineProperty(window, "localStorage", original);
+    }
   });
 
   it("writes dates and numbers with the day first in English, and the Portuguese way in Portuguese", () => {

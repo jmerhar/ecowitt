@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { Api, ApiError } from "./api";
+import { speaking } from "../testing";
 
 function answering(status: number, body: unknown, text = false) {
   return vi.fn(async (..._: unknown[]) =>
@@ -60,6 +61,14 @@ describe("Api", () => {
   it("says so when the service cannot be reached", async () => {
     const api = new Api("/api/v1", vi.fn(async () => { throw new TypeError("offline"); }) as never);
     await expect(api.stations()).rejects.toMatchObject({ status: 0 });
+  });
+
+  it("says it cannot reach the service in the page's language", async () => {
+    speaking("pt-PT");
+    const api = new Api("/api/v1", vi.fn(async () => { throw new TypeError("offline"); }) as never);
+    await expect(api.stations()).rejects.toMatchObject({ message: "Não é possível contactar o serviço meteorológico." });
+    const proxy = new Api("/api/v1", answering(502, "<html>", true) as unknown as typeof fetch);
+    await expect(proxy.stations()).rejects.toMatchObject({ message: "O serviço meteorológico respondeu com o erro 502." });
   });
 
   it("uses the page's own fetch by default", async () => {

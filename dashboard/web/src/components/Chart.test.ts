@@ -48,7 +48,8 @@ describe("Chart", () => {
     expect(columns[0]).toEqual([100, 400, 700]);
     expect(options.bands).toEqual([{ series: [1, 2], fill: expect.stringMatching(/33$/) }]);
     expect(options.series.map((s: { label?: string }) => s.label)).toEqual([
-      undefined, "Temperature high", "Temperature low", "Temperature", "outdoor.dew_point",
+      // The time row is named by the page, not left to uPlot's English default.
+      "Time", "Temperature high", "Temperature low", "Temperature", "outdoor.dew_point",
     ]);
     expect(options.series[1].stroke).toBe("transparent");
     expect(options.axes[1].values(null, [10, 20])).toEqual(["10 °C", "20 °C"]);

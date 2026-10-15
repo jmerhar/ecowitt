@@ -49,8 +49,21 @@ export const DEFAULTS: Prefs = {
 
 const KEY = "ecowitt-dashboard";
 
+/**
+ * The browser's storage, or undefined where it refuses it: with cookies blocked, merely reading
+ * window.localStorage throws, which as a default argument would throw before any try around its
+ * use.
+ */
+export function browserStorage(): Storage | undefined {
+  try {
+    return globalThis.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
 /** The saved choices, each missing or malformed one replaced by its default. */
-export function load(storage: Storage | undefined = globalThis.localStorage): Prefs {
+export function load(storage: Storage | undefined = browserStorage()): Prefs {
   try {
     const saved = JSON.parse(storage?.getItem(KEY) ?? "{}") as Partial<Prefs>;
     if (typeof saved !== "object" || saved === null) return { ...DEFAULTS };
@@ -80,7 +93,7 @@ function roomSort(saved: unknown): RoomSort | null {
 }
 
 /** Remember the choices, if this browser lets the page. */
-export function save(prefs: Prefs, storage: Storage | undefined = globalThis.localStorage): void {
+export function save(prefs: Prefs, storage: Storage | undefined = browserStorage()): void {
   try {
     storage?.setItem(KEY, JSON.stringify(prefs));
   } catch {

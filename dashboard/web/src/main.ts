@@ -1,9 +1,8 @@
 import { mount } from "svelte";
 import App from "./App.svelte";
-import { useLanguageStrategies } from "./lib/language";
-import { getLocale } from "./paraglide/runtime.js";
+import { settleLanguage, useLanguageStrategies } from "./lib/language";
 import "./app.css";
 
 useLanguageStrategies();
-document.documentElement.lang = getLocale();
+settleLanguage();
 mount(App, { target: document.getElementById("app")! });

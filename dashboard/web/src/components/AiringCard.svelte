@@ -5,7 +5,7 @@
    */
   import DoorOpenIcon from "@lucide/svelte/icons/door-open";
   import type { Notice, HouseAiring } from "../lib/api";
-  import { coming, quantity } from "../lib/format";
+  import { coming, list, quantity } from "../lib/format";
   import { m } from "../paraglide/messages.js";
 
   type Props = {
@@ -53,7 +53,7 @@
   </div>
   <p>
     {#if airing.advice === "open"}
-      {m.airing_explain_open({ rooms: airing.rooms.join(", ") })}
+      {m.airing_explain_open({ rooms: list(airing.rooms) })}
     {:else if airing.advice === "keep_closed"}
       {m.airing_explain_keep_closed({ damp: DAMP_PCT })}
     {:else if change === "up"}

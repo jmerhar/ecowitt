@@ -272,5 +272,9 @@
         "count=*": "{count} precisam de atenção"
       }
     }
-  ]
+  ],
+  "error_unreachable": "Não é possível contactar o serviço meteorológico.",
+  "error_status": "O serviço meteorológico respondeu com o erro {status}.",
+  "chart_time": "Hora",
+  "list_and": "{items} e {last}"
 }

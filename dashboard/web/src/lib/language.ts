@@ -9,7 +9,15 @@
  * only `chooseLanguage` keeps a choice.
  */
 
-import { baseLocale, defineCustomClientStrategy, getLocale, locales, type Locale } from "../paraglide/runtime.js";
+import { browserStorage } from "./prefs";
+import {
+  baseLocale,
+  defineCustomClientStrategy,
+  getLocale,
+  locales,
+  overwriteGetLocale,
+  type Locale,
+} from "../paraglide/runtime.js";
 
 /** Where the visitor's choice of language is kept. */
 export const LANGUAGE_KEY = "ecowitt-dashboard-language";
@@ -43,7 +51,7 @@ export function match(wanted: readonly string[], available: readonly string[] = 
  */
 export function useLanguageStrategies(
   languages: () => readonly string[] = () => navigator.languages ?? [],
-  storage: () => Storage | undefined = () => globalThis.localStorage,
+  storage: () => Storage | undefined = browserStorage,
 ): void {
   defineCustomClientStrategy("custom-choice", {
     getLocale: () => chosenLanguage(storage()) ?? undefined,
@@ -56,7 +64,7 @@ export function useLanguageStrategies(
 }
 
 /** The visitor's own choice of language, or null when the page follows the browser. */
-export function chosenLanguage(storage: Storage | undefined = globalThis.localStorage): Locale | null {
+export function chosenLanguage(storage: Storage | undefined = browserStorage()): Locale | null {
   try {
     const saved = storage?.getItem(LANGUAGE_KEY);
     return saved && (locales as readonly string[]).includes(saved) ? (saved as Locale) : null;
@@ -71,7 +79,7 @@ export function chosenLanguage(storage: Storage | undefined = globalThis.localSt
  */
 export function chooseLanguage(
   language: Locale | null,
-  storage: Storage | undefined = globalThis.localStorage,
+  storage: Storage | undefined = browserStorage(),
   reload: () => void,
 ): void {
   try {
@@ -82,6 +90,18 @@ export function chooseLanguage(
     return;
   }
   reload();
+}
+
+/**
+ * Settles the page's language for as long as it is open, and returns it. Paraglide asks its
+ * strategies again on every message, so without this a choice made in another tab would turn
+ * this page's words over while its API answers and `<html lang>` stayed as they were, and each
+ * message would read the browser's storage.
+ */
+export function settleLanguage(): Locale {
+  const language = getLocale();
+  overwriteGetLocale(() => language);
+  return language;
 }
 
 /** The locale Intl formats dates and numbers in, for the page's language. */

@@ -3,6 +3,8 @@
  * and a client that fetches them. Values arrive converted and rounded; times are UTC.
  */
 
+import { m } from "../paraglide/messages.js";
+
 export type Units = {
   temperature: string;
   pressure: string;
@@ -366,10 +368,10 @@ export class Api {
     try {
       response = await this.fetcher(url, { headers: { Accept: "application/json" } });
     } catch {
-      throw new ApiError(0, "The weather service cannot be reached.");
+      throw new ApiError(0, m.error_unreachable());
     }
     if (!response.ok) {
-      let detail = `The weather service answered ${response.status}.`;
+      let detail: string = m.error_status({ status: response.status });
       try {
         const body = (await response.json()) as { detail?: unknown };
         if (typeof body.detail === "string") detail = body.detail;

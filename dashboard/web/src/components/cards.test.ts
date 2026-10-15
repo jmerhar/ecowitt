@@ -389,7 +389,7 @@ describe("highlights", () => {
 
 describe("AiringCard", () => {
   it.each([
-    [{ advice: "open", rooms: ["Bathroom", "Kitchen"] }, "Good time to air", "warmed indoors, it would dry Bathroom, Kitchen."],
+    [{ advice: "open", rooms: ["Bathroom", "Kitchen"] }, "Good time to air", "warmed indoors, it would dry Bathroom and Kitchen."],
     [{ advice: "keep_closed", rooms: [] }, "Keep the windows closed", "take the rooms to 65% or more, where damp starts."],
     [{ advice: "no_need", rooms: [] }, "No need to air", "dry enough."],
     [{ advice: "no_need", rooms: [], humidity_after: null }, "No need to air", "dry enough."],
@@ -491,6 +491,21 @@ describe("in European Portuguese", () => {
     const trend = { change: -3, hours: 2.5, code: "falling" as const, tendency: "a descer" };
     render(PressureCard, { pressure: { ...now().pressure!, trend }, units: UNITS, symbols: SYMBOLS, onselect: vi.fn() });
     expect(screen.getByText("-3,0 hPa em 2,5 h", { exact: false })).toBeInTheDocument();
+  });
+
+  it("puts each time at one in the morning with its own article", () => {
+    speaking("pt-PT");
+    const base = now();
+    const sky = { code: 3, description: "Céu encoberto", is_day: false, cloud_cover: 90, time: "2026-10-10T00:15:00Z" };
+    const outdoor = { ...base.outdoor!, low: { value: 9.5, time: "2026-10-10T00:20:00Z" }, high: { value: 21, time: "2026-10-10T13:00:00Z" } };
+    const card = render(NowCard, { now: now({ sky, outdoor }), symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
+    expect(card.container.querySelector(".sky")).toHaveAttribute("title", "Do modelo meteorológico, para a 01:15");
+    expect(screen.getByText(/↓/).closest("span")).toHaveAttribute("title", "à 01:20");
+    expect(screen.getByText(/↑/).closest("span")).toHaveAttribute("title", "às 14:00");
+    card.unmount();
+    const wind = { ...base.wind!, max_gust_today: { value: 52, time: "2026-10-10T00:30:00Z" } };
+    render(WindCard, { wind, units: UNITS, symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
+    expect(screen.getByText("52.0 km/h à 01:30".replace(".", ","))).toBeInTheDocument();
   });
 
   it("names the settings in the language", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  ago, axisLabels, clock, coming, dayLabel, duration, hourOf, moment, number, quantity, today, uvRisk, whichDay, whole, zoneCity,
+  ago, axisLabels, clock, coming, dayLabel, duration, hourOf, list, moment, number, quantity, today, uvRisk, whichDay, whole, zoneCity,
 } from "./format";
 import { speaking } from "../testing";
 import { SYMBOLS } from "../testing";
@@ -153,6 +153,8 @@ describe("in European Portuguese", () => {
   it("names a time to come with the article its hour takes", () => {
     speaking("pt-PT");
     expect(coming("2026-10-10T17:00:00Z", "Europe/Lisbon", now)).toBe("hoje às 18:00");
+    expect(coming("2026-10-10T00:10:00Z", "Europe/Lisbon", new Date("2026-10-09T23:30:00Z"))).toBe("hoje à 01:10");
+    expect(coming("2026-10-13T00:10:00Z", "Europe/Lisbon", now)).toMatch(/^ter[^,]*, 13\/10 à 01:10$/);
     expect(coming("2026-10-11T00:30:00Z", "Europe/Lisbon", now)).toBe("amanhã à 01:30");
     expect(coming("2026-10-10T23:30:00Z", "Europe/Lisbon", now)).toBe("amanhã às 00:30");
     expect(coming("2026-10-13T05:00:00Z", "Europe/Lisbon", now)).toMatch(/^ter[^,]*, 13\/10 às 06:00$/);
@@ -164,6 +166,19 @@ describe("in European Portuguese", () => {
     expect(dayLabel("2026-10-11T10:00:00Z", "Europe/Lisbon", now)).toBe("Amanhã");
     expect(number(2.4, "mm")).toBe("2,4");
     expect(uvRisk(9)).toBe("Muito elevado");
+  });
+});
+
+describe("list", () => {
+  it("lists names as a sentence does, in the page's language", () => {
+    expect([list([]), list(["Attic"]), list(["Attic", "Kitchen"]), list(["Attic", "Kitchen", "Hall"])]).toEqual([
+      "", "Attic", "Attic and Kitchen", "Attic, Kitchen and Hall",
+    ]);
+  });
+
+  it("joins them with the language's own word", () => {
+    speaking("pt-PT");
+    expect(list(["Sótão", "Cozinha", "Hall"])).toBe("Sótão, Cozinha e Hall");
   });
 });
 

@@ -158,13 +158,33 @@ export function coming(iso: string, timezone: string, now: Date = new Date()): s
 
 /** Whether a moment falls on today, tomorrow or another day, by the station's calendar. */
 export function whichDay(iso: string, timezone: string, now: Date = new Date()): "today" | "tomorrow" | "other" {
-  const date = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(d);
-  const day = date(new Date(iso));
-  const today = date(now);
+  const day = calendarDate(new Date(iso), timezone);
+  const today = calendarDate(now, timezone);
   if (day === today) return "today";
   // The calendar's next date, not the date a day from now: a day can be 23 or 25 hours long.
-  const [y, m, d] = today.split("-").map(Number);
-  return day === new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10) ? "tomorrow" : "other";
+  const [y, mo, d] = today.split("-").map(Number);
+  return day === new Date(Date.UTC(y, mo - 1, d + 1)).toISOString().slice(0, 10) ? "tomorrow" : "other";
+}
+
+/**
+ * A moment's date in a time zone, as YYYY-MM-DD: read from its parts, not from any locale's
+ * pattern, which can change with a browser's locale data.
+ */
+function calendarDate(moment: Date, timezone: string): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: timezone,
+  }).formatToParts(moment);
+  const part = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
+/** Names as a sentence lists them: "Kitchen", "Kitchen and Bathroom", "Attic, Kitchen and Bathroom". */
+export function list(names: string[]): string {
+  if (names.length < 2) return names.join("");
+  return m.list_and({ items: names.slice(0, -1).join(", "), last: names[names.length - 1] });
 }
 
 /** A day at the station, as a forecast names it: "Today", "Tomorrow", or "Thu 15 Oct". */

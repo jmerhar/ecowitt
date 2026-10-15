@@ -4,7 +4,7 @@ import History from "./History.svelte";
 import Records from "./Records.svelte";
 import Forecast from "./Forecast.svelte";
 import { ApiError } from "../lib/api";
-import { extremes, fakeApi, forecast, META, series, SYMBOLS } from "../testing";
+import { extremes, fakeApi, forecast, META, series, speaking, SYMBOLS } from "../testing";
 
 vi.mock("./Chart.svelte", async () => ({ default: (await import("./ChartStub.svelte")).default }));
 
@@ -208,6 +208,14 @@ describe("Records", () => {
 
 describe("Forecast", () => {
   const props = { station: "Home", units: {}, timezone: "Europe/Lisbon", symbols: SYMBOLS };
+
+  it("says when the forecast was made with the article its hour takes", async () => {
+    speaking("pt-PT");
+    const api = fakeApi();
+    api.forecast.mockResolvedValue(forecast({ issued: "2026-10-10T00:05:00Z" }));
+    render(Forecast, { ...props, api });
+    expect(await screen.findByText(/, emitida à 01:05$/)).toBeInTheDocument();
+  });
 
   it("shows the coming hours and the days, in the station's time", async () => {
     const api = fakeApi();

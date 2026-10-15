@@ -7,6 +7,7 @@
   import { spec } from "../lib/chart";
   import { axisLabels, moment } from "../lib/format";
   import { intlLocale } from "../lib/language";
+  import { m } from "../paraglide/messages.js";
 
   type Props = {
     view: View;
@@ -56,8 +57,12 @@
         ...built.axes.map((a) => axis(a.scale, a.unit, a.scale === "left" ? 3 : 1)),
       ],
       series: [
-        // The legend's time row, day first with a 24-hour clock like the axis.
-        { value: (_: uPlot, ts: number | null) => (ts === null ? "–" : moment(new Date(ts * 1000).toISOString(), timezone)) },
+        // The legend's time row, day first with a 24-hour clock like the axis, named in the
+        // page's language rather than uPlot's own "Time".
+        {
+          label: m.chart_time(),
+          value: (_: uPlot, ts: number | null) => (ts === null ? "–" : moment(new Date(ts * 1000).toISOString(), timezone)),
+        },
         ...built.series.map((s) => ({
           label: s.label,
           scale: s.scale,

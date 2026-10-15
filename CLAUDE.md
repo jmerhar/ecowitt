@@ -134,7 +134,7 @@ dashboard/web/    the dashboard's page: Svelte 5, Vite, TypeScript, uPlot; a thi
   icons/          app-icon.svg, the home-screen icon; bin/app-icons.sh renders public/icons/*.png
   build/          legacy-css.ts, the Vite plugin that gives the stylesheet its legacy fallbacks;
                   paraglide.ts, how messages compile, and compile-messages.ts, which writes them
-                  for svelte-check
+                  for svelte-check (bin/test-web.sh and `npm run check` run it first)
   legacy-browser/ the Chromium 59 image and the check bin/test-legacy-browser.sh runs in it
 dashboard/Dockerfile  builds the page in a Node stage and serves it from the API's image
 grafana/          weather.json, the dashboard, and alerts.json, the alert rules: the collector's
@@ -288,7 +288,10 @@ CHANGELOG.md      every release's notes; new work goes under `## Unreleased`
   in a module-level constant is the message function itself (`m.view_wind`), called when drawn:
   constants are evaluated before `main.ts` registers the strategies. Counts match exactly
   (`count=1`) and times carry their `hour` for Portuguese's "à 01:00"; Paraglide's `plural`
-  selector needs `Intl.PluralRules`, which Chrome 59 lacks. A changed language reloads the page.
+  selector needs `Intl.PluralRules`, which Chrome 59 lacks. `main.ts` settles the language once
+  (`settleLanguage`), so the page, its API answers and `<html lang>` agree until it reloads, which
+  choosing a language does. Storage is read through `prefs.browserStorage()`: with cookies blocked,
+  merely reading `window.localStorage` throws.
 - **Adding a language touches both halves.** For the page: its locale in
   `project.inlang/settings.json`, a `messages/<locale>.json` with every message, and its name and
   Intl locale in `language.ts`. For the API: `bin/messages.py --add <locale>`, then translate the

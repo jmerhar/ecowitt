@@ -73,6 +73,14 @@ describe("App", () => {
     expect(((await screen.findByLabelText("Idioma")) as HTMLSelectElement).value).toBe("pt-PT");
   });
 
+  it("tells the browser the page's language", async () => {
+    speaking("pt-PT");
+    onTestFinished(() => document.documentElement.setAttribute("lang", "en"));
+    render(App, { api: fakeApi(), storage: memory() });
+    await screen.findByText("Exterior");
+    expect(document.documentElement.lang).toBe("pt-PT");
+  });
+
   it("asks the API for its words in the page's language", async () => {
     speaking("pt-PT");
     const fetcher = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("[]"));

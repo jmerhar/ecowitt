@@ -152,6 +152,8 @@
   }
 
   onMount(() => {
+    // What a screen reader speaks the page in, and what the browser offers to translate from.
+    document.documentElement.lang = getLocale();
     ticker = setInterval(() => (clock = new Date()), clockMs);
     stopWatchingFullscreen = onFullscreenChange(() => (fullscreen = isFullscreen()));
     void start();

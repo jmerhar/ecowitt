@@ -265,5 +265,9 @@
         "count=*": "{count} need attention"
       }
     }
-  ]
+  ],
+  "error_unreachable": "The weather service cannot be reached.",
+  "error_status": "The weather service answered {status}.",
+  "chart_time": "Time",
+  "list_and": "{items} and {last}"
 }
