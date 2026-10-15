@@ -469,6 +469,10 @@ msgctxt "sensor"
 msgid "Wind sensor"
 msgstr "Sensor de vento"
 
+msgctxt "home-screen app"
+msgid "Current conditions and history from the weather station"
+msgstr "Condições atuais e histórico da estação meteorológica"
+
 #. {clock} is a time of day, 00:00 to 23:59. The plural forms are chosen by its hour, for a
 #. language whose words agree with it.
 #, python-brace-format

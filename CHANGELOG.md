@@ -34,8 +34,9 @@ rules to be imported again. Either is listed under *Upgrading*.
   language, or the *Language* chosen in its *Settings* menu, with dates and numbers to match. The
   API answers in either: its notices, summary, sky, wind and compass names, metric labels and
   default sensor names, with numbers written the Portuguese way. A request chooses with
-  `?lang=pt-PT` or its `Accept-Language`, and every answer says its language in
-  `Content-Language`.
+  `?lang=pt-PT` or its `Accept-Language`, and each answer says its language in
+  `Content-Language`; error messages stay in English. Added to a home screen, the app is
+  described in the browser's language.
 
 ### Changed
 

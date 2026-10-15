@@ -32,7 +32,7 @@ from ecowitt.core.ratelimit import RateLimiter
 from ecowitt.core.store import settings as store_settings
 from ecowitt.core.store.query import Reader, ReadError
 from ecowitt.core.units import DistanceUnit, PressureUnit, RainUnit, TemperatureUnit, WindUnit
-from ecowitt.dashboard import i18n, models, siteconfig
+from ecowitt.dashboard import i18n, messages, models, siteconfig
 from ecowitt.dashboard.catalogue import METRICS
 from ecowitt.dashboard.i18n import Language
 from ecowitt.dashboard.service import PERIODS, RANGES, Dashboard, UnknownStation
@@ -196,16 +196,25 @@ def build_app(
     index_page = settings.web_dir / "index.html"
 
     @app.get("/manifest.webmanifest", include_in_schema=False)
-    async def manifest(display: Display = "standalone") -> Response:
+    async def manifest(
+        display: Display = "standalone",
+        accept_language: Annotated[str | None, Header()] = None,
+    ) -> Response:
         """What a phone or tablet needs to add the page to its home screen as an app, named for
         the site. Served once set up, since until then the page is the setup form. The page asks
-        for `display=fullscreen` where the visitor wants the app without the system's bars."""
+        for `display=fullscreen` where the visitor wants the app without the system's bars. The
+        browser fetches it itself, so its description is in the browser's language."""
         if site.dashboard is None:
             raise HTTPException(404)
+        language = i18n.negotiate(None, accept_language)
         return JSONResponse(
-            _manifest(site.dashboard.title, display),
+            _manifest(site.dashboard.title, display, language),
             media_type="application/manifest+json",
-            headers={"Cache-Control": "public, max-age=3600"},
+            headers={
+                "Cache-Control": "public, max-age=3600",
+                "Content-Language": language.tag,
+                "Vary": "Accept-Language",
+            },
         )
 
     @app.get("/", include_in_schema=False)
@@ -319,13 +328,17 @@ APP_BACKGROUND = "#16181a"
 Display = Literal["standalone", "fullscreen"]
 
 
-def _manifest(title: str, display: Display = "standalone") -> dict[str, object]:
-    """The web app manifest for a site of this title, opening as `display` asks."""
+def _manifest(
+    title: str, display: Display = "standalone", language: Language = i18n.ENGLISH
+) -> dict[str, object]:
+    """The web app manifest for a site of this title, opening as `display` asks, its words in
+    `language`."""
     icon = "/icons/icon-{size}.png"
     return {
         "name": title,
         "short_name": title,
-        "description": "Current conditions and history from the weather station",
+        "description": messages.app_description(language),
+        "lang": language.tag,
         "start_url": "/",
         "scope": "/",
         "display": display,

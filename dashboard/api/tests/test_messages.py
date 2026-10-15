@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import re
+from datetime import datetime
+
+import pytest
+
 from ecowitt.core import weathermodel
 from ecowitt.dashboard import messages, weather
 from ecowitt.dashboard.i18n import ENGLISH, LANGUAGES
@@ -53,3 +58,16 @@ def test_the_tables_are_put_in_words() -> None:
     assert messages.sensor(PORTUGUESE, "ch3") == "ch3"
     assert messages.tendency(PORTUGUESE, Tendency.FALLING_QUICKLY) == "a descer rapidamente"
     assert messages.room_flag(PORTUGUESE, "damp") == "Húmido"
+
+
+@pytest.mark.parametrize("code", list(messages.NOTICES_AT), ids=lambda c: c.value)
+@pytest.mark.parametrize("tomorrow", [False, True], ids=["today", "tomorrow"])
+def test_every_time_takes_the_article_its_hour_needs(code: NoticeCode, tomorrow: bool) -> None:
+    """Portuguese writes "à 01:00" and "da 01:00" but "às 13:00" and "das 13:00"."""
+
+    def said(hour: int) -> str:
+        local = datetime(2026, 10, 10, hour, 30)
+        return messages.notice_at(PORTUGUESE, code, local, tomorrow, value="1 °C")
+
+    assert re.search(r"\b(à|da) 01:30", said(1)), said(1)
+    assert re.search(r"\b(às|das) 13:30", said(13)), said(13)

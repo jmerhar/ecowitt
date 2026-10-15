@@ -66,6 +66,21 @@ def test_every_icon_named_exists_at_its_size_and_is_opaque() -> None:
         assert colour not in (4, 6), src
 
 
+def test_the_manifest_is_described_in_the_browsers_language(client: TestClient) -> None:
+    english = client.get("/manifest.webmanifest")
+    portuguese = client.get("/manifest.webmanifest", headers={"Accept-Language": "pt-PT,pt"})
+
+    assert (
+        english.json()["description"] == "Current conditions and history from the weather station"
+    )
+    assert (portuguese.json()["lang"], portuguese.json()["description"]) == (
+        "pt-PT",
+        "Condições atuais e histórico da estação meteorológica",
+    )
+    assert portuguese.headers["content-language"] == "pt-PT"
+    assert portuguese.headers["vary"] == "Accept-Language"
+
+
 def test_the_page_links_the_manifest() -> None:
     page = (WEB / "index.html").read_text(encoding="utf-8")
 

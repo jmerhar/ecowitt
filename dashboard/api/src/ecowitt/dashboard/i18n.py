@@ -41,8 +41,9 @@ class Language:
         return self.translations.npgettext(context, message, message, hour)
 
     def number(self, value: float) -> str:
-        """A number by this language's rules, without grouping: "2.4", "2,4", "1012"."""
-        return format_decimal(value, locale=self.locale, group_separator=False)
+        """A number by this language's rules, without grouping: "2.4", "2,4", "1012". A value
+        rounded to nothing is 0, never -0."""
+        return format_decimal(value + 0.0, locale=self.locale, group_separator=False)
 
 
 #: English, which every message is written in; numbers as in British English.
@@ -114,24 +115,27 @@ def negotiate(
 
 def accepted(header: str | None) -> list[str]:
     """The languages an Accept-Language header names, most preferred first; none it refuses
-    (q=0) and no wildcard."""
+    (q=0) and no wildcard. An entry whose weight cannot be read is left out."""
     ranked = []
     for position, entry in enumerate((header or "").split(",")):
-        tag, _, rest = entry.strip().partition(";")
+        tag, *parameters = (part.strip() for part in entry.split(";"))
         weight = 1.0
-        if rest.strip().startswith("q="):
-            try:
-                weight = float(rest.strip()[2:])
-            except ValueError:
-                continue
+        for parameter in parameters:
+            name, _, value = parameter.partition("=")
+            if name.strip().lower() == "q":
+                try:
+                    weight = float(value)
+                except ValueError:
+                    weight = 0.0
         if tag and tag != "*" and weight > 0:
             ranked.append((-weight, position, tag))
     return [tag for _, _, tag in sorted(ranked)]
 
 
 def _match(tag: str, languages: dict[str, Language]) -> Language | None:
-    """The language a tag names, exactly or by its first part; None if there is none."""
-    wanted = tag.strip().lower()
+    """The language a tag names, exactly or by its first part; None if there is none. A locale's
+    own spelling, pt_PT, is read as the tag pt-PT."""
+    wanted = tag.strip().lower().replace("_", "-")
     for candidate in languages.values():
         if candidate.tag.lower() == wanted:
             return candidate

@@ -47,6 +47,13 @@ def test_every_message_is_translated_with_its_placeholders(po: Path) -> None:
                 problems.append(f"untranslated: {message.context} / {sources[0]}")
             elif set(re.findall(r"{\w+}", string)) != wanted:
                 problems.append(f"placeholders differ: {message.context} / {string}")
+            else:
+                # The API formats every message, so a stray brace would fail every answer that
+                # says it.
+                try:
+                    string.format(**{name.strip("{}"): "x" for name in wanted})
+                except ValueError, IndexError, KeyError:
+                    problems.append(f"cannot be formatted: {message.context} / {string}")
     assert problems == []
 
 
@@ -119,6 +126,10 @@ def test_a_fuzzy_translation_is_not_used(tmp_path: Path) -> None:
         (None, "pt;q=high, en;q=0.1", "en"),
         (None, "de, fr", "en"),
         (None, "", "en"),
+        ("pt_PT", None, "pt-PT"),
+        (None, "en;Q=0.1, pt;q=0.9", "pt-PT"),
+        (None, "pt-PT;q=1;level=1", "pt-PT"),
+        (None, "pt;q=, en;q=0.5", "en"),
     ],
 )
 def test_the_language_is_the_one_asked_for_else_accepted_else_english(
@@ -133,7 +144,13 @@ def test_equally_preferred_languages_keep_their_order() -> None:
 
 @pytest.mark.parametrize(
     ("language", "value", "words"),
-    [("en", 2.4, "2.4"), ("pt-PT", 2.4, "2,4"), ("en", 1012.0, "1012"), ("pt-PT", -5.0, "-5")],
+    [
+        ("en", 2.4, "2.4"),
+        ("pt-PT", 2.4, "2,4"),
+        ("en", 1012.0, "1012"),
+        ("pt-PT", -5.0, "-5"),
+        ("pt-PT", -0.0, "0"),
+    ],
 )
 def test_numbers_follow_the_language_without_grouping(
     language: str, value: float, words: str

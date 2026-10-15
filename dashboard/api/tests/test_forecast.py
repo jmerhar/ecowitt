@@ -186,6 +186,12 @@ async def test_the_forecasts_frost_replaces_the_present_readings_hint() -> None:
 
     assert found.notices["outdoor"].text == "Down to 0.5 °C at tomorrow 01:00: frost possible."
     assert [i.code for i in found.notices["outdoor"].items] == [models.NoticeCode.FROST_FORECAST]
+    portuguese = await Dashboard(
+        MemoryReader([*cold, *rows], {"example": MODELLED}), clock=lambda: NOW
+    ).now("example", language=LANGUAGES["pt-PT"])
+    assert portuguese.notices["outdoor"].text == (
+        "Mínima de 0,5 °C amanhã à 01:00: possibilidade de geada."
+    )
 
 
 async def test_a_drier_spell_ahead_is_given_while_the_advice_is_not_to_open() -> None:
@@ -327,6 +333,10 @@ async def test_rain_in_the_hour_under_way_is_within_the_hour_and_past_rain_is_no
 
     assert under_way["rain"].text == "Rain likely within the hour."
     assert [i.code for i in under_way["rain"].items] == [models.NoticeCode.RAIN_SOON]
+    board_pt = Dashboard(MemoryReader([*dry, *coming(**{"1": {"precip_probability_pct": 80.0}})],
+                         {"example": MODELLED}), clock=lambda: later)  # fmt: skip
+    in_portuguese = await board_pt.now("example", language=LANGUAGES["pt-PT"])
+    assert in_portuguese.notices["rain"].text == "Chuva provável na próxima hora."
     assert [i.code for i in on_the_hour["rain"].items] == [models.NoticeCode.RAIN_SOON]
     assert "rain" not in gone
 

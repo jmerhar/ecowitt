@@ -105,7 +105,8 @@ dashboard/api/src/ecowitt/dashboard/   the public dashboard's read-only API
   catalogue.py    the metrics served: table, base field, kind, aggregates, which sensors, and
                   the weather model's field for the same quantity
   weather.py      compass, Beaufort, feels-like, pressure tendency, airing advice
-  messages.py     every word an answer carries, in English, and each in a request's language;
+  messages.py     every word an answer carries but its error messages, in English, and each in a
+                  request's language (and the home-screen manifest's description);
                   template() is the gettext template the catalogues are kept against
   i18n.py         the languages: locale/<locale>/LC_MESSAGES/messages.po read with Babel, and
                   the choice of one per request (?lang=, then Accept-Language, then English)

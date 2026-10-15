@@ -7,6 +7,7 @@ from datetime import timedelta
 
 from fastapi.testclient import TestClient
 
+from ecowitt.dashboard.i18n import LANGUAGES
 from ecowitt.dashboard.service import Dashboard
 
 from .conftest import INFO, NOW, readings, row
@@ -186,3 +187,57 @@ def test_the_route_passes_the_model_flag(client: TestClient, reader: MemoryReade
 
     assert [s["source"] for s in plain["series"]] == ["station"]
     assert [s["source"] for s in modelled["series"]] == ["station", "model"]
+
+
+async def test_every_word_of_now_is_in_the_language_asked_for() -> None:
+    """A decimal temperature, a westerly wind, warnings of the present readings, the sky, the
+    model's name and an unnamed room: each of them differs between English and Portuguese."""
+    later = NOW - timedelta(seconds=30)
+    unnamed = [
+        dataclasses.replace(r, tags=tuple((k, "indoor" if v == "Living" else v) for k, v in r.tags))
+        for r in readings()
+    ]
+    indoor = {"sensor": "indoor", "name": "indoor"}
+    rows = [
+        *unnamed,
+        row("station", later, {"interval_s": 60.0}),
+        row(
+            "outdoor", later, {"temp_c": 4.5, "humidity_pct": 96.0}, sensor="outdoor", name="Garden"
+        ),
+        row("wind", later, {"speed_kmh": 40.0, "gust_kmh": 61.5, "dir_deg": 270.0}),
+        row("wind_10m", later, {"speed_kmh": 40.0, "gust_kmh": 61.5, "source": "sensor"}),
+        row("indoor", later, {"temp_c": 21.0, "humidity_pct": 70.0}, **indoor),
+        row(
+            "ventilation",
+            later,
+            {"dewpoint_delta_c": 3.0, "predicted_humidity_pct": 55.0},
+            **indoor,
+        ),
+        model_row(),
+    ]
+    info = dataclasses.replace(MODELLED, sensors={})
+    dashboard = Dashboard(MemoryReader(rows, {"example": info}), clock=lambda: NOW)  # type: ignore[arg-type]
+    portuguese = LANGUAGES["pt-PT"]
+
+    now = await dashboard.now("example", language=portuguese)
+    stations = await dashboard.stations(portuguese)
+
+    assert now.sky is not None and now.sky.description == "Céu encoberto"
+    assert [p.text for p in now.summary_parts][:2] == [
+        "Céu encoberto",
+        "4,5 °C, sensação térmica de -1 °C",
+    ]
+    assert now.wind is not None
+    assert (now.wind.compass, now.wind.description, now.wind.measured_description) == (
+        "O",
+        "Vento muito fresco",
+        "Vento muito fresco",
+    )
+    assert now.notices["outdoor"].text == (
+        "Frio: pode formar-se geada nas noites de céu limpo. "
+        "Ar exterior muito húmido: provável formação de nevoeiro e condensação."
+    )
+    assert now.notices["wind"].text == "Rajadas fortes."
+    assert now.airing is not None and "Interior" in now.airing.rooms
+    assert stations[0].weather_model is not None
+    assert stations[0].weather_model.label == "Melhor para este local"

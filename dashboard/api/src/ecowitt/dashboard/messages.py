@@ -83,9 +83,13 @@ SENSOR_NAMES = {
 #: A weather code the table does not know.
 UNKNOWN_SKY = "Weather code {code}"
 
+#: What the page is, as a home screen's install dialog describes it.
+APP_DESCRIPTION = "Current conditions and history from the weather station"
+
 # Each table's gettext context: the same English word can need different translations in two of
 # them, and the context tells a translator what the message is.
 NOTICE, ROOM_FLAG, TENDENCY, SUMMARY_PART = "notice", "room flag", "pressure tendency", "summary"
+APP = "home-screen app"
 COMPASS, BEAUFORT, SKY, MODEL, METRIC, SENSOR = (
     "compass point",
     "Beaufort force",
@@ -167,6 +171,11 @@ def sensor(language: Language, sensor_id: str) -> str:
     return sensor_id if name is None else language.text(SENSOR, name)
 
 
+def app_description(language: Language) -> str:
+    """The page's description, for its web app manifest."""
+    return language.text(APP, APP_DESCRIPTION)
+
+
 def template() -> Catalog:
     """The gettext template: every message above, with its context."""
     catalog = Catalog(domain="messages", project="Ecowitt Server dashboard")
@@ -181,21 +190,14 @@ def template() -> Catalog:
         (MODEL, list(weathermodel.MODELS.values())),
         (METRIC, list(dict.fromkeys(m.label for m in METRICS.values()))),
         (SENSOR, list(SENSOR_NAMES.values())),
+        (APP, [APP_DESCRIPTION]),
     ]
+    # Babel marks a message with placeholders python-brace-format itself, so gettext's tools
+    # check that a translation keeps them.
     for context, messages in tables:
         for message in messages:
-            catalog.add(message, context=context, flags=_flags(message))
+            catalog.add(message, context=context)
     for pair in NOTICES_AT.values():
         for message in pair:
-            catalog.add(
-                (message, message),
-                context=NOTICE,
-                auto_comments=[AT_HOUR],
-                flags=_flags(message),
-            )
+            catalog.add((message, message), context=NOTICE, auto_comments=[AT_HOUR])
     return catalog
-
-
-def _flags(message: str) -> list[str]:
-    """Marks a message with placeholders, so gettext's tools check a translation keeps them."""
-    return ["python-brace-format"] if "{" in message else []
