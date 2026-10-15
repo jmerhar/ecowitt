@@ -112,7 +112,8 @@ dashboard/api/src/ecowitt/dashboard/   the public dashboard's read-only API
   cache.py        a TTL cache whose concurrent requests share one computation
   models.py       the answers, as the OpenAPI document publishes them
   healthcheck.py  module entrypoint for the image's HEALTHCHECK (dashboard/Dockerfile)
-dashboard/api/tests/  against an in-memory Reader (memory.py) that answers as the SQL does
+dashboard/api/tests/  against an in-memory Reader (memory.py) that answers as the SQL does;
+                  fixture_server.py serves the real app over it, for a browser to load
 dashboard/web/    the dashboard's page: Svelte 5, Vite, TypeScript, uPlot; a thin client of /api/v1
   src/lib/        api.ts (types mirroring the OpenAPI models, the client), format.ts (values and
                   station-time times), chart.ts (chart tabs, aligning series for uPlot, the
@@ -121,6 +122,8 @@ dashboard/web/    the dashboard's page: Svelte 5, Vite, TypeScript, uPlot; a thi
   src/components/ one per card or section; Chart.svelte is the only one that touches uPlot
   src/testing.ts  API answers for the tests, and a fake Api
   icons/          app-icon.svg, the home-screen icon; bin/app-icons.sh renders public/icons/*.png
+  build/          legacy-css.ts, the Vite plugin that gives the stylesheet its legacy fallbacks
+  legacy-browser/ the Chromium 59 image and the check bin/test-legacy-browser.sh runs in it
 dashboard/Dockerfile  builds the page in a Node stage and serves it from the API's image
 grafana/          weather.json, the dashboard, and alerts.json, the alert rules: the collector's
                   templates rendered for the default units (make grafana); a renamed table or
@@ -257,6 +260,14 @@ CHANGELOG.md      every release's notes; new work goes under `## Unreleased`
 - **The dashboard's page formats times itself, day first with a 24-hour clock** (`format.ts`
   `LOCALE`), in the station's time zone, rather than following the browser's locale: an American
   locale writes `10/11` and `12:56 AM`.
+- **The dashboard's page has a legacy build**, for browsers without ES modules down to Chrome 59
+  (an Android 4.4 tablet): `@vitejs/plugin-legacy` compiles it down and polyfills it, and those
+  browsers load it through `<script nomodule>`. What core-js cannot polyfill needs a fallback in
+  the code -- `Chart.svelte` follows the window where `ResizeObserver` is missing. The shared
+  stylesheet relies on `:where()` (in every selector Svelte scopes) and on `gap`, which Chrome 59
+  lacks or knows only on grids; `build/legacy-css.ts` adds copies and fallbacks for them under a
+  `legacy` class that only those browsers get, so a modern browser's computed styles stay as
+  they are. `make test-legacy-browser` loads the page in Chromium 59 and is the guard.
 - **`dashboard/web/package-lock.json` must resolve only to registry.npmjs.org.** A development
   machine may reach npm only through a proxy, and a plain `npm install` writes the proxy's host
   into every entry -- breaking CI and publishing it. Regenerate it with `bin/lockfile.sh` only;
@@ -271,6 +282,7 @@ make test ARGS="tests/ingest/test_ingest.py -k slash"
 make test-js      # the admin page scripts' tests, with coverage (needs node)
 make web-install  # the dashboard page's node_modules, from the lockfile, via this machine's registry
 make test-web     # the dashboard page: svelte-check and Vitest with coverage
+make test-legacy-browser   # the page's legacy build in Chromium 59 (Docker; slow off x64)
 make dashboard-dev SERVER=host   # page :5173 and API :2553, both reloading; host's InfluxDB on :8181
 make lockfile     # regenerate dashboard/web/package-lock.json (the only way to)
 make grafana      # rewrite grafana/*.json after changing a template

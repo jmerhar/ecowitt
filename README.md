@@ -420,6 +420,16 @@ screen* or *Install app* in Chrome, *Share → Add to Home Screen* on an iPhone 
 opens as an app of its own, named for the site's title. Its icon is drawn in
 `dashboard/web/icons/app-icon.svg`; `make app-icons` renders the PNGs after a change.
 
+Browsers without ES modules, down to Chrome 59 on an Android 4.4 tablet, load a second build of
+the page, compiled down and polyfilled, and the stylesheet carries fallbacks for them. Such a
+browser cannot tell the device's light or dark choice, so it shows the light theme unless
+*Theme* says otherwise. A page that cannot start says why instead of staying blank. Android
+before 7.1 does not trust Let's Encrypt's root, ISRG Root X1, so it refuses a valid certificate
+from it; installing that root from [letsencrypt.org/certificates](https://letsencrypt.org/certificates/)
+as a user certificate (*Settings → Security → Install from device storage*) makes the tablet
+accept it. Android asks for a screen lock first, and removes the certificate if the lock is
+turned off again.
+
 **Setting it up**
 
 1. Create a token that can only read the database:
@@ -530,6 +540,7 @@ make test         # the Python suites
 make test-js      # the admin page scripts' suite, with coverage (needs Node 22 or later)
 make web-install  # the dashboard page's dependencies, from its lockfile (needs Node 24)
 make test-web     # the dashboard page: type check and tests, with coverage
+make test-legacy-browser   # the dashboard page's legacy build, loaded in Chromium 59 (needs Docker)
 make dashboard-dev SERVER=host   # the dashboard from the working copy, with host's InfluxDB
 make grafana      # rewrite grafana/*.json from the templates after changing one
 make check        # lint, every suite, coverage
