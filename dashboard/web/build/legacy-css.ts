@@ -71,7 +71,7 @@ function withFallbacks(rule: StyleRule): Rule[] | undefined {
   const spelled = declarations.flatMap((d) => [...gridGap(d), d]);
   const scoped = rule.selectors.some((s) => s.some(isScopeWhere));
   const spacing = flexSpacing(declarations);
-  if (spelled.length === declarations.length && !scoped && !spacing) return undefined;
+  if (spelled.length === declarations.length && !scoped && !spacing.length) return undefined;
 
   const plain = rule.selectors.map((s) => s.map((c) => (isScopeWhere(c) ? c.selectors[0][0] : c)));
   const own = { ...rule, declarations: { importantDeclarations: rule.declarations?.importantDeclarations ?? [], declarations: spelled } };
@@ -80,13 +80,13 @@ function withFallbacks(rule: StyleRule): Rule[] | undefined {
     const declarations = { ...own.declarations, declarations: [...spelled, MARK] };
     out.push({ type: "style", value: { ...own, selectors: plain.map((s) => [...LEGACY, ...s]), declarations } });
   }
-  if (spacing) {
+  for (const { children, margins } of spacing) {
     out.push({
       type: "style",
       value: {
         ...own,
-        selectors: plain.map((s) => [...LEGACY, ...s, ...spacing.children]),
-        declarations: { importantDeclarations: [], declarations: [...spacing.margins, MARK] },
+        selectors: plain.map((s) => [...LEGACY, ...s, ...children]),
+        declarations: { importantDeclarations: [], declarations: [...margins, MARK] },
         rules: [],
       },
     });
@@ -119,11 +119,12 @@ function gridGap(d: Declaration): Declaration[] {
 }
 
 /**
- * For a flex container with a gap, the children to space and the margins that stand in for it: a
- * leading margin on all but the first in a single line, or a trailing one on every child of a
- * container that wraps.
+ * For a flex container with a gap, the rules whose margins stand in for it: a leading margin on
+ * every child but the first in a single line, or a trailing one on every child of a container
+ * that wraps. A selector cannot reach text, so in a row an icon that is the only element, as in
+ * `<h2><svg/> Wind</h2>`, also gets the gap after it: every icon on the page leads its text.
  */
-function flexSpacing(declarations: Declaration[]): { children: Selector; margins: Declaration[] } | null {
+function flexSpacing(declarations: Declaration[]): { children: Selector; margins: Declaration[] }[] {
   let flex = false;
   let column = false;
   let wrap = false;
@@ -140,14 +141,23 @@ function flexSpacing(declarations: Declaration[]): { children: Selector; margins
     else if (d.property === "row-gap") row = d.value;
     else if (d.property === "column-gap") col = d.value;
   }
+  if (!flex) return [];
   const margin = (property: "margin-left" | "margin-top" | "margin-right" | "margin-bottom", gap: Gap): Declaration[] =>
     gap.type === "length-percentage" ? [{ property, value: { type: "length-percentage", value: gap.value } } as Declaration] : [];
   const child: Selector = [{ type: "combinator", value: "child" }, { type: "universal" }];
-  if (!flex) return null;
-  const margins = wrap
-    ? [...margin("margin-right", col), ...margin("margin-bottom", row)]
-    : margin(column ? "margin-top" : "margin-left", column ? row : col);
-  if (!margins.length) return null;
-  const children: Selector = wrap ? child : [...child, { type: "combinator", value: "next-sibling" }, { type: "universal" }];
-  return { children, margins };
+  const next: Selector = [...child, { type: "combinator", value: "next-sibling" }, { type: "universal" }];
+  const icon: Selector = [
+    { type: "combinator", value: "child" },
+    { type: "type", name: "svg" },
+    { type: "pseudo-class", kind: "only-child" },
+  ];
+  const rules = wrap
+    ? [{ children: child, margins: [...margin("margin-right", col), ...margin("margin-bottom", row)] }]
+    : column
+      ? [{ children: next, margins: margin("margin-top", row) }]
+      : [
+          { children: next, margins: margin("margin-left", col) },
+          { children: icon, margins: margin("margin-right", col) },
+        ];
+  return rules.filter((r) => r.margins.length);
 }

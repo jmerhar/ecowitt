@@ -9,5 +9,6 @@ export function failures(measured, errors) {
   if (measured.canvases < 1) out.push("no chart was drawn");
   if (measured.bar <= 0) out.push("a level bar has no height: the :where() fallbacks are missing");
   if (measured.cardGap <= 0) out.push("the cards touch: the grid-gap fallback is missing");
+  if (measured.iconGap < 3) out.push("a card title's icon touches its text: the icon's flex-gap fallback is missing");
   return out;
 }

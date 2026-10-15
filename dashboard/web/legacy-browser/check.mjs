@@ -14,13 +14,19 @@ const [devtools, page] = process.argv.slice(2);
 const SETTLE_MS = 20_000;
 
 /**
- * What the page shows when it works, measured in the browser. A level bar and the space between
- * two cards have no size without the stylesheet's fallbacks.
+ * What the page shows when it works, measured in the browser. A level bar, the space between two
+ * cards and the space between a card title's icon and its text have no size without the
+ * stylesheet's fallbacks.
  */
 const MEASURE = `(function () {
   var app = document.getElementById("app");
   var bar = document.querySelector(".bar span");
   var cards = document.querySelectorAll(".glance > *");
+  var icon = document.querySelector("h2 > svg");
+  var label = icon && icon.nextSibling;
+  while (label && label.nodeType !== 3) label = label.nextSibling;
+  var text = document.createRange();
+  if (label) text.selectNodeContents(label);
   return {
     legacy: document.documentElement.className.indexOf("legacy") !== -1,
     text: app.innerText,
@@ -28,6 +34,7 @@ const MEASURE = `(function () {
     canvases: document.querySelectorAll("canvas").length,
     bar: bar ? bar.getBoundingClientRect().height : 0,
     cardGap: cards.length > 1 ? cards[1].getBoundingClientRect().left - cards[0].getBoundingClientRect().right : 0,
+    iconGap: label ? text.getBoundingClientRect().left - icon.getBoundingClientRect().right : 0,
     userAgent: navigator.userAgent
   };
 })()`;
