@@ -136,21 +136,28 @@ export function uvRisk(index: number | null | undefined): string {
 
 /** A time to come at the station: "14:00" today, "tomorrow 06:00", or "Thu 15 Oct, 06:00". */
 export function coming(iso: string, timezone: string, now: Date = new Date()): string {
-  const label = dayLabel(iso, timezone, now);
   const time = clock(iso, timezone);
-  if (label === "Today") return time;
-  return label === "Tomorrow" ? `tomorrow ${time}` : `${label}, ${time}`;
+  const day = whichDay(iso, timezone, now);
+  if (day === "today") return time;
+  return day === "tomorrow" ? `tomorrow ${time}` : `${dayLabel(iso, timezone, now)}, ${time}`;
+}
+
+/** Whether a moment falls on today, tomorrow or another day, by the station's calendar. */
+export function whichDay(iso: string, timezone: string, now: Date = new Date()): "today" | "tomorrow" | "other" {
+  const date = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(d);
+  const day = date(new Date(iso));
+  const today = date(now);
+  if (day === today) return "today";
+  // The calendar's next date, not the date a day from now: a day can be 23 or 25 hours long.
+  const [y, m, d] = today.split("-").map(Number);
+  return day === new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10) ? "tomorrow" : "other";
 }
 
 /** A day at the station, as a forecast names it: "Today", "Tomorrow", or "Thu 15 Oct". */
 export function dayLabel(iso: string, timezone: string, now: Date = new Date()): string {
-  const date = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(d);
-  const day = date(new Date(iso));
-  const today = date(now);
-  if (day === today) return "Today";
-  // The calendar's next date, not the date a day from now: a day can be 23 or 25 hours long.
-  const [y, m, d] = today.split("-").map(Number);
-  if (day === new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10)) return "Tomorrow";
+  const day = whichDay(iso, timezone, now);
+  if (day === "today") return "Today";
+  if (day === "tomorrow") return "Tomorrow";
   return new Intl.DateTimeFormat(LOCALE, {
     weekday: "short",
     day: "numeric",

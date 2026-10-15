@@ -49,6 +49,10 @@ export function now(overrides: Partial<Now> = {}): Now {
     timezone: "Europe/Lisbon",
     units: UNITS,
     summary: "18 °C. Gentle breeze from the SE.",
+    summary_parts: [
+      { code: "temperature", text: "18 °C" },
+      { code: "wind", text: "Gentle breeze from the SE" },
+    ],
     sky: null,
     outdoor: {
       temperature: 18, humidity: 70, dew_point: 12.5, feels_like: 16,
@@ -67,7 +71,7 @@ export function now(overrides: Partial<Now> = {}): Now {
     },
     pressure: {
       sea_level: 1012, absolute: 1000, relative: 1013,
-      trend: { change: -3, hours: 3, tendency: "falling" },
+      trend: { change: -3, hours: 3, code: "falling", tendency: "falling" },
     },
     sun: {
       radiation: 450, uv_index: 4, sunrise: "2026-10-10T06:42:00Z", noon: "2026-10-10T12:24:00Z",
@@ -90,9 +94,16 @@ export function now(overrides: Partial<Now> = {}): Now {
       { sensor: "ch1", name: "Bathroom", battery_low: true, unchanged_s: 20000, updating: false },
     ],
     notices: {
-      airing: { level: "good", text: "" },
-      rooms: { level: "warning", text: "Damp: Bathroom. Cold: Attic." },
-      sensors: { level: "warning", text: "" },
+      airing: { level: "good", items: [], text: "" },
+      rooms: {
+        level: "warning",
+        items: [
+          { code: "room_flag", value: null, unit: null, time: null, flag: "damp", rooms: ["Bathroom"], text: "Damp: Bathroom." },
+          { code: "room_flag", value: null, unit: null, time: null, flag: "cold", rooms: ["Attic"], text: "Cold: Attic." },
+        ],
+        text: "Damp: Bathroom. Cold: Attic.",
+      },
+      sensors: { level: "warning", items: [], text: "" },
     },
     ...overrides,
   };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  ago, axisLabels, clock, coming, dayLabel, duration, moment, number, quantity, today, uvRisk, whole, zoneCity,
+  ago, axisLabels, clock, coming, dayLabel, duration, moment, number, quantity, today, uvRisk, whichDay, whole, zoneCity,
 } from "./format";
 import { SYMBOLS } from "../testing";
 
@@ -109,6 +109,14 @@ describe("coming and dayLabel", () => {
     // 23:30 UTC is already the 11th in Lisbon.
     expect(dayLabel("2026-10-10T23:30:00Z", "Europe/Lisbon", now)).toBe("Tomorrow");
     expect(dayLabel("2026-10-12T10:00:00Z", "Europe/Lisbon", now)).toBe("Mon 12 Oct");
+  });
+
+  it("tell today, tomorrow and other days apart by the station's calendar, not by their words", () => {
+    expect(whichDay("2026-10-10T22:59:00Z", "Europe/Lisbon", now)).toBe("today");
+    expect(whichDay("2026-10-10T23:00:00Z", "Europe/Lisbon", now)).toBe("tomorrow");
+    expect(whichDay("2026-10-11T22:59:00Z", "Europe/Lisbon", now)).toBe("tomorrow");
+    expect(whichDay("2026-10-11T23:00:00Z", "Europe/Lisbon", now)).toBe("other");
+    expect(whichDay("2026-10-09T12:00:00Z", "Europe/Lisbon", now)).toBe("other");
   });
 
   it("name tomorrow by the calendar on the days the clocks change", () => {

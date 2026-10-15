@@ -23,13 +23,13 @@
   const humidity = $derived(outdoor?.humidity != null ? humidityLevel(outdoor.humidity) : null);
   const dew = $derived(outdoor?.dew_point != null ? dewPointLevel(outdoor.dew_point, t) : null);
   const sky = $derived(now.sky);
-  /** The summary leads with the sky and the temperature, which the card shows already. */
-  const summary = $derived.by(() => {
-    const parts = now.summary.split(". ");
-    if (sky && parts[0] === sky.description) parts.shift();
-    if (outdoor?.temperature != null) parts.shift();
-    return parts.join(". ");
-  });
+  /** The summary without the sky and the temperature, which the card shows already. */
+  const summary = $derived(
+    now.summary_parts
+      .filter((part) => part.code !== "sky" && part.code !== "temperature")
+      .map((part) => `${part.text}.`)
+      .join(" "),
+  );
 </script>
 
 <button class="card hero {notice?.level ?? ''}" onclick={() => onselect("temperature")}>

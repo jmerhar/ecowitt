@@ -10,6 +10,7 @@ import AiringCard from "./AiringCard.svelte";
 import Sensors from "./Sensors.svelte";
 import UnitsMenu from "./UnitsMenu.svelte";
 import { META, now, SYMBOLS, UNITS } from "../testing";
+import type { SummaryPart } from "../lib/api";
 import { skyIcon } from "../lib/sky";
 
 const tz = "Europe/Lisbon";
@@ -65,8 +66,12 @@ describe("NowCard", () => {
     expect(screen.queryByText("Today")).not.toBeInTheDocument();
   });
 
+  /** The summary's parts, by code; `summary` itself is left as the fixture has it. */
+  const parts = (...pairs: [SummaryPart["code"], string][]): SummaryPart[] =>
+    pairs.map(([code, text]) => ({ code, text }));
+
   it("shows no summary when it said only the temperature", () => {
-    render(NowCard, { now: now({ summary: "18 °C." }), symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
+    render(NowCard, { now: now({ summary_parts: parts(["temperature", "18 °C"]) }), symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
     expect(document.querySelector(".summary")).toBeNull();
   });
 
@@ -74,7 +79,7 @@ describe("NowCard", () => {
     render(NowCard, {
       now: now({
         sky: { code: 3, description: "Overcast", is_day: true, cloud_cover: 95, time: "2026-10-10T13:45:00Z" },
-        summary: "Overcast. 18 °C. Gentle breeze from the SE.",
+        summary_parts: parts(["sky", "Overcast"], ["temperature", "18 °C"], ["wind", "Gentle breeze from the SE"]),
       }),
       symbols: SYMBOLS, timezone: tz, onselect: vi.fn(),
     });
@@ -87,7 +92,7 @@ describe("NowCard", () => {
 
   it("shows the night's sky at night, and no sky without a model", () => {
     const night = { code: 0, description: "Clear", is_day: false, cloud_cover: 0, time: "2026-10-10T22:00:00Z" };
-    const first = render(NowCard, { now: now({ sky: night, summary: "Clear. 18 °C." }), symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
+    const first = render(NowCard, { now: now({ sky: night, summary_parts: parts(["sky", "Clear"], ["temperature", "18 °C"]) }), symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
     expect(document.querySelector(".sky img")!.getAttribute("src")).toBe(skyIcon(0, false));
     expect(document.querySelector(".summary")).toBeNull();
     first.unmount();
@@ -98,14 +103,14 @@ describe("NowCard", () => {
   it("keeps the summary whole when it has no temperature to leave out", () => {
     const base = now();
     render(NowCard, {
-      now: now({ outdoor: { ...base.outdoor!, temperature: null }, summary: "Gentle breeze from the SE." }),
+      now: now({ outdoor: { ...base.outdoor!, temperature: null }, summary_parts: parts(["wind", "Gentle breeze from the SE"]) }),
       symbols: SYMBOLS, timezone: tz, onselect: vi.fn(),
     });
     expect(screen.getByText("Gentle breeze from the SE.")).toBeInTheDocument();
   });
 
   it("shows only the summary without an outdoor sensor", () => {
-    render(NowCard, { now: now({ outdoor: null, summary: "Calm." }), symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
+    render(NowCard, { now: now({ outdoor: null, summary_parts: parts(["wind", "Calm"]) }), symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
     expect(screen.getByText("Calm.")).toBeInTheDocument();
     expect(screen.queryByText("Humidity")).not.toBeInTheDocument();
   });
@@ -200,14 +205,18 @@ describe("RainCard", () => {
 
 describe("PressureCard", () => {
   it.each([
-    [{ change: -3, hours: 3, tendency: "falling" }, "↘", "Falling: -3.0 hPa in 3 h"],
-    [{ change: 1, hours: 3, tendency: "rising slowly" }, "↗", "Rising slowly: +1.0 hPa in 3 h"],
-    [{ change: 0, hours: 3, tendency: "steady" }, "→", "Steady: 0.0 hPa in 3 h"],
-  ])("shows the trend %#", async (trend, arrow, words) => {
+    [{ change: -3, hours: 3, code: "falling", tendency: "falling" }, "↘", "-3.0 hPa in 3 h"],
+    [{ change: 1, hours: 3, code: "rising_slowly", tendency: "rising slowly" }, "↗", "+1.0 hPa in 3 h"],
+    [{ change: 0, hours: 3, code: "steady", tendency: "steady" }, "→", "0.0 hPa in 3 h"],
+    // The arrow follows the code, not the words: a 0.04 hPa rise is steady.
+    [{ change: 0.04, hours: 3, code: "steady", tendency: "stabil" }, "→", "+0.0 hPa in 3 h"],
+  ] as const)("shows the trend %#", async (trend, arrow, change) => {
     const onselect = vi.fn();
     render(PressureCard, { pressure: { ...now().pressure!, trend }, units: UNITS, symbols: SYMBOLS, onselect });
     expect(screen.getByText(arrow)).toBeInTheDocument();
-    expect(screen.getByText(words, { exact: false })).toBeInTheDocument();
+    // The API's words as they came: the stylesheet capitalises them.
+    expect(screen.getByText(trend.tendency)).toHaveClass("tendency");
+    expect(screen.getByText(change, { exact: false })).toBeInTheDocument();
     await fireEvent.click(screen.getByRole("button"));
     expect(onselect).toHaveBeenCalledWith("pressure");
   });
@@ -322,7 +331,7 @@ describe("Rooms", () => {
 
 describe("highlights", () => {
   it("give a card with a warning its edge and its words", () => {
-    const notice = { level: "warning" as const, text: "Strong gusts." };
+    const notice = { level: "warning" as const, items: [], text: "Strong gusts." };
     const { container } = render(WindCard, {
       wind: now().wind!, units: UNITS, symbols: SYMBOLS, timezone: tz, onselect: vi.fn(), notice,
     });
@@ -337,7 +346,7 @@ describe("highlights", () => {
     ["sun", SunCard, { sun: now().sun!, timezone: tz }],
   ] as const)("reach the %s card", (_, Card, props) => {
     const { container } = render(Card as never, {
-      ...props, symbols: SYMBOLS, timezone: tz, onselect: vi.fn(), notice: { level: "warning", text: "Look." },
+      ...props, symbols: SYMBOLS, timezone: tz, onselect: vi.fn(), notice: { level: "warning", items: [], text: "Look." },
     } as never);
     expect(container.querySelector(".card")).toHaveClass("warning");
     expect(screen.getByText("Look.")).toBeInTheDocument();
@@ -348,7 +357,7 @@ describe("highlights", () => {
     expect(plain.container.querySelector(".card")!.className).not.toMatch(/warning|good/);
     plain.unmount();
     const { container } = render(AiringCard, {
-      airing: now().airing!, symbols: SYMBOLS, onselect: vi.fn(), notice: { level: "good", text: "" },
+      airing: now().airing!, symbols: SYMBOLS, onselect: vi.fn(), notice: { level: "good", items: [], text: "" },
     });
     expect(container.querySelector(".card")).toHaveClass("good");
     expect(container.querySelector(".notice")).toBeNull();

@@ -15,7 +15,7 @@
 
   const trend = $derived(pressure.trend);
   const arrow = $derived(
-    !trend || trend.tendency === "steady" ? "→" : trend.change > 0 ? "↗" : "↘",
+    !trend || trend.code === "steady" ? "→" : trend.change > 0 ? "↗" : "↘",
   );
 </script>
 
@@ -26,7 +26,7 @@
   {#if trend}
     <div class="muted">
       <span aria-hidden="true">{arrow}</span>
-      {trend.tendency[0].toUpperCase() + trend.tendency.slice(1)}:
+      <span class="tendency">{trend.tendency}</span>:
       {trend.change > 0 ? "+" : ""}{quantity(trend.change, units.pressure, symbols)} in {trend.hours} h
     </div>
   {/if}
@@ -34,3 +34,13 @@
     <div><dt>At the station</dt><dd>{quantity(pressure.absolute, units.pressure, symbols)}</dd></div>
   </dl>
 </button>
+
+<style>
+  /* The tendency starts the line: capitalised by the browser, by its language's rules. */
+  .tendency {
+    display: inline-block;
+  }
+  .tendency::first-letter {
+    text-transform: uppercase;
+  }
+</style>

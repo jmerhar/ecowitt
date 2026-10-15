@@ -75,8 +75,14 @@ export type Pressure = {
   sea_level: number | null;
   absolute: number | null;
   relative: number | null;
-  trend: { change: number; hours: number; tendency: string } | null;
+  trend: { change: number; hours: number; code: Tendency; tendency: string } | null;
 };
+
+/** A three-hour pressure change, in the Met Office's terms; `tendency` is the same in words. */
+export type Tendency =
+  | "steady"
+  | "rising_slowly" | "rising" | "rising_quickly" | "rising_very_rapidly"
+  | "falling_slowly" | "falling" | "falling_quickly" | "falling_very_rapidly";
 
 export type Sun = {
   radiation: number | null;
@@ -113,8 +119,32 @@ export type Sky = {
   time: string;
 };
 
-/** Something on a card that deserves attention: a warning, or good news worth acting on. */
-export type Notice = { level: "warning" | "good"; text: string };
+/** What a notice item says, whatever language its words are in. */
+export type NoticeCode =
+  | "cold" | "heat" | "humid_air" | "dry_air"
+  | "strong_gusts" | "heavy_rain" | "pressure_falling_fast" | "uv_very_high"
+  | "rain_soon" | "rain_from" | "frost_forecast" | "heat_forecast" | "gusts_forecast"
+  | "room_flag";
+
+/** One thing a notice says: a code, what it names, and the same in words. */
+export type NoticeItem = {
+  code: NoticeCode;
+  value: number | null;
+  unit: string | null;
+  time: string | null;
+  flag: string | null;
+  rooms: string[];
+  text: string;
+};
+
+/**
+ * Something on a card that deserves attention: a warning, or good news worth acting on. `text`
+ * is its items' words in one line, empty when the card says it already.
+ */
+export type Notice = { level: "warning" | "good"; items: NoticeItem[]; text: string };
+
+/** One part of the summary line, in words. */
+export type SummaryPart = { code: "sky" | "temperature" | "wind" | "rain" | "pressure"; text: string };
 
 export type HouseAiring = {
   advice: "open" | "keep_closed" | "no_need";
@@ -141,6 +171,8 @@ export type Now = {
   timezone: string;
   units: Units;
   summary: string;
+  /** The same line, part by part. */
+  summary_parts: SummaryPart[];
   /** The sky from the weather model, when the station has one and its values are recent. */
   sky: Sky | null;
   outdoor: Outdoor | null;
