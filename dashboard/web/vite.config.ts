@@ -35,7 +35,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["src/test-setup.ts"],
-    include: ["src/**/*.test.ts", "build/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "build/**/*.test.ts", "legacy-browser/**/*.test.mjs"],
     // Vitest empties every stylesheet it imports, ?raw included; theme.test.ts reads this one.
     css: { include: [/app\.css/] },
     coverage: {

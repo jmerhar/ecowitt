@@ -1,4 +1,4 @@
-.PHONY: help install web-install lockfile app-icons grafana dev dashboard-dev up down logs shell build test test-js test-web coverage lint check clean
+.PHONY: help install web-install lockfile app-icons grafana dev dashboard-dev up down logs shell build test test-js test-web test-legacy-browser coverage lint check clean
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*##|^##@' $(MAKEFILE_LIST) | \
@@ -60,6 +60,9 @@ test-js: ## Run the page script tests with coverage (needs node)
 
 test-web: ## Type-check and test the dashboard pages with coverage (after make web-install)
 	bin/test-web.sh
+
+test-legacy-browser: ## Load the pages' legacy build in Chromium 59 (needs Docker; slow off x64)
+	bin/test-legacy-browser.sh
 
 coverage: ## Run every suite with coverage and print the summary
 	bin/coverage.sh --format md
