@@ -6,8 +6,8 @@ import re
 
 import pytest
 
-from ecowitt.core.units import Kind, Units
-from ecowitt.dashboard.catalogue import CHOICES, METRICS, SYMBOLS, Scope, rounded, unit
+from ecowitt.core.units import SYMBOLS, Kind, Units
+from ecowitt.dashboard.catalogue import CHOICES, METRICS, Scope, rounded, unit
 
 from .conftest import REPO
 

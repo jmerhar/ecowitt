@@ -19,14 +19,13 @@ from importlib.metadata import version as package_version
 from ecowitt.core import weathermodel, windheight
 from ecowitt.core.stationinfo import StationInfo
 from ecowitt.core.store.query import Buckets, Extreme, Extremes, Reader, Span
-from ecowitt.core.units import Kind, Units, convert, field_name
+from ecowitt.core.units import SYMBOLS, Kind, Units, convert, field_name
 from ecowitt.dashboard import forecast, models, weather
 from ecowitt.dashboard.cache import TtlCache
 from ecowitt.dashboard.catalogue import (
     CHOICES,
     METRICS,
     ROOM_SENSOR,
-    SYMBOLS,
     Metric,
     Sides,
     rounded,

@@ -231,3 +231,31 @@ CONVERTIBLE = frozenset(
         Kind.DISTANCE,
     }
 )
+
+
+#: Symbols for the units values are given in, by the suffix their field name carries.
+SYMBOLS = {
+    "c": "°C",
+    "f": "°F",
+    "hpa": "hPa",
+    "inhg": "inHg",
+    "mmhg": "mmHg",
+    "mm": "mm",
+    "in": "in",
+    "mm_h": "mm/h",
+    "in_h": "in/h",
+    "kmh": "km/h",
+    "ms": "m/s",
+    "mph": "mph",
+    "kn": "kn",
+    "km": "km",
+    "mi": "mi",
+    "pct": "%",
+    "deg": "°",
+    "wm2": "W/m²",
+    "": "",
+}
+
+#: Decimal places worth showing, by unit suffix, for a suffix not listed 1; anything finer is
+#: noise from conversion.
+DECIMALS = {"inhg": 2, "in": 2, "in_h": 2, "pct": 0, "deg": 0, "wm2": 0, "": 0}
