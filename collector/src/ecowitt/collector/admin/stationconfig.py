@@ -143,13 +143,19 @@ class GrafanaEntry(BaseModel):
 
     url: str
     token: str
+    #: The data source's name in Grafana.
     datasource: str = grafana.FILE_DATASOURCE
     folder: str = "Weather"
+    #: Its uid, as Grafana gave it when the connection was saved: what the rules offered for
+    #: copying name. A push looks the name up afresh.
+    datasource_uid: str | None = None
 
     @model_validator(mode="after")
     def _declared(self) -> Self:
         """Refuse a connection the Grafana settings would not accept."""
-        found = settings.check(grafana.SETTINGS, self.model_dump(), "Grafana")
+        found = settings.check(
+            grafana.SETTINGS, self.model_dump(exclude={"datasource_uid"}), "Grafana"
+        )
         if found:
             raise ValueError("; ".join(found))
         return self

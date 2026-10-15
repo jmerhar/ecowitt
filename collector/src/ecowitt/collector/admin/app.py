@@ -598,7 +598,7 @@ def _grafana_files(context: AdminContext) -> dict[str, dict[str, Any]]:
     """The Grafana page's files, by download name, for the stored units and data source."""
     units = context.document.units
     entry = context.document.grafana
-    datasource = entry.datasource if entry else grafana.FILE_DATASOURCE
+    datasource = (entry.datasource_uid if entry else None) or grafana.FILE_DATASOURCE
     return {
         "weather.json": render.dashboard(units),
         "alerts.json": grafana.provisioning(units, datasource),
@@ -636,7 +636,8 @@ async def _grafana_connection_action(
     """Save, test or remove the Grafana connection.
 
     A token left empty keeps the saved one, as the database token does; it is never put back
-    into the page.
+    into the page. Saving looks the data source up, so the rules offered for copying can name
+    its uid, and so a name Grafana does not know is refused while it can still be corrected.
     """
     if form.get("action") == "clear":
         return _save(
@@ -652,27 +653,28 @@ async def _grafana_connection_action(
     found = store_settings.check(grafana.SETTINGS, values, "Grafana")
     if found:
         return _grafana_error(request, context, "; ".join(found) + ".", draft=typed)
+    try:
+        source = await _with_client(context, lambda client: grafana.check(client, values))
+    except grafana.GrafanaError as exc:
+        return _grafana_error(request, context, f"Grafana refused: {exc}.", draft=typed)
     if form.get("action") == "test":
-        try:
-            name = await _with_client(context, lambda client: grafana.check(client, values))
-        except grafana.GrafanaError as exc:
-            return _grafana_error(request, context, f"Grafana refused: {exc}.", draft=typed)
         return _render(
             request,
             context,
             "grafana.html",
             _grafana_view(
                 context,
-                message=f"Grafana accepts the token, and {name} is an InfluxDB data source. "
-                "Save to use it.",
+                message=f"Grafana accepts the token, and {source.name} is an InfluxDB data "
+                "source. Save to use it.",
                 draft=typed,
             ),
         )
+    entry = GrafanaEntry(**values, datasource_uid=source.uid)
     return _save(
         request,
         context,
-        context.document.model_copy(update={"grafana": GrafanaEntry(**values)}),
-        "Saved the Grafana connection.",
+        context.document.model_copy(update={"grafana": entry}),
+        f"Saved the Grafana connection, reading the data source {source.name}.",
         page="/grafana",
     )
 

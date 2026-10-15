@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any
 from urllib.parse import quote
 
@@ -29,9 +30,9 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("token", "Service-account token", secret=True, help="One with the Editor role"),
     Setting(
         "datasource",
-        "Data source uid",
+        "Data source",
         default=FILE_DATASOURCE,
-        help="The InfluxDB data source the rules read",
+        help="The InfluxDB data source's name in Grafana",
     ),
     Setting("folder", "Folder", default="Weather", help="Created if Grafana has none by this name"),
 )
@@ -73,21 +74,33 @@ def rule_group(units: Units, datasource: str = FILE_DATASOURCE) -> dict[str, Any
     return {"title": group["name"], "interval": _seconds(group["interval"]), "rules": rules}
 
 
-async def check(client: httpx2.AsyncClient, saved: Mapping[str, str]) -> str:
-    """Raise GrafanaError unless the token works and the data source is InfluxDB; its name."""
+@dataclass(frozen=True)
+class DataSource:
+    """The data source the rules read, as Grafana names it and as rules refer to it."""
+
+    name: str
+    uid: str
+
+
+async def check(client: httpx2.AsyncClient, saved: Mapping[str, str]) -> DataSource:
+    """The data source the settings name, or GrafanaError unless the token works and it is an
+    InfluxDB one.
+
+    The setting is the data source's name, as Grafana shows it. A uid is accepted too when no
+    data source has that name, so a setting holding one still finds its source.
+    """
     values = values_of(saved)
     await _call(client, values, "GET", "/api/user")
-    uid = values["datasource"]
-    source = await _call(
-        client,
-        values,
-        "GET",
-        f"/api/datasources/uid/{quote(uid, safe='')}",
-        missing=f"it has no data source with uid {uid}",
+    wanted = values["datasource"]
+    sources = await _call(client, values, "GET", "/api/datasources")
+    source = next((s for s in sources if s.get("name") == wanted), None) or next(
+        (s for s in sources if s.get("uid") == wanted), None
     )
+    if source is None:
+        raise GrafanaError(f"it has no data source named {wanted}")
     if source.get("type") != "influxdb":
-        raise GrafanaError(f"data source {uid} is {source.get('type')}, not InfluxDB")
-    return str(source.get("name") or uid)
+        raise GrafanaError(f"data source {wanted} is {source.get('type')}, not InfluxDB")
+    return DataSource(str(source["name"]), str(source["uid"]))
 
 
 #: What a push can send, by the name the page's buttons give: the dashboard, the rules, or both.
@@ -111,7 +124,7 @@ async def push(
     reverse.
     """
     values = values_of(saved)
-    name = await check(client, values)
+    source = await check(client, values)
     folder = await _folder(client, values)
     done = []
     if "dashboard" in parts:
@@ -119,7 +132,7 @@ async def push(
         dashboard["id"] = None
         for variable in dashboard["templating"]["list"]:
             if variable["type"] == "datasource":
-                variable["current"] = {"text": name, "value": values["datasource"]}
+                variable["current"] = {"text": source.name, "value": source.uid}
         await _call(
             client,
             values,
@@ -134,7 +147,7 @@ async def push(
         )
         done.append("the dashboard")
     if "rules" in parts:
-        group = rule_group(units, values["datasource"])
+        group = rule_group(units, source.uid)
         await _call(
             client,
             values,
@@ -170,7 +183,6 @@ async def _call(
     json: object = None,
     params: dict[str, str] | None = None,
     headers: dict[str, str] | None = None,
-    missing: str | None = None,
 ) -> Any:
     """One request to Grafana's API, its JSON answer, or GrafanaError saying what went wrong.
 
@@ -197,8 +209,6 @@ async def _call(
         raise GrafanaError("it refused the token")
     if status == 403:
         raise GrafanaError("the token may not do this; give its service account the Editor role")
-    if status == 404 and missing:
-        raise GrafanaError(missing)
     if status >= 400:
         raise GrafanaError(f"it answered {status}{_reason(response)}")
     try:

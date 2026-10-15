@@ -26,15 +26,15 @@ SOURCE = {"uid": "influx", "name": "Weather DB", "type": "influxdb"}
 
 
 def grafana_answers(
-    *, folders: list[dict[str, str]] | None = None, source: dict[str, str] | None = None
+    *, folders: list[dict[str, str]] | None = None, sources: list[dict[str, str]] | None = None
 ) -> Callable[[str, str], tuple[int, object]]:
     """A Grafana that accepts everything: its answer to each method and path."""
 
     def answer(method: str, path: str) -> tuple[int, object]:
         if path == "/api/user":
             return 200, {"login": "sa-ecowitt"}
-        if path.startswith("/api/datasources/uid/"):
-            return (200, source or SOURCE)
+        if path == "/api/datasources":
+            return 200, [SOURCE] if sources is None else sources
         if path == "/api/search":
             return 200, folders or []
         if path == "/api/folders":
@@ -138,8 +138,8 @@ class TestCheck:
         async with serving(stub(grafana_answers())) as s, httpx2.AsyncClient() as client:
             name = await grafana.check(client, {**SAVED, "url": s.url})
 
-        assert name == "Weather DB"
-        assert [r.path for r in s.requests] == ["/api/user", "/api/datasources/uid/influx"]
+        assert name == grafana.DataSource("Weather DB", "influx")
+        assert [r.path for r in s.requests] == ["/api/user", "/api/datasources"]
         assert all(r.headers["authorization"] == f"Bearer {TOKEN}" for r in s.requests)
 
     @pytest.mark.parametrize(
@@ -165,15 +165,22 @@ class TestCheck:
         assert TOKEN not in str(raised.value)
 
     async def test_a_missing_data_source_is_named(self) -> None:
-        def answer(method: str, path: str) -> tuple[int, object]:
-            return (404, {"message": "nope"}) if "datasources" in path else (200, {})
+        async with serving(stub(grafana_answers(sources=[]))) as s, httpx2.AsyncClient() as c:
+            with pytest.raises(grafana.GrafanaError, match="no data source named influx"):
+                await grafana.check(c, {**SAVED, "url": s.url})
 
-        async with serving(stub(answer)) as s, httpx2.AsyncClient() as client:
-            with pytest.raises(grafana.GrafanaError, match="no data source with uid influx"):
-                await grafana.check(client, {**SAVED, "url": s.url})
+    async def test_a_name_is_found_before_a_uid(self) -> None:
+        """A data source named like another's uid is the one meant: the setting is a name."""
+        sources = [SOURCE, {"uid": "x1", "name": "influx", "type": "influxdb"}]
+        async with serving(stub(grafana_answers(sources=sources))) as s, httpx2.AsyncClient() as c:
+            by_name = await grafana.check(c, {**SAVED, "url": s.url})
+            weather = await grafana.check(c, {**SAVED, "url": s.url, "datasource": "Weather DB"})
+
+        assert by_name == grafana.DataSource("influx", "x1")
+        assert weather == grafana.DataSource("Weather DB", "influx")
 
     async def test_a_data_source_of_another_kind_is_refused(self) -> None:
-        answer = grafana_answers(source={"uid": "influx", "type": "prometheus"})
+        answer = grafana_answers(sources=[{"uid": "influx", "name": "p", "type": "prometheus"}])
         async with serving(stub(answer)) as s, httpx2.AsyncClient() as client:
             with pytest.raises(grafana.GrafanaError, match="is prometheus, not InfluxDB"):
                 await grafana.check(client, {**SAVED, "url": s.url})
@@ -188,14 +195,17 @@ class TestPush:
     async def test_a_push_creates_the_folder_then_sends_the_dashboard_and_rules(self) -> None:
         async with serving(stub(grafana_answers())) as s, httpx2.AsyncClient() as client:
             done = await grafana.push(
-                client, {**SAVED, "url": s.url}, Units(temperature="f"), "9.9"
+                client,
+                {**SAVED, "url": s.url, "datasource": "Weather DB"},
+                Units(temperature="f"),
+                "9.9",
             )
 
         assert done == "Pushed the dashboard and 10 alert rules to the Weather folder."
         steps = [(r.method, r.path) for r in s.requests]
         assert steps == [
             ("GET", "/api/user"),
-            ("GET", "/api/datasources/uid/influx"),
+            ("GET", "/api/datasources"),
             ("GET", "/api/search"),
             ("POST", "/api/folders"),
             ("POST", "/api/dashboards/db"),
@@ -218,6 +228,8 @@ class TestPush:
             r["uid"] for r in grafana.provisioning(Units())["groups"][0]["rules"]
         }
         assert "temp_f" in json.dumps(group)
+        sources = {step["datasourceUid"] for r in group["rules"] for step in r["data"]}
+        assert sources == {"influx", "__expr__"}, "the rules read the uid, not the name"
 
     @pytest.mark.parametrize(
         ("part", "sent", "left", "said"),
@@ -249,9 +261,8 @@ class TestPush:
 
 
 def _connected(rig: Rig, url: str) -> None:
-    rig.store.replace(
-        ConfigDocument(grafana=GrafanaEntry(url=url, token=TOKEN, datasource="influx"))
-    )
+    entry = GrafanaEntry(url=url, token=TOKEN, datasource="Weather DB", datasource_uid="influx")
+    rig.store.replace(ConfigDocument(grafana=entry))
 
 
 class TestPage:
@@ -289,7 +300,7 @@ class TestPage:
             "configured": True,
             "url": "http://grafana.example:3000",
             "token_set": True,
-            "datasource": "influx",
+            "datasource": "Weather DB",
             "folder": "Weather",
         }
         rig.store.replace(ConfigDocument())
@@ -299,19 +310,43 @@ class TestPage:
 class TestConnection:
     FORM = {"url": "http://grafana.example:3000", "token": TOKEN, "datasource": "", "folder": ""}
 
-    def test_saving_keeps_the_defaults_and_the_token(self, rig: Rig) -> None:
-        response = rig.post("/grafana/connection", {**self.FORM, "action": "save"})
+    def test_saving_looks_the_data_source_up_and_keeps_the_token(self, rig: Rig) -> None:
+        named = [{"uid": "u-1", "name": "weather", "type": "influxdb"}]
+        with fake_grafana(grafana_answers(sources=named)) as fake:
+            form = {**self.FORM, "url": fake.url}
+            response = rig.post("/grafana/connection", {**form, "action": "save"})
+            entry = rig.store.document.grafana
+            # An empty token on a later save keeps the saved one.
+            rig.post(
+                "/grafana/connection", {**form, "token": "", "folder": "Home", "action": "save"}
+            )
 
         assert response.status_code == 303
-        assert response.headers["location"].startswith("/grafana?message=")
-        entry = rig.store.document.grafana
-        assert entry is not None and (entry.datasource, entry.folder) == ("weather", "Weather")
-        # An empty token on a later save keeps the saved one.
-        rig.post(
-            "/grafana/connection", {**self.FORM, "token": "", "folder": "Home", "action": "save"}
+        assert "reading+the+data+source+weather" in response.headers["location"]
+        assert entry is not None
+        assert (entry.datasource, entry.datasource_uid, entry.folder) == (
+            "weather",
+            "u-1",
+            "Weather",
         )
+        alerts = rig.client.get("/grafana/alerts.json").json()
+        assert {s["datasourceUid"] for r in alerts["groups"][0]["rules"] for s in r["data"]} == {
+            "u-1",
+            "__expr__",
+        }
         entry = rig.store.document.grafana
         assert entry is not None and (entry.token, entry.folder) == (TOKEN, "Home")
+
+    def test_a_data_source_grafana_does_not_have_is_not_saved(self, rig: Rig) -> None:
+        with fake_grafana(grafana_answers(sources=[])) as fake:
+            response = rig.post(
+                "/grafana/connection", {**self.FORM, "url": fake.url, "datasource": "wether"}
+            )
+
+        assert response.status_code == 400
+        assert "no data source named wether" in response.text
+        assert 'value="wether"' in response.text
+        assert rig.store.document.grafana is None
 
     def test_a_bad_address_or_no_token_is_refused_with_the_form_kept(self, rig: Rig) -> None:
         response = rig.post("/grafana/connection", {**self.FORM, "url": "grafana", "token": ""})
@@ -324,10 +359,14 @@ class TestConnection:
 
     def test_testing_reports_what_grafana_said_and_saves_nothing(self, rig: Rig) -> None:
         with fake_grafana(grafana_answers()) as fake:
-            ok = rig.post("/grafana/connection", {**self.FORM, "url": fake.url, "action": "test"})
+            ok = rig.post(
+                "/grafana/connection",
+                {**self.FORM, "url": fake.url, "datasource": "Weather DB", "action": "test"},
+            )
         with fake_grafana(lambda _method, _path: (401, {"message": "invalid"})) as fake:
             refused = rig.post(
-                "/grafana/connection", {**self.FORM, "url": fake.url, "action": "test"}
+                "/grafana/connection",
+                {**self.FORM, "url": fake.url, "datasource": "Weather DB", "action": "test"},
             )
 
         assert ok.status_code == 200 and "Weather DB is an InfluxDB data source" in ok.text

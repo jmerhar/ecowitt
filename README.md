@@ -371,10 +371,10 @@ The admin listener's *Grafana* page writes the dashboard and the rules for the u
 stores -- their field names, thresholds, display units and messages -- and offers each to copy
 or download, with the command that loads the rules through Grafana's API.
 
-Save Grafana's address there, a service-account token, and the uid of the InfluxDB data source
-the rules should read, and the page pushes the dashboard, the rules as the `ecowitt` group, or
-both, into a folder (*Weather* unless another is named; created if Grafana has none by that
-name). Each replaces what it sends whole and leaves the other alone: pushing the dashboard
+Save Grafana's address there, a service-account token, and the name of the InfluxDB data source
+the rules should read (`weather` unless another is named), and the page pushes the dashboard,
+the rules as the `ecowitt` group, or both, into a folder (*Weather* unless another is named;
+created if Grafana has none by that name). Each replaces what it sends whole and leaves the other alone: pushing the dashboard
 overwrites changes made to it in Grafana, and pushing the rules overwrites the group, deleting a
 rule added to it there. The rules stay editable in Grafana. Contact points and notification
 policies are left alone.
