@@ -8,10 +8,25 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ## Unreleased
 
+### Highlights
+
+- **The dashboard in European Portuguese.** The page follows the browser's language or the one
+  chosen in its *Settings*, and the API answers in either, with codes beside its words for any
+  client to act on.
+- **Grafana from the admin listener.** A *Grafana* page renders the dashboard and alert rules for
+  the units this server stores, and pushes them into Grafana.
+- **Old browsers and wall tablets.** The dashboard runs down to Chrome 59 on Android 4.4, with a
+  page that says why if it cannot start.
+- **A *Settings* menu for each visitor:** a theme that can turn dark at night, full screen, the
+  measured wind instead of the 10 m estimate, and the language.
+- **A Bruno collection** with an asserted request for every read endpoint, run in CI.
+- **`latest` is the newest release**, and `edge` follows `main`.
+
 ### Added
 
 - The dashboard's *Settings* menu offers a *Theme*: as the device (the default), light, dark, or
-  *Dark at night*, which turns dark at the station's sunset and light at its sunrise.
+  *Dark at night*, which turns dark at the station's sunset and light at its sunrise. Opened at
+  night, the page starts dark rather than waiting for the station's sunset time.
 - The dashboard works in browsers without ES modules, down to Chrome 59 on an Android 4.4 tablet:
   they load a second build of the page, compiled down and polyfilled, and the stylesheet carries
   fallbacks for them. A page that cannot start says why instead of staying blank.
@@ -47,6 +62,8 @@ rules to be imported again. Either is listed under *Upgrading*.
 - The images' `latest` tag is the newest release; every change to `main` is published as `edge`.
 - *Good time to air* gives each room's humidity now and the humidity airing would leave it at,
   instead of how far its dew point is above the outdoor one.
+- The dashboard's airing card names the rooms airing would dry as a sentence does, "Kitchen and
+  Bathroom", rather than as a list.
 
 ### Fixed
 
@@ -59,8 +76,13 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ### Upgrading
 
+- The shipped `docker-compose.yml` pins both images to `:3`. A compose file of your own pinned to
+  `:2` stays on 2.x until its tags are changed to `:3`.
 - A deployment that pulls `latest` to follow `main` should pull `edge` instead; on `latest` it
   stays on the newest release.
+- A client of the dashboard API that sends `Accept-Language` gets the answers' words in
+  Portuguese where it asks for it; add `?lang=en` to keep them in English. The fields and codes
+  are the same in every language.
 - Import `grafana/alerts.json` again for the new *Good time to air* message, or push it from the
   new *Grafana* page.
 - To go back to an earlier release after saving a Grafana connection, first remove the
