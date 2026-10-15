@@ -1,0 +1,10 @@
+info:
+  name: Dashboard site
+  type: folder
+  seq: 2
+
+request: {}
+
+docs:
+  content: The dashboard's routes beside its API. /setup exists only until dashboard.yaml is written.
+  type: text/markdown

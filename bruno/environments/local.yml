@@ -1,0 +1,14 @@
+name: local
+variables:
+  - name: dashboard_url
+    value: http://127.0.0.1:2553
+  - name: admin_url
+    value: http://127.0.0.1:2552
+  - name: station
+    value: example
+  - name: lang
+    value: en
+  - name: admin_user
+    value: ""
+  - secret: true
+    name: admin_password

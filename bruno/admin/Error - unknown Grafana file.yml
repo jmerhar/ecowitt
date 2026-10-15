@@ -1,0 +1,22 @@
+info:
+  name: Error - unknown Grafana file
+  type: http
+  seq: 7
+
+http:
+  method: GET
+  url: "{{admin_url}}/grafana/nope.json"
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "404"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

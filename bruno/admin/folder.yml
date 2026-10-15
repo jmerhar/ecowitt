@@ -1,0 +1,17 @@
+info:
+  name: Collector admin
+  type: folder
+  seq: 3
+
+request:
+  auth:
+    type: basic
+    username: "{{admin_user}}"
+    password: "{{admin_password}}"
+
+docs:
+  content: |-
+    The collector's admin listener, read-only. With a login set on its setup page, put it in the
+    environment's admin_user and admin_password; without one, leave both empty. The listener answers
+    only the host names in its ADMIN_HOSTS setting.
+  type: text/markdown

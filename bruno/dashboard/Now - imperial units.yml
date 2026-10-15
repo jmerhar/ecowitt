@@ -1,0 +1,46 @@
+info:
+  name: Now - imperial units
+  type: http
+  seq: 4
+
+http:
+  method: GET
+  url: "{{dashboard_url}}/api/v1/stations/{{station}}/now?temperature=f&pressure=inhg&rain=in&wind=mph&distance=mi&lang={{lang}}"
+  params:
+    - name: temperature
+      value: f
+      type: query
+    - name: pressure
+      value: inhg
+      type: query
+    - name: rain
+      value: in
+      type: query
+    - name: wind
+      value: mph
+      type: query
+    - name: distance
+      value: mi
+      type: query
+    - name: lang
+      value: "{{lang}}"
+      type: query
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.body.units.temperature
+      operator: eq
+      value: f
+    - expression: res.body.units.wind
+      operator: eq
+      value: mph
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

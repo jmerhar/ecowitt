@@ -1,0 +1,28 @@
+info:
+  name: Error - unknown range
+  type: http
+  seq: 16
+
+http:
+  method: GET
+  url: "{{dashboard_url}}/api/v1/stations/{{station}}/series?metrics=outdoor.temperature&range=2w"
+  params:
+    - name: metrics
+      value: outdoor.temperature
+      type: query
+    - name: range
+      value: 2w
+      type: query
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "422"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

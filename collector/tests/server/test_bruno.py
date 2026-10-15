@@ -22,10 +22,10 @@ LEFT_OUT = {
 def requests() -> set[str]:
     """The path of every admin request, as the admin listener's routes name them."""
     paths = set()
-    for path in ADMIN.glob("*.bru"):
-        if path.name == "folder.bru":
+    for path in ADMIN.glob("*.yml"):
+        if path.name == "folder.yml":
             continue
-        url = re.search(r"^\s*url: (\S+)$", path.read_text(encoding="utf-8"), re.MULTILINE)
+        url = re.search(r'^\s*url: "?([^"\s]+)"?$', path.read_text(encoding="utf-8"), re.MULTILINE)
         assert url, f"{path.name} has no url"
         assert url.group(1).startswith("{{admin_url}}/"), (
             f"{path.name} is not under {{{{admin_url}}}}"

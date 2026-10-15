@@ -14,7 +14,7 @@ BRUNO = REPO / "bruno"
 
 #: The environments the repository keeps; any other is a deployment's own, which .gitignore keeps
 #: out of it.
-KEPT = {"local.bru", "example.bru"}
+KEPT = {"local.yml", "example.yml"}
 
 #: Read routes the collection leaves out, and why.
 LEFT_OUT = {
@@ -36,10 +36,10 @@ def requests(folder: str, base: str) -> set[str]:
     """The path of every request in a folder of the collection, its variables as route
     parameters: `{{station}}` as `{station}`."""
     paths = set()
-    for path in (BRUNO / folder).glob("*.bru"):
-        if path.name == "folder.bru":
+    for path in (BRUNO / folder).glob("*.yml"):
+        if path.name == "folder.yml":
             continue
-        url = re.search(r"^\s*url: (\S+)$", path.read_text(encoding="utf-8"), re.MULTILINE)
+        url = re.search(r'^\s*url: "?([^"\s]+)"?$', path.read_text(encoding="utf-8"), re.MULTILINE)
         assert url, f"{path.name} has no url"
         assert url.group(1).startswith(base), f"{path.name} is not under {base}"
         route = url.group(1).removeprefix(base).split("?")[0]

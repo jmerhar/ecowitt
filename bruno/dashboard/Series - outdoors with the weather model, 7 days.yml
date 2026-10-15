@@ -1,0 +1,36 @@
+info:
+  name: Series - outdoors with the weather model, 7 days
+  type: http
+  seq: 8
+
+http:
+  method: GET
+  url: "{{dashboard_url}}/api/v1/stations/{{station}}/series?metrics=outdoor.temperature,outdoor.humidity&range=7d&model=true&lang={{lang}}"
+  params:
+    - name: metrics
+      value: outdoor.temperature,outdoor.humidity
+      type: query
+    - name: range
+      value: 7d
+      type: query
+    - name: model
+      value: "true"
+      type: query
+    - name: lang
+      value: "{{lang}}"
+      type: query
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.body.series
+      operator: isArray
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

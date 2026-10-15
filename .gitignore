@@ -37,5 +37,5 @@ coverage-upload/
 
 # Bruno: only the collection's own environments; a deployment's stays on the machine that uses it
 bruno/environments/*
-!bruno/environments/local.bru
-!bruno/environments/example.bru
+!bruno/environments/local.yml
+!bruno/environments/example.yml

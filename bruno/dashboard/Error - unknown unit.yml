@@ -1,0 +1,25 @@
+info:
+  name: Error - unknown unit
+  type: http
+  seq: 17
+
+http:
+  method: GET
+  url: "{{dashboard_url}}/api/v1/stations/{{station}}/now?temperature=k"
+  params:
+    - name: temperature
+      value: k
+      type: query
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "422"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

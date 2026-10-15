@@ -1,0 +1,53 @@
+info:
+  name: Extremes
+  type: http
+  seq: 12
+
+http:
+  method: GET
+  url: "{{dashboard_url}}/api/v1/stations/{{station}}/extremes?period=today&lang={{lang}}"
+  params:
+    - name: period
+      value: today
+      type: query
+    - name: temperature
+      value: f
+      type: query
+      disabled: true
+    - name: pressure
+      value: inhg
+      type: query
+      disabled: true
+    - name: rain
+      value: in
+      type: query
+      disabled: true
+    - name: wind
+      value: mph
+      type: query
+      disabled: true
+    - name: distance
+      value: mi
+      type: query
+      disabled: true
+    - name: lang
+      value: "{{lang}}"
+      type: query
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.body.period
+      operator: eq
+      value: today
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "period: today, month or year."

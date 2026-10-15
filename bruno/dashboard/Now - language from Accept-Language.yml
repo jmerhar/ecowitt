@@ -1,0 +1,26 @@
+info:
+  name: Now - language from Accept-Language
+  type: http
+  seq: 6
+
+http:
+  method: GET
+  url: "{{dashboard_url}}/api/v1/stations/{{station}}/now"
+  headers:
+    - name: accept-language
+      value: pt-PT,pt;q=0.9,en;q=0.5
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.body.summary
+      operator: isString
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

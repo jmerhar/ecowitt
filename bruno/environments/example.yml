@@ -1,0 +1,14 @@
+name: example
+variables:
+  - name: dashboard_url
+    value: https://weather.example.com
+  - name: admin_url
+    value: https://admin.example.com
+  - name: station
+    value: Home
+  - name: lang
+    value: en
+  - name: admin_user
+    value: ""
+  - secret: true
+    name: admin_password

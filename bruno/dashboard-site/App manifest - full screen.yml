@@ -1,0 +1,28 @@
+info:
+  name: App manifest - full screen
+  type: http
+  seq: 5
+
+http:
+  method: GET
+  url: "{{dashboard_url}}/manifest.webmanifest?display=fullscreen"
+  params:
+    - name: display
+      value: fullscreen
+      type: query
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.body.display
+      operator: eq
+      value: fullscreen
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
