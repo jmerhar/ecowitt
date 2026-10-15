@@ -9,7 +9,7 @@ description = "Ecowitt Server's public dashboard: a read-only API over what the 
 requires-python = ">=3.14"
 dependencies = [
     "ecowitt-core",
-    "fastapi>=0.141,<0.142",
+    "fastapi>=0.141,<0.143",
     "uvicorn[standard]>=0.30",
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
