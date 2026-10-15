@@ -5,7 +5,7 @@
  */
 
 import type { UnitChoice } from "./api";
-import { THEME_CHOICES, type ThemeChoice } from "./theme";
+import { THEME_CHOICES, type Theme, type ThemeChoice } from "./theme";
 
 export type Prefs = {
   station: string | null;
@@ -21,6 +21,8 @@ export type Prefs = {
   wind: WindHeight;
   /** Light or dark: the system's, a fixed one, or the sun's. */
   theme: ThemeChoice;
+  /** What following the sun last showed, for the moment before its times arrive. */
+  sunTheme: Theme;
 };
 
 /** Wind estimated at the standard 10 m, or as the anemometer measured it at its own height. */
@@ -39,6 +41,7 @@ export const DEFAULTS: Prefs = {
   rooms: null,
   wind: "10m",
   theme: "system",
+  sunTheme: null,
 };
 
 const KEY = "ecowitt-dashboard";
@@ -58,6 +61,7 @@ export function load(storage: Storage | undefined = globalThis.localStorage): Pr
       rooms: roomSort(saved.rooms),
       wind: saved.wind === "10m" || saved.wind === "sensor" ? saved.wind : DEFAULTS.wind,
       theme: THEME_CHOICES.includes(saved.theme as ThemeChoice) ? (saved.theme as ThemeChoice) : DEFAULTS.theme,
+      sunTheme: saved.sunTheme === "light" || saved.sunTheme === "dark" ? saved.sunTheme : DEFAULTS.sunTheme,
     };
   } catch {
     return { ...DEFAULTS };

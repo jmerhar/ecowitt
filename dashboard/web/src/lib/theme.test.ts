@@ -34,10 +34,14 @@ describe("themeAt", () => {
     expect(themeAt("sun", { ...polar, polar: "night" }, at("12:00:00"))).toBe("dark");
   });
 
-  it("leaves the sun's choice to the system when its times are missing", () => {
+  it("keeps the sun's last theme while its times are missing, or the system's without one", () => {
     expect(themeAt("sun", null, at("23:00:00"))).toBeNull();
     expect(themeAt("sun", { ...SUN, sunset: null }, at("23:00:00"))).toBeNull();
     expect(themeAt("sun", { ...SUN, sunrise: null }, at("03:00:00"))).toBeNull();
+    expect(themeAt("sun", null, at("12:00:00"), "dark")).toBe("dark");
+    expect(themeAt("sun", { ...SUN, sunset: null }, at("12:00:00"), "dark")).toBe("dark");
+    expect(themeAt("sun", SUN, at("12:00:00"), "dark")).toBe("light");
+    expect(themeAt("system", null, at("12:00:00"), "dark")).toBeNull();
   });
 
   it("keeps a fixed choice whatever the sun does", () => {

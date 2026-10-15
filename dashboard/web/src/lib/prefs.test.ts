@@ -20,7 +20,7 @@ describe("prefs", () => {
     const storage = memory();
     const prefs = {
       ...DEFAULTS, station: "Home", units: { wind: "mph" }, range: "7d", model: true,
-      rooms: { column: "humidity", descending: true }, wind: "sensor" as const, theme: "sun" as const,
+      rooms: { column: "humidity", descending: true }, wind: "sensor" as const, theme: "sun" as const, sunTheme: "dark" as const,
     };
     save(prefs, storage);
     expect(load(storage)).toEqual(prefs);
@@ -34,7 +34,7 @@ describe("prefs", () => {
       .toEqual(DEFAULTS);
     expect(load(memory({ "ecowitt-dashboard": JSON.stringify({ rooms: "humidity" }) }))).toEqual(DEFAULTS);
     expect(load(memory({ "ecowitt-dashboard": JSON.stringify({ wind: "2m" }) }))).toEqual(DEFAULTS);
-    expect(load(memory({ "ecowitt-dashboard": JSON.stringify({ theme: "auto" }) }))).toEqual(DEFAULTS);
+    expect(load(memory({ "ecowitt-dashboard": JSON.stringify({ theme: "auto", sunTheme: "dim" }) }))).toEqual(DEFAULTS);
     expect(load(undefined)).toEqual(DEFAULTS);
   });
 

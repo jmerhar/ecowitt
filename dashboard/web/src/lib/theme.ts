@@ -15,13 +15,16 @@ export const THEME_CHOICES: readonly ThemeChoice[] = ["system", "light", "dark",
 
 /**
  * The theme for a choice at a moment. Following the sun needs the station's sunrise and sunset
- * for its current day, or the polar day or night that has none; without them it is the system's.
+ * for its current day, or the polar day or night that has none; until they arrive, or without
+ * them, it is `last`: what the sun gave the last time the page knew, so a page opened at night
+ * does not open light first.
  */
-export function themeAt(choice: ThemeChoice, sun: Sun | null, now: Date): Theme {
+export function themeAt(choice: ThemeChoice, sun: Sun | null, now: Date, last: Theme = null): Theme {
   if (choice === "light" || choice === "dark") return choice;
-  if (choice !== "sun" || !sun) return null;
+  if (choice !== "sun") return null;
+  if (!sun) return last;
   if (sun.polar) return sun.polar === "day" ? "light" : "dark";
-  if (!sun.sunrise || !sun.sunset) return null;
+  if (!sun.sunrise || !sun.sunset) return last;
   const t = now.getTime();
   return t >= Date.parse(sun.sunrise) && t < Date.parse(sun.sunset) ? "light" : "dark";
 }

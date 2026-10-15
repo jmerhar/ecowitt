@@ -177,10 +177,22 @@ describe("App", () => {
     vi.setSystemTime(new Date("2026-10-10T18:07:30Z"));
     await vi.advanceTimersByTimeAsync(1100);
     await waitFor(() => expect(root.dataset.theme).toBe("dark"));
-    expect(JSON.parse(storage.getItem("ecowitt-dashboard")!).theme).toBe("sun");
+    expect(JSON.parse(storage.getItem("ecowitt-dashboard")!)).toMatchObject({ theme: "sun", sunTheme: "dark" });
     await fireEvent.change(screen.getByLabelText("Theme"), { target: { value: "system" } });
     await waitFor(() => expect(root.dataset.theme).toBeUndefined());
     shown.unmount();
+  });
+
+  it("opens in the sun's last theme before the station's sun times arrive", async () => {
+    const api = fakeApi();
+    api.now.mockReturnValue(new Promise(() => {}));
+    const storage = memory();
+    storage.setItem("ecowitt-dashboard", JSON.stringify({ theme: "sun", sunTheme: "dark" }));
+    const shown = render(App, { api, storage });
+    await waitFor(() => expect(api.now).toHaveBeenCalled());
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    shown.unmount();
+    delete document.documentElement.dataset.theme;
   });
 
   it("remembers how the rooms are sorted", async () => {

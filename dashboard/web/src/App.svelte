@@ -56,9 +56,12 @@
   const windHeight = $derived(estimatesWind ? prefs.wind : "10m");
   const timezone = $derived(now?.timezone ?? station?.timezone ?? "UTC");
   /** Light or dark, rechecked as the clock moves, so following the sun turns at sunset. */
-  const theme = $derived(themeAt(prefs.theme, now?.sun ?? null, clock));
+  const theme = $derived(themeAt(prefs.theme, now?.sun ?? null, clock, prefs.sunTheme));
 
-  $effect(() => applyTheme(theme));
+  $effect(() => {
+    applyTheme(theme);
+    if (prefs.theme === "sun" && theme !== prefs.sunTheme) prefs.sunTheme = theme;
+  });
 
   $effect(() => {
     save($state.snapshot(prefs), storage);
