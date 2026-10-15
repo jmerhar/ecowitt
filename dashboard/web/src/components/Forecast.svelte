@@ -110,10 +110,12 @@
           {#each answer.days as d (d.date)}
             <tr>
               <td>{dayLabel(d.date, timezone)}</td>
-              <td class="sky">
+              <td>
                 {#if d.weather_code !== null}
-                  <img src={skyIcon(d.weather_code, true)} alt={d.description ?? ""} width="32" height="32" />
-                  <span class="wide-only" aria-hidden="true">{d.description}</span>
+                  <div class="sky">
+                    <img src={skyIcon(d.weather_code, true)} alt={d.description ?? ""} width="32" height="32" />
+                    <span class="wide-only" aria-hidden="true">{d.description}</span>
+                  </div>
                 {/if}
               </td>
               <td class="num muted">{whole(d.temperature_min, t, symbols)}</td>
@@ -192,7 +194,9 @@
     color: var(--muted);
     opacity: 0.6;
   }
-  .days td.sky {
+  /* On a wrapper, not the cell: a flex cell stops being a table cell, so it no longer takes its
+     row's height and its border falls out of line with the others'. */
+  .days .sky {
     display: flex;
     align-items: center;
     gap: 0.4rem;

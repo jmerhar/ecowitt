@@ -19,6 +19,11 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 - The images' `latest` tag is the newest release; every change to `main` is published as `edge`.
 
+### Fixed
+
+- The forecast's daily table draws each row's line straight across: the sky column's sat out of
+  line with the others'.
+
 ### Upgrading
 
 - A deployment that pulls `latest` to follow `main` should pull `edge` instead; on `latest` it
