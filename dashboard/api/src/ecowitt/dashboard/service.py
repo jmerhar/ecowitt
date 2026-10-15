@@ -658,6 +658,8 @@ def _wind(latest: _Latest, values: _Values, stored: Units, info: StationInfo) ->
     today = latest.wind_10m_today if lead is ten else latest.wind_today
     measured_today = latest.wind_today
     source = ten.get("source") if lead is ten else None
+    measured_speed = values.metric(S, measured.get(speed_field))
+    measured_force = None if measured_speed is None else weather.beaufort(measured_speed)
     return models.Wind(
         speed=None if speed is None else values.from_metric(S, speed),
         gust=values.out(S, lead.get(gust_field)),
@@ -675,6 +677,10 @@ def _wind(latest: _Latest, values: _Values, stored: Units, info: StationInfo) ->
         measured_max_gust_today=values.at(S, measured_today.maximum[gust_field])
         if measured_today and gust_field in measured_today.maximum
         else None,
+        measured_beaufort=measured_force,
+        measured_description=None
+        if measured_force is None
+        else weather.BEAUFORT_NAMES[measured_force],
     )
 
 

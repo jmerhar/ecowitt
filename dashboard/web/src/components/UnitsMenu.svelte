@@ -1,9 +1,20 @@
 <script lang="ts">
-  /** The visitor's units, one choice per quantity; "station" leaves a quantity as stored. */
+  /**
+   * The visitor's units, one choice per quantity; "station" leaves a quantity as stored. And, for
+   * a station whose wind is estimated at 10 m, whether the page leads with that or the measurement.
+   */
   import type { Meta, UnitChoice, Units } from "../lib/api";
+  import type { WindHeight } from "../lib/prefs";
 
-  type Props = { meta: Meta; chosen: UnitChoice; onchange: (units: UnitChoice) => void };
-  let { meta, chosen, onchange }: Props = $props();
+  type Props = {
+    meta: Meta;
+    chosen: UnitChoice;
+    onchange: (units: UnitChoice) => void;
+    /** Which wind the page leads with; null hides the choice, for a station without an estimate. */
+    wind?: WindHeight | null;
+    onwind?: (wind: WindHeight) => void;
+  };
+  let { meta, chosen, onchange, wind = null, onwind = () => {} }: Props = $props();
 
   const LABELS: Record<string, string> = {
     temperature: "Temperature",
@@ -36,6 +47,15 @@
         </select>
       </label>
     {/each}
+    {#if wind}
+      <label>
+        Wind at
+        <select value={wind} onchange={(e) => onwind(e.currentTarget.value as WindHeight)}>
+          <option value="10m">10 m, estimated</option>
+          <option value="sensor">The sensor</option>
+        </select>
+      </label>
+    {/if}
   </div>
 </details>
 
@@ -69,5 +89,6 @@
     gap: 0.75rem;
     align-items: center;
     color: var(--fg);
+    white-space: nowrap;
   }
 </style>

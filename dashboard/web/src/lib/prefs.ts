@@ -16,7 +16,12 @@ export type Prefs = {
   model: boolean;
   /** How the rooms table is sorted, or null for the order the station lists them in. */
   rooms: RoomSort | null;
+  /** Which wind the wind card and chart lead with. */
+  wind: WindHeight;
 };
+
+/** Wind estimated at the standard 10 m, or as the anemometer measured it at its own height. */
+export type WindHeight = "10m" | "sensor";
 
 /** A column of the rooms table, and which way it runs. */
 export type RoomSort = { column: string; descending: boolean };
@@ -29,6 +34,7 @@ export const DEFAULTS: Prefs = {
   period: "today",
   model: false,
   rooms: null,
+  wind: "10m",
 };
 
 const KEY = "ecowitt-dashboard";
@@ -46,6 +52,7 @@ export function load(storage: Storage | undefined = globalThis.localStorage): Pr
       period: typeof saved.period === "string" ? saved.period : DEFAULTS.period,
       model: typeof saved.model === "boolean" ? saved.model : DEFAULTS.model,
       rooms: roomSort(saved.rooms),
+      wind: saved.wind === "10m" || saved.wind === "sensor" ? saved.wind : DEFAULTS.wind,
     };
   } catch {
     return { ...DEFAULTS };

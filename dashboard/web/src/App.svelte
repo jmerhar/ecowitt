@@ -48,6 +48,11 @@
     stations.find((s) => s.id === prefs.station) ?? stations[0] ?? null,
   );
   const symbols = $derived(meta?.symbols ?? {});
+  /** Whether the station's wind can differ from the measurement: scaled to 10 m, or the weather
+   * model's while the cups stall. */
+  const estimatesWind = $derived(station !== null && (station.wind_factor !== 1 || station.weather_model !== null));
+  /** The wind the page leads with: the visitor's choice, where the station gives one. */
+  const windHeight = $derived(estimatesWind ? prefs.wind : "10m");
   const timezone = $derived(now?.timezone ?? station?.timezone ?? "UTC");
 
   $effect(() => {
@@ -140,7 +145,10 @@
       <span class="dot" class:offline={!now.online} title={now.online ? "Reporting" : "Not reporting"}></span>
       <span>{now.online ? "Updated" : "Last report"} {ago(now.time, clock)}</span>
     {/if}
-    {#if meta}<UnitsMenu {meta} chosen={prefs.units} onchange={chooseUnits} />{/if}
+    {#if meta}
+      <UnitsMenu {meta} chosen={prefs.units} onchange={chooseUnits}
+        wind={estimatesWind ? prefs.wind : null} onwind={(w) => (prefs.wind = w)} />
+    {/if}
   </div>
 </header>
 
@@ -155,7 +163,7 @@
     <section class="glance">
       <NowCard {now} {symbols} {timezone} onselect={drill} notice={now.notices.outdoor} />
       {#if now.airing}<AiringCard airing={now.airing} {symbols} {timezone} onselect={drill} notice={now.notices.airing} />{/if}
-      {#if now.wind}<WindCard wind={now.wind} units={now.units} {symbols} {timezone} onselect={drill} notice={now.notices.wind} />{/if}
+      {#if now.wind}<WindCard wind={now.wind} height={windHeight} units={now.units} {symbols} {timezone} onselect={drill} notice={now.notices.wind} />{/if}
       {#if now.rain}<RainCard rain={now.rain} units={now.units} {symbols} onselect={drill} notice={now.notices.rain} />{/if}
       {#if now.pressure}<PressureCard pressure={now.pressure} units={now.units} {symbols} onselect={drill} notice={now.notices.pressure} />{/if}
       {#if now.sun}<SunCard sun={now.sun} {symbols} {timezone} onselect={drill} notice={now.notices.sun} />{/if}
@@ -176,9 +184,10 @@
       bind:range={prefs.range}
       weatherModel={station.weather_model}
       bind:model={prefs.model}
+      wind={windHeight}
     />
 
-    <Records {api} {meta} station={station.id} units={prefs.units} {timezone} {tick} bind:period={prefs.period} />
+    <Records {api} {meta} station={station.id} units={prefs.units} {timezone} {tick} bind:period={prefs.period} wind={windHeight} />
 
     {#if now.sensors.length}<Sensors sensors={now.sensors} notice={now.notices.sensors} />{/if}
   {/if}

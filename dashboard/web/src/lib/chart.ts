@@ -5,15 +5,17 @@
  */
 
 import type { Series, SeriesOut } from "./api";
+import type { WindHeight } from "./prefs";
 
 /** How one metric is drawn. */
 export type Style = "line" | "band" | "points" | "bars" | "thin";
 
-/** A chart tab: its metrics, how each is drawn, and on which axis. */
+/** A chart tab: its metrics, how each is drawn, on which axis, and a label of its own if the
+ * metric's would mislead in this view. */
 export type View = {
   id: string;
   label: string;
-  metrics: { id: string; style: Style; axis: "left" | "right" }[];
+  metrics: { id: string; style: Style; axis: "left" | "right"; label?: string }[];
 };
 
 export const VIEWS: View[] = [
@@ -74,8 +76,23 @@ export const VIEWS: View[] = [
   },
 ];
 
-/** The tab a section of the page drills down to when clicked. */
-export function viewFor(id: string): View {
+/** The wind tab for a visitor who leads with the measured wind: the estimate at 10 m faint
+ * behind it, in the places the measured lines take in the 10 m view, so the colours swap too. */
+export const MEASURED_WIND: View = {
+  id: "wind",
+  label: "Wind",
+  metrics: [
+    { id: "wind.measured_speed", style: "line", axis: "left" },
+    { id: "wind.measured_gust", style: "line", axis: "left" },
+    { id: "wind.direction", style: "points", axis: "right" },
+    { id: "wind.speed", style: "thin", axis: "left", label: "Wind speed, at 10 m" },
+  ],
+};
+
+/** The tab a section of the page drills down to when clicked, with the wind the visitor leads
+ * with. */
+export function viewFor(id: string, wind: WindHeight = "10m"): View {
+  if (id === "wind" && wind === "sensor") return MEASURED_WIND;
   return VIEWS.find((v) => v.id === id) ?? VIEWS[0];
 }
 
@@ -134,7 +151,7 @@ export function align(view: View, answer: SeriesOut, labels: Record<string, stri
     const how = wanted.get(series.metric)!;
     const index = counts.get(series.metric) ?? 0;
     counts.set(series.metric, index + 1);
-    const metricLabel = labels[series.metric] ?? series.metric;
+    const metricLabel = how.label ?? labels[series.metric] ?? series.metric;
     const line: Line = {
       metric: series.metric,
       // A per-room chart names each line by its room; a station-wide one by its metric.
@@ -159,7 +176,7 @@ export function align(view: View, answer: SeriesOut, labels: Record<string, stri
     const how = wanted.get(series.metric)!;
     lines.push({
       metric: series.metric,
-      label: `${labels[series.metric] ?? series.metric} (model)`,
+      label: `${how.label ?? labels[series.metric] ?? series.metric} (model)`,
       unit: series.unit,
       style: how.style === "points" ? "points" : "line",
       axis: how.axis,

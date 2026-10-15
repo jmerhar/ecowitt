@@ -85,6 +85,9 @@ class Wind(BaseModel):
     measured_speed: float | None = None
     measured_gust: float | None = None
     measured_max_gust_today: At | None = None
+    #: The Beaufort force and its name for the measured speed, for a page showing that instead.
+    measured_beaufort: int | None = None
+    measured_description: str | None = None
 
 
 class Rain(BaseModel):

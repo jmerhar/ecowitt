@@ -34,6 +34,7 @@ async def test_the_estimate_leads_and_the_measurement_follows() -> None:
     # Beaufort describes wind at 10 m, so it follows the estimate: 30 km/h is a fresh breeze,
     # where the measured 15 km/h would be a gentle one.
     assert (wind.beaufort, wind.description) == (5, "Fresh breeze")
+    assert (wind.measured_beaufort, wind.measured_description) == (3, "Gentle breeze")
     assert wind.max_gust_today is not None and wind.max_gust_today.value == 104.0
     assert wind.measured_max_gust_today is not None
     assert wind.measured_max_gust_today.value == 52.0

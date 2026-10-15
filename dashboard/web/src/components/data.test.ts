@@ -128,6 +128,12 @@ describe("Records", () => {
     expect(screen.queryByText("Rain today")).not.toBeInTheDocument();
   });
 
+  it("marks the wind's records as at 10 m for a visitor who leads with the sensor", async () => {
+    render(Records, { ...base, api: fakeApi(), period: "today", wind: "sensor" });
+    expect(await screen.findByText("Wind gust, at 10 m", { selector: ".label" })).toBeInTheDocument();
+    expect(screen.getByText("Temperature", { selector: ".label" })).toBeInTheDocument();
+  });
+
   it("folds the rooms beneath, a tile each with temperature and humidity", async () => {
     const api = fakeApi();
     api.extremes.mockResolvedValue(extremes({

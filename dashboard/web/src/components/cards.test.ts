@@ -146,6 +146,30 @@ describe("WindCard", () => {
     }
   });
 
+  it("leads with what the sensor measured for a visitor who chose it, the estimate beneath", () => {
+    const wind = {
+      ...now().wind!, speed: 30, gust: 50, beaufort: 5, description: "Fresh breeze", source: "sensor" as const,
+      height_factor: 2, max_gust_today: { value: 104, time: "2026-10-10T10:00:00Z" },
+    };
+    render(WindCard, { wind, height: "sensor", units: UNITS, symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
+    expect(screen.getByText("15.0 km/h")).toBeInTheDocument();
+    expect(screen.getByText("at the sensor")).toBeInTheDocument();
+    expect(screen.getByText("Gentle breeze from the SE")).toBeInTheDocument();
+    expect(screen.getByText("25.0 km/h")).toBeInTheDocument();
+    expect(screen.getByText("52.0 km/h at 11:00")).toBeInTheDocument();
+    expect(screen.getByText("At 10 m").parentElement).toHaveAttribute("title", expect.stringContaining("×2.00"));
+    expect(screen.getByText("30.0 km/h, gusts 50.0 km/h")).toBeInTheDocument();
+    expect(screen.queryByText("Measured here")).not.toBeInTheDocument();
+  });
+
+  it("changes nothing for a choice of the sensor where there is no estimate", () => {
+    const wind = { ...now().wind!, measured_speed: 99 };
+    render(WindCard, { wind, height: "sensor", units: UNITS, symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
+    expect(screen.getByText("15.0 km/h")).toBeInTheDocument();
+    expect(screen.queryByText("at the sensor")).not.toBeInTheDocument();
+    expect(screen.queryByText("At 10 m")).not.toBeInTheDocument();
+  });
+
   it("has no arrow or direction in a calm", () => {
     const calm = { ...now().wind!, direction: null, compass: null, beaufort: 0, description: "Calm", max_gust_today: null };
     const { container } = render(WindCard, { wind: calm, units: UNITS, symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
@@ -444,6 +468,18 @@ describe("UnitsMenu", () => {
     expect(onchange).toHaveBeenLastCalledWith({ wind: "mph", temperature: "f" });
     await fireEvent.change(wind, { target: { value: "" } });
     expect(onchange).toHaveBeenLastCalledWith({});
+  });
+
+  it("offers the wind's height only where there is a choice, and reports it", async () => {
+    const onwind = vi.fn();
+    const shown = render(UnitsMenu, { meta: META, chosen: {}, onchange: vi.fn(), wind: "10m", onwind });
+    const height = screen.getByLabelText("Wind at") as HTMLSelectElement;
+    expect(height.value).toBe("10m");
+    await fireEvent.change(height, { target: { value: "sensor" } });
+    expect(onwind).toHaveBeenLastCalledWith("sensor");
+    shown.unmount();
+    render(UnitsMenu, { meta: META, chosen: {}, onchange: vi.fn() });
+    expect(screen.queryByLabelText("Wind at")).not.toBeInTheDocument();
   });
 
   it("copes with a quantity the API lists no units for", () => {

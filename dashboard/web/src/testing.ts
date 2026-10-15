@@ -58,6 +58,7 @@ export function now(overrides: Partial<Now> = {}): Now {
       max_gust_today: { value: 52, time: "2026-10-10T10:00:00Z" },
       source: null, height_factor: 1, measured_speed: 15, measured_gust: 25,
       measured_max_gust_today: { value: 52, time: "2026-10-10T10:00:00Z" },
+      measured_beaufort: 3, measured_description: "Gentle breeze",
     },
     rain: {
       gauge: "bucket", rate: 0, event: 0, hourly: 0, daily: 1.2, last_24h: 3.5, weekly: 9,

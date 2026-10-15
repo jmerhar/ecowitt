@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { align, colour, PALETTE, spec, viewFor, VIEWS } from "./chart";
+import { align, colour, MEASURED_WIND, PALETTE, spec, viewFor, VIEWS } from "./chart";
 import { series } from "../testing";
 
 const LABELS = { "outdoor.temperature": "Temperature", "outdoor.dew_point": "Dew point" };
@@ -102,6 +102,30 @@ describe("the weather model's lines", () => {
     }), { "wind.direction": "Wind direction" }));
     expect(built.series.map((s) => s.label)).toEqual(["Wind direction", "Wind direction (model)"]);
     expect(built.series[1]).toMatchObject({ style: "points", width: 0, dash: undefined, model: true });
+  });
+});
+
+describe("the measured wind", () => {
+  it("leads the wind tab for a visitor who chose the sensor, and no other tab", () => {
+    expect(viewFor("wind", "sensor")).toBe(MEASURED_WIND);
+    expect(viewFor("wind", "10m")).toBe(viewFor("wind"));
+    expect(viewFor("temperature", "sensor")).toBe(viewFor("temperature"));
+  });
+
+  it("names the estimate behind it as the one at 10 m, the model's line too", () => {
+    const answer = series({
+      series: [
+        { metric: "wind.measured_speed", sensor: null, name: null, unit: "kmh", source: "station", t: [1], values: { mean: [15] } },
+        { metric: "wind.speed", sensor: null, name: null, unit: "kmh", source: "station", t: [1], values: { mean: [30] } },
+        { metric: "wind.speed", sensor: null, name: null, unit: "kmh", source: "model", t: [1], values: { mean: [28] } },
+      ],
+    });
+    const lines = align(MEASURED_WIND, answer, { "wind.speed": "Wind speed", "wind.measured_speed": "Wind speed, measured" }).lines;
+    expect(lines.map((l) => [l.label, l.style])).toEqual([
+      ["Wind speed, measured", "line"],
+      ["Wind speed, at 10 m", "thin"],
+      ["Wind speed, at 10 m (model)", "line"],
+    ]);
   });
 });
 

@@ -53,6 +53,9 @@ export type Wind = {
   measured_speed: number | null;
   measured_gust: number | null;
   measured_max_gust_today: At | null;
+  /** The Beaufort force and its name for the measured speed. */
+  measured_beaufort: number | null;
+  measured_description: string | null;
 };
 
 export type Rain = {

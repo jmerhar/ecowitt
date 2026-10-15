@@ -60,6 +60,38 @@ describe("App", () => {
     expect(JSON.parse(storage.getItem("ecowitt-dashboard")!).view).toBe("wind");
   });
 
+  it("leads with the measured wind when the visitor chooses it, and remembers that", async () => {
+    const api = fakeApi();
+    api.stations.mockResolvedValue([{ ...STATION, wind_factor: 2 }]);
+    const base = now().wind!;
+    api.now.mockResolvedValue(now({ wind: { ...base, speed: 30, gust: 50, source: "sensor", height_factor: 2 } }));
+    const storage = memory();
+    render(App, { api, storage });
+    expect(await screen.findByText("30.0 km/h")).toBeInTheDocument();
+    await fireEvent.click(screen.getByRole("button", { name: /Wind/ }));
+    await fireEvent.change(screen.getByLabelText("Wind at"), { target: { value: "sensor" } });
+    expect(await screen.findByText("at the sensor")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(api.series).toHaveBeenLastCalledWith(
+        "Home", ["wind.measured_speed", "wind.measured_gust", "wind.direction", "wind.speed"], "24h", {}, false,
+      ),
+    );
+    expect(JSON.parse(storage.getItem("ecowitt-dashboard")!).wind).toBe("sensor");
+  });
+
+  it("offers no choice of the wind's height for a station that measures it as it is", async () => {
+    const api = fakeApi();
+    const storage = memory();
+    // A choice saved on another station leaves this one's chart as it is.
+    storage.setItem("ecowitt-dashboard", JSON.stringify({ wind: "sensor", view: "wind" }));
+    render(App, { api, storage });
+    await screen.findByText("18.0 °C");
+    expect(screen.queryByLabelText("Wind at")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(api.series).toHaveBeenLastCalledWith("Home", ["wind.speed", "wind.gust", "wind.direction", "wind.measured_speed"], "24h", {}, false),
+    );
+  });
+
   it("asks again in the units chosen, and remembers them", async () => {
     const api = fakeApi();
     const storage = memory();

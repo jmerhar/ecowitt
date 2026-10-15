@@ -7,6 +7,7 @@
   import { ApiError } from "../lib/api";
   import { clock, moment, quantity } from "../lib/format";
   import { metricIcon } from "../lib/icons";
+  import type { WindHeight } from "../lib/prefs";
   import ArrowUpDownIcon from "@lucide/svelte/icons/arrow-up-down";
   import HouseIcon from "@lucide/svelte/icons/house";
 
@@ -19,15 +20,24 @@
     /** Changes whenever the page refreshes, which fetches the answer again. */
     tick?: number;
     period: string;
+    /** Which wind the page leads with: wind records are at 10 m, so say so where it is not. */
+    wind?: WindHeight;
   };
-  let { api, meta, station, units, timezone, tick = 0, period = $bindable() }: Props = $props();
+  let { api, meta, station, units, timezone, tick = 0, period = $bindable(), wind = "10m" }: Props = $props();
 
   const PERIODS: Record<string, string> = { today: "Today", month: "This month", year: "This year" };
 
   let answer = $state<ExtremesOut | null>(null);
   let error = $state("");
 
-  const labels = $derived(Object.fromEntries(meta.metrics.map((m) => [m.id, m.label])));
+  const labels = $derived(
+    Object.fromEntries(
+      meta.metrics.map((m) => [
+        m.id,
+        wind === "sensor" && (m.id === "wind.speed" || m.id === "wind.gust") ? `${m.label}, at 10 m` : m.label,
+      ]),
+    ),
+  );
   /**
    * The outdoor and station-wide records. A record that is only a highest and is zero -- no
    * rain, no sun at night -- says nothing.

@@ -9,6 +9,7 @@
   import Chart from "./Chart.svelte";
   import { viewIcon } from "../lib/icons";
   import type { WeatherModel } from "../lib/api";
+  import type { WindHeight } from "../lib/prefs";
 
   type Props = {
     api: Api;
@@ -24,6 +25,8 @@
     weatherModel?: WeatherModel | null;
     /** Whether the model's lines are shown, where the chart has any. */
     model?: boolean;
+    /** Which wind the wind tab leads with. */
+    wind?: WindHeight;
   };
   let {
     api,
@@ -36,6 +39,7 @@
     range = $bindable(),
     weatherModel = null,
     model = $bindable(false),
+    wind = "10m",
   }: Props = $props();
 
   const RANGES: Record<string, string> = {
@@ -49,7 +53,7 @@
   let error = $state("");
   let loading = $state(false);
 
-  const current = $derived(viewFor(view));
+  const current = $derived(viewFor(view, wind));
   const labels = $derived(Object.fromEntries(meta.metrics.map((m) => [m.id, m.label])));
   const modelled = $derived(new Set(meta.metrics.filter((m) => m.model).map((m) => m.id)));
   /** Whether this chart can show the model: the station has one, and it has one of the metrics. */

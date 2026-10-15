@@ -6,6 +6,15 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 data in a way that needs acting on. Any release can also ask for the Grafana dashboard or alert
 rules to be imported again. Either is listed under *Upgrading*.
 
+## Unreleased
+
+### Added
+
+- The dashboard's *Units* menu offers *Wind at: The sensor*, for a station whose wind is estimated
+  at 10 m: the wind card and chart then lead with the measured wind, with the estimate beneath it,
+  and the wind's records, which stay at 10 m, say so. The API's `wind` answer adds
+  `measured_beaufort` and `measured_description`.
+
 ## 2.8.1 — 2026-10-14
 
 ### Changed
