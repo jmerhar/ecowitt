@@ -18,13 +18,19 @@ describe("Api", () => {
     await api.series("Home", ["a.b"], "24h", {}, true);
     await api.extremes("Home", "year");
     expect(fetcher.mock.calls.map((c) => c[0])).toEqual([
-      "/api/v1/meta",
-      "/api/v1/stations",
-      "/api/v1/stations/My%20station/now?temperature=f",
-      "/api/v1/stations/Home/series?wind=mph&metrics=a.b%2Cc.d&range=7d",
-      "/api/v1/stations/Home/series?metrics=a.b&range=24h&model=true",
-      "/api/v1/stations/Home/extremes?period=year",
+      "/api/v1/meta?lang=en",
+      "/api/v1/stations?lang=en",
+      "/api/v1/stations/My%20station/now?temperature=f&lang=en",
+      "/api/v1/stations/Home/series?wind=mph&metrics=a.b%2Cc.d&range=7d&lang=en",
+      "/api/v1/stations/Home/series?metrics=a.b&range=24h&model=true&lang=en",
+      "/api/v1/stations/Home/extremes?period=year&lang=en",
     ]);
+  });
+
+  it("asks for every answer in its language, whatever the browser accepts", async () => {
+    const fetcher = answering(200, {});
+    await new Api("/api/v1", fetcher as unknown as typeof fetch, "pt-PT").forecast("Home");
+    expect(fetcher.mock.calls[0][0]).toBe("/api/v1/stations/Home/forecast?lang=pt-PT");
   });
 
   it("sends the query where URLSearchParams has no size, as in Safari before 17", async () => {
@@ -33,7 +39,7 @@ describe("Api", () => {
     try {
       const fetcher = answering(200, {});
       await new Api("/api/v1", fetcher as unknown as typeof fetch).series("Home", ["a.b"], "24h");
-      expect(fetcher.mock.calls[0][0]).toBe("/api/v1/stations/Home/series?metrics=a.b&range=24h");
+      expect(fetcher.mock.calls[0][0]).toBe("/api/v1/stations/Home/series?metrics=a.b&range=24h&lang=en");
     } finally {
       Object.defineProperty(URLSearchParams.prototype, "size", size!);
     }
@@ -59,7 +65,7 @@ describe("Api", () => {
   it("uses the page's own fetch by default", async () => {
     const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("[]"));
     await new Api().stations();
-    expect(spy).toHaveBeenCalledWith("/api/v1/stations", expect.anything());
+    expect(spy).toHaveBeenCalledWith("/api/v1/stations?lang=en", expect.anything());
     spy.mockRestore();
   });
 });

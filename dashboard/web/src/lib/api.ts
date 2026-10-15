@@ -307,11 +307,15 @@ export class ApiError extends Error {
   }
 }
 
-/** Fetches the API's answers, relative to `base` (the page's own origin by default). */
+/**
+ * Fetches the API's answers, relative to `base` (the page's own origin by default), with their
+ * words in `language`: the page's own, so that they match its text whatever the browser accepts.
+ */
 export class Api {
   constructor(
     private readonly base = "/api/v1",
     private readonly fetcher: typeof fetch = (...args) => fetch(...args),
+    private readonly language = "en",
   ) {}
 
   meta(): Promise<Meta> {
@@ -351,7 +355,7 @@ export class Api {
 
   private async get<T>(path: string, query: Record<string, string | undefined> = {}): Promise<T> {
     const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(query)) {
+    for (const [key, value] of Object.entries({ ...query, lang: this.language })) {
       if (value) params.set(key, value);
     }
     // The query's text, not URLSearchParams.size: Safari before 17 has no size, and would send
