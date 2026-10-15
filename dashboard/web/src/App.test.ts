@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/svelte";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import App from "./App.svelte";
 import { ApiError } from "./lib/api";
 import { fakeApi, now, speaking, STATION } from "./testing";
@@ -57,6 +57,20 @@ describe("App", () => {
     expect(storage.getItem(LANGUAGE_KEY)).toBe("pt-PT");
     expect(reload).toHaveBeenCalledTimes(1);
     expect((screen.getByLabelText("Language") as HTMLSelectElement).value).toBe("pt-PT");
+  });
+
+  it("keeps the language chosen in the browser's own storage, as the page is mounted", async () => {
+    // main.ts passes no storage: the page keeps its choices in the browser's.
+    onTestFinished(() => localStorage.removeItem(LANGUAGE_KEY));
+    const reload = vi.fn();
+    const first = render(App, { api: fakeApi(), reload });
+    await fireEvent.change(await screen.findByLabelText("Language"), { target: { value: "pt-PT" } });
+    expect(localStorage.getItem(LANGUAGE_KEY)).toBe("pt-PT");
+    expect(reload).toHaveBeenCalledTimes(1);
+    first.unmount();
+    // Reloaded, the page is in the language chosen, and its menu shows the choice.
+    render(App, { api: fakeApi(), reload });
+    expect(((await screen.findByLabelText("Idioma")) as HTMLSelectElement).value).toBe("pt-PT");
   });
 
   it("asks the API for its words in the page's language", async () => {

@@ -69,7 +69,11 @@ export function chosenLanguage(storage: Storage | undefined = globalThis.localSt
  * Keeps a choice of language, or forgets it when `language` is null, and reloads the page into
  * it: Paraglide's messages are read once per page.
  */
-export function chooseLanguage(language: Locale | null, storage: Storage | undefined, reload: () => void): void {
+export function chooseLanguage(
+  language: Locale | null,
+  storage: Storage | undefined = globalThis.localStorage,
+  reload: () => void,
+): void {
   try {
     if (language) storage?.setItem(LANGUAGE_KEY, language);
     else storage?.removeItem(LANGUAGE_KEY);
