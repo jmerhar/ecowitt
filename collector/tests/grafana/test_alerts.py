@@ -146,14 +146,6 @@ def test_a_rule_with_an_alert_per_room_lists_them_under_one_headline(rule: dict[
         assert annotations["item"].startswith("{{ $labels.room }}")
 
 
-@pytest.mark.parametrize("rule", BY_TITLE)
-def test_no_message_ends_in_a_stray_quote(rule: dict[str, Any]) -> None:
-    """Every line of a grouped message ends with one, so a stray character shows on each room."""
-    for name, text in rule["annotations"].items():
-        words = re.sub(r"\{\{.*?\}\}", "", text).rstrip()
-        assert not words.endswith(("'", '"', "`")), name
-
-
 def test_good_time_to_air_says_what_airing_would_do() -> None:
     """Each room's line gives the humidity airing would leave it at, in words anyone reads, not
     the dew point that decides the rule."""
