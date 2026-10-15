@@ -21,5 +21,6 @@ export function failures(measured, errors, language = "en") {
   if (measured.bar <= 0) out.push("a level bar has no height: the :where() fallbacks are missing");
   if (measured.cardGap <= 0) out.push("the cards touch: the grid-gap fallback is missing");
   if (measured.iconGap < 3) out.push("a card title's icon touches its text: the icon's flex-gap fallback is missing");
+  if (measured.markers > 0) out.push(`${measured.markers} summary styled without a marker still shows WebKit's triangle`);
   return out.map((failure) => `${language}: ${failure}`);
 }

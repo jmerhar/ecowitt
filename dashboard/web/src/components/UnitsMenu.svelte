@@ -124,6 +124,10 @@
     padding: 0.2rem 0.6rem;
     list-style: none;
   }
+  /* Chrome before 89 and Safari draw the triangle as this, which list-style does not reach. */
+  summary::-webkit-details-marker {
+    display: none;
+  }
   .panel {
     position: absolute;
     right: 0;

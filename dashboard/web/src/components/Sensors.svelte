@@ -39,6 +39,10 @@
     cursor: pointer;
     list-style: none;
   }
+  /* Chrome before 89 and Safari draw the triangle as this, which list-style does not reach. */
+  summary::-webkit-details-marker {
+    display: none;
+  }
   summary h2 {
     margin: 0;
   }

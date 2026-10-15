@@ -14,6 +14,8 @@ rules to be imported again. Either is listed under *Upgrading*.
   *Highs and lows* bar: its icon had set its baseline, 2 px above its text's.
 - The dashboard's drop-down menus leave room to the right of their arrow, which some browsers
   drew against the border.
+- The *Sensors* card's heading and the *Settings* button show no disclosure triangle in Chrome
+  before 89 and in Safari, which draw it apart from the list marker the page hides.
 
 ## 3.0.0 — 2026-10-15
 

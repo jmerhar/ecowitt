@@ -43,6 +43,21 @@ const MEASURE = `(function () {
     bar: bar ? bar.getBoundingClientRect().height : 0,
     cardGap: cards.length > 1 ? cards[1].getBoundingClientRect().left - cards[0].getBoundingClientRect().right : 0,
     iconGap: iconGap === Infinity ? 0 : iconGap,
+    // Summaries styled without their list marker whose WebKit triangle still shows: their first
+    // content starts right of their content edge, where the triangle sits.
+    markers: Array.prototype.filter.call(document.querySelectorAll("summary"), function (summary) {
+      var style = getComputedStyle(summary);
+      if (style.listStyleType !== "none") return false;
+      var first = summary.firstChild;
+      while (first && first.nodeType === 3 && !first.textContent.trim()) first = first.nextSibling;
+      while (first && first.nodeType === 8) first = first.nextSibling;
+      if (!first) return false;
+      var range = document.createRange();
+      range.selectNodeContents(first);
+      var start = (first.nodeType === 1 ? first.getBoundingClientRect() : range.getBoundingClientRect()).left;
+      var edge = summary.getBoundingClientRect().left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft);
+      return start - edge > 2;
+    }).length,
     userAgent: navigator.userAgent
   };
 })()`;
