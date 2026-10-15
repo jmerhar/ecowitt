@@ -407,6 +407,9 @@ chooses *Dark at night*: dark from sunset to sunrise at the station, for a scree
 or a browser that cannot tell the device's choice. Like the units, the choice is kept in that
 browser.
 
+The page is in English or European Portuguese, as the browser asks; *Language* in the *Settings*
+menu fixes either. Dates and numbers follow it -- English with the day first and a 24-hour clock.
+
 For a station storing its model's [forecast](#forecast), the page shows it — the next 24 hours
 and the days ahead — and the cards say what is coming within the day: rain likely within six
 hours, frost or heat, strong gusts, and drier air to open the windows for. For a station with a

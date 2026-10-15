@@ -1,9 +1,11 @@
 // The dashboard's pages: built into dist/, which the dashboard API serves beside /api/v1.
 // The dev server (`make dashboard-dev`) serves them with hot reloading and hands /api and /setup
 // to an API running locally on its default port.
+import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import legacy from "@vitejs/plugin-legacy";
 import { legacyCssPlugin } from "./build/legacy-css.ts";
+import { paraglideOptions } from "./build/paraglide.ts";
 import { svelteTesting } from "@testing-library/svelte/vite";
 import { defineConfig } from "vitest/config";
 
@@ -17,7 +19,9 @@ export default defineConfig({
   // is still on tablets that cannot update and es2022 alone would leave in syntax it lacks, such
   // as class static blocks.
   // legacyCssPlugin gives the one stylesheet both builds share the fallbacks those browsers need.
+  // paraglideVitePlugin compiles messages/ into src/paraglide before each build and test run.
   plugins: [
+    paraglideVitePlugin(paraglideOptions),
     svelte(),
     svelteTesting(),
     legacy({
@@ -41,7 +45,15 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,svelte}", "build/**/*.ts"],
-      exclude: ["src/**/*.test.ts", "build/**/*.test.ts", "src/test-setup.ts", "src/main.ts", "src/testing.ts"],
+      exclude: [
+        "src/**/*.test.ts",
+        "build/**/*.test.ts",
+        "build/compile-messages.ts",
+        "src/test-setup.ts",
+        "src/main.ts",
+        "src/testing.ts",
+        "src/paraglide/**",
+      ],
       // json-summary and json are the istanbul files coverage.toml's shared tooling reads;
       // lcov is what Codecov takes.
       reporter: ["text", "json-summary", "json", "lcov", ["html", { subdir: "html" }]],

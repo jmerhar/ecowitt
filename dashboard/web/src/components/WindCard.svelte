@@ -6,8 +6,10 @@
    */
   import WindIcon from "@lucide/svelte/icons/wind";
   import type { Notice, Units, Wind } from "../lib/api";
-  import { clock, quantity } from "../lib/format";
+  import { clock, hourOf, quantity } from "../lib/format";
   import type { WindHeight } from "../lib/prefs";
+  import { intlLocale } from "../lib/language";
+  import { m } from "../paraglide/messages.js";
 
   type Props = {
     notice?: Notice;
@@ -25,8 +27,8 @@
   const estimated = $derived(wind.source === "model" || (wind.source !== null && wind.height_factor !== 1));
   const basis = $derived(
     wind.source === "model"
-      ? "At 10 m, from the weather model: too light here for the sensor to turn"
-      : `Estimated at 10 m: ×${wind.height_factor.toFixed(2)} the wind measured at the sensor`,
+      ? m.wind_basis_model()
+      : m.wind_basis_estimated({ factor: wind.height_factor.toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }),
   );
   /** Whether the measured wind leads, with the estimate beneath it. */
   const fromSensor = $derived(estimated && height === "sensor");
@@ -50,12 +52,12 @@
 </script>
 
 <button class="card {notice?.level ?? ''}" onclick={() => onselect("wind")}>
-  <h2><WindIcon size={16} aria-hidden="true" /> Wind</h2>
+  <h2><WindIcon size={16} aria-hidden="true" /> {m.wind_title()}</h2>
   {#if notice?.text}<p class="notice">{notice.text}</p>{/if}
   <div class="row">
-    <svg viewBox="-50 -50 100 100" class="compass" role="img" aria-label={wind.compass ? `From the ${wind.compass}` : "Direction unknown"}>
+    <svg viewBox="-50 -50 100 100" class="compass" role="img" aria-label={wind.compass ? m.wind_from({ compass: wind.compass }) : m.wind_direction_unknown()}>
       <circle r="44" class="ring" />
-      {#each [["N", 0], ["E", 90], ["S", 180], ["W", 270]] as [label, angle] (label)}
+      {#each [[m.compass_n(), 0], [m.compass_e(), 90], [m.compass_s(), 180], [m.compass_w(), 270]] as [label, angle] (angle)}
         <text
           x={Math.sin((Number(angle) * Math.PI) / 180) * 34}
           y={-Math.cos((Number(angle) * Math.PI) / 180) * 34}
@@ -72,30 +74,36 @@
     <div>
       <div class="big">{quantity(lead.speed, units.wind, symbols)}</div>
       {#if fromSensor}
-        <div class="basis" title="What the anemometer read, at its own height">at the sensor</div>
+        <div class="basis" title={m.wind_sensor_hint()}>{m.wind_at_sensor()}</div>
       {:else if estimated}
-        <div class="basis" title={basis}>{wind.source === "model" ? "at 10 m, from the model" : "at 10 m, estimated"}</div>
+        <div class="basis" title={basis}>{wind.source === "model" ? m.wind_at_10m_model() : m.wind_at_10m_estimated()}</div>
       {/if}
-      <div class="muted">{lead.description ?? ""}{wind.compass && lead.beaufort ? ` from the ${wind.compass}` : ""}</div>
+      <div class="muted">{wind.compass && lead.beaufort
+          ? m.wind_description_from({ description: lead.description ?? "", compass: wind.compass })
+          : (lead.description ?? "")}</div>
     </div>
   </div>
   <dl>
-    <div><dt>Gusts</dt><dd>{quantity(lead.gust, units.wind, symbols)}</dd></div>
+    <div><dt>{m.gusts()}</dt><dd>{quantity(lead.gust, units.wind, symbols)}</dd></div>
     {#if lead.max}
       <div>
-        <dt>Strongest today</dt>
-        <dd>{quantity(lead.max.value, units.wind, symbols)} at {clock(lead.max.time, timezone)}</dd>
+        <dt>{m.strongest_today()}</dt>
+        <dd>{m.value_at_time({
+          value: quantity(lead.max.value, units.wind, symbols),
+          time: clock(lead.max.time, timezone),
+          hour: hourOf(lead.max.time, timezone),
+        })}</dd>
       </div>
     {/if}
     {#if fromSensor}
       <div class="measured" title={basis}>
-        <dt>At 10 m</dt>
-        <dd>{quantity(wind.speed, units.wind, symbols)}, gusts {quantity(wind.gust, units.wind, symbols)}</dd>
+        <dt>{m.wind_at_10m()}</dt>
+        <dd>{m.wind_with_gusts({ speed: quantity(wind.speed, units.wind, symbols), gust: quantity(wind.gust, units.wind, symbols) })}</dd>
       </div>
     {:else if estimated}
-      <div class="measured" title="What the anemometer read, at its own height">
-        <dt>Measured here</dt>
-        <dd>{quantity(wind.measured_speed, units.wind, symbols)}, gusts {quantity(wind.measured_gust, units.wind, symbols)}</dd>
+      <div class="measured" title={m.wind_sensor_hint()}>
+        <dt>{m.wind_measured_here()}</dt>
+        <dd>{m.wind_with_gusts({ speed: quantity(wind.measured_speed, units.wind, symbols), gust: quantity(wind.measured_gust, units.wind, symbols) })}</dd>
       </div>
     {/if}
   </dl>

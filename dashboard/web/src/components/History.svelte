@@ -10,6 +10,7 @@
   import { viewIcon } from "../lib/icons";
   import type { WeatherModel } from "../lib/api";
   import type { WindHeight } from "../lib/prefs";
+  import { m } from "../paraglide/messages.js";
 
   type Props = {
     api: Api;
@@ -42,9 +43,10 @@
     wind = "10m",
   }: Props = $props();
 
-  const RANGES: Record<string, string> = {
-    "1h": "1 h", "3h": "3 h", "6h": "6 h", "12h": "12 h",
-    "24h": "Day", "7d": "Week", "30d": "Month", "1y": "Year",
+  const RANGES: Record<string, () => string> = {
+    "1h": () => m.range_hours({ hours: 1 }), "3h": () => m.range_hours({ hours: 3 }),
+    "6h": () => m.range_hours({ hours: 6 }), "12h": () => m.range_hours({ hours: 12 }),
+    "24h": m.range_day, "7d": m.range_week, "30d": m.range_month, "1y": m.range_year,
   };
 
   let answer = $state<SeriesOut | null>(null);
@@ -54,11 +56,11 @@
   let loading = $state(false);
 
   const current = $derived(viewFor(view, wind));
-  const labels = $derived(Object.fromEntries(meta.metrics.map((m) => [m.id, m.label])));
-  const modelled = $derived(new Set(meta.metrics.filter((m) => m.model).map((m) => m.id)));
+  const labels = $derived(Object.fromEntries(meta.metrics.map((metric) => [metric.id, metric.label])));
+  const modelled = $derived(new Set(meta.metrics.filter((metric) => metric.model).map((metric) => metric.id)));
   /** Whether this chart can show the model: the station has one, and it has one of the metrics. */
   const offersModel = $derived(
-    weatherModel !== null && current.metrics.some((m) => modelled.has(m.id)),
+    weatherModel !== null && current.metrics.some((metric) => modelled.has(metric.id)),
   );
   const data = $derived(answer && answered === current.id ? align(current, answer, labels) : null);
 
@@ -70,7 +72,7 @@
     let stale = false;
     api
       .series(
-        wanted.station, wanted.view.metrics.map((m) => m.id), wanted.range, wanted.units, wanted.model,
+        wanted.station, wanted.view.metrics.map((metric) => metric.id), wanted.range, wanted.units, wanted.model,
       )
       .then((found) => {
         if (stale) return;
@@ -80,7 +82,7 @@
       })
       .catch((exc: unknown) => {
         if (stale) return;
-        error = exc instanceof ApiError ? exc.message : "The chart could not be loaded.";
+        error = exc instanceof ApiError ? exc.message : m.chart_error();
       })
       .finally(() => {
         if (!stale) loading = false;
@@ -93,11 +95,11 @@
 
 <section class="card wide" id="history">
   <div class="toolbar">
-    <div class="tabs" role="tablist" aria-label="Chart">
+    <div class="tabs" role="tablist" aria-label={m.chart()}>
       {#each VIEWS as v (v.id)}
         {@const Icon = viewIcon(v.id)}
         <button role="tab" aria-selected={v.id === current.id} onclick={() => (view = v.id)}>
-          <Icon size={14} aria-hidden="true" /> {v.label}</button>
+          <Icon size={14} aria-hidden="true" /> {v.label()}</button>
       {/each}
     </div>
     <div class="controls">
@@ -110,13 +112,13 @@
           aria-hidden={!offersModel}
           disabled={!offersModel}
           style:visibility={offersModel ? null : "hidden"}
-          title="The weather model's values for this location, dashed: {weatherModel.label}, from Open-Meteo"
-          onclick={() => (model = !model)}>Model</button>
+          title={m.model_hint({ model: weatherModel.label })}
+          onclick={() => (model = !model)}>{m.model_toggle()}</button>
       {/if}
       <label>
-        <span class="visually-hidden">Range</span>
+        <span class="visually-hidden">{m.range()}</span>
         <select value={range} onchange={(e) => (range = e.currentTarget.value)}>
-          {#each meta.ranges as r (r)}<option value={r}>{RANGES[r] ?? r}</option>{/each}
+          {#each meta.ranges as r (r)}<option value={r}>{RANGES[r]?.() ?? r}</option>{/each}
         </select>
       </label>
     </div>
@@ -126,9 +128,9 @@
   {:else if data && data.lines.length}
     <div class:loading><Chart view={current} {data} symbols={meta.symbols} {timezone} /></div>
   {:else if data}
-    <p class="muted">Nothing recorded for this in the chosen range.</p>
+    <p class="muted">{m.chart_empty()}</p>
   {:else}
-    <p class="muted">Loading…</p>
+    <p class="muted">{m.loading()}</p>
   {/if}
 </section>
 

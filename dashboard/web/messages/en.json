@@ -1,0 +1,269 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "never": "never",
+  "just_now": "just now",
+  "minutes_ago": "{minutes} min ago",
+  "hours_ago": "{hours} h ago",
+  "days_ago": "{days} days ago",
+  "duration_minutes": "{minutes} min",
+  "duration_hours_minutes": "{hours} h {minutes} min",
+  "uv_low": "Low",
+  "uv_moderate": "Moderate",
+  "uv_high": "High",
+  "uv_very_high": "Very high",
+  "uv_extreme": "Extreme",
+  "today": "Today",
+  "tomorrow": "Tomorrow",
+  "today_at": [
+    {
+      "declarations": [
+        "input time",
+        "input hour"
+      ],
+      "selectors": [
+        "hour"
+      ],
+      "match": {
+        "hour=*": "{time}"
+      }
+    }
+  ],
+  "tomorrow_at": [
+    {
+      "declarations": [
+        "input time",
+        "input hour"
+      ],
+      "selectors": [
+        "hour"
+      ],
+      "match": {
+        "hour=*": "tomorrow {time}"
+      }
+    }
+  ],
+  "day_at": [
+    {
+      "declarations": [
+        "input day",
+        "input time",
+        "input hour"
+      ],
+      "selectors": [
+        "hour"
+      ],
+      "match": {
+        "hour=*": "{day}, {time}"
+      }
+    }
+  ],
+  "level_very_dry": "Very dry",
+  "level_dry": "Dry",
+  "level_comfortable": "Comfortable",
+  "level_humid": "Humid",
+  "level_fog_likely": "Very humid outside: fog likely",
+  "level_crisp": "Dry, crisp",
+  "level_muggy": "Muggy",
+  "level_oppressive": "Oppressive",
+  "view_temperature": "Temperature",
+  "view_humidity": "Humidity",
+  "view_wind": "Wind",
+  "view_rain": "Rain",
+  "view_pressure": "Pressure",
+  "view_sun": "Sun",
+  "view_rooms_temperature": "Rooms °",
+  "view_rooms_humidity": "Rooms %",
+  "chart_wind_speed_10m": "Wind speed, at 10 m",
+  "chart_model_line": "{label} (model)",
+  "site_title": "Weather",
+  "station": "Station",
+  "zone_time": "{city} time",
+  "reporting": "Reporting",
+  "not_reporting": "Not reporting",
+  "updated_ago": "Updated {ago}",
+  "last_report_ago": "Last report {ago}",
+  "error_loading": "Something went wrong loading the weather.",
+  "no_station": "No station has published its settings yet.",
+  "footer_model_data": "Weather model data by",
+  "footer_icons": "Icons by Meteocons and Lucide",
+  "footer_licences": "Licences",
+  "now_title": "Outdoors",
+  "feels_like": "Feels like {value}",
+  "sky_from_model": [
+    {
+      "declarations": [
+        "input time",
+        "input hour"
+      ],
+      "selectors": [
+        "hour"
+      ],
+      "match": {
+        "hour=*": "From the weather model, for {time}"
+      }
+    }
+  ],
+  "humidity": "Humidity",
+  "dew_point": "Dew point",
+  "at_time": [
+    {
+      "declarations": [
+        "input time",
+        "input hour"
+      ],
+      "selectors": [
+        "hour"
+      ],
+      "match": {
+        "hour=*": "at {time}"
+      }
+    }
+  ],
+  "airing_title": "Airing",
+  "airing_open": "Good time to air",
+  "airing_keep_closed": "Keep the windows closed",
+  "airing_no_need": "No need to air",
+  "airing_change_hint": "The middle room's humidity, now and once its air had been replaced by outdoor air",
+  "airing_indoors_now": "indoors now",
+  "airing_after": "after airing",
+  "airing_explain_open": "The outside air holds less water: warmed indoors, it would dry {rooms}.",
+  "airing_explain_keep_closed": "The outside air holds more water: warmed indoors, it would take the rooms to {damp}% or more, where damp starts.",
+  "airing_explain_up": "Airing would make the rooms a little more humid, but not enough to matter: they would stay under {damp}%.",
+  "airing_explain_same": "Airing would make little difference: the outside air holds about as much water as the rooms.",
+  "airing_explain_dry": "The rooms are dry enough.",
+  "airing_drier_from": "Drier air expected from {time}: air the rooms then.",
+  "wind_title": "Wind",
+  "wind_basis_model": "At 10 m, from the weather model: too light here for the sensor to turn",
+  "wind_basis_estimated": "Estimated at 10 m: ×{factor} the wind measured at the sensor",
+  "wind_from": "From the {compass}",
+  "wind_direction_unknown": "Direction unknown",
+  "compass_n": "N",
+  "compass_e": "E",
+  "compass_s": "S",
+  "compass_w": "W",
+  "wind_sensor_hint": "What the anemometer read, at its own height",
+  "wind_at_sensor": "at the sensor",
+  "wind_at_10m_model": "at 10 m, from the model",
+  "wind_at_10m_estimated": "at 10 m, estimated",
+  "wind_description_from": "{description} from the {compass}",
+  "gusts": "Gusts",
+  "strongest_today": "Strongest today",
+  "value_at_time": [
+    {
+      "declarations": [
+        "input value",
+        "input time",
+        "input hour"
+      ],
+      "selectors": [
+        "hour"
+      ],
+      "match": {
+        "hour=*": "{value} at {time}"
+      }
+    }
+  ],
+  "wind_at_10m": "At 10 m",
+  "wind_with_gusts": "{speed}, gusts {gust}",
+  "wind_measured_here": "Measured here",
+  "rain_title": "Rain",
+  "raining_now": "Raining now",
+  "today_not_raining": "today, not raining now",
+  "last_24_hours": "Last 24 hours",
+  "this_month": "This month",
+  "this_year": "This year",
+  "pressure_title": "Pressure",
+  "pressure_change": "{change} in {hours} h",
+  "at_the_station": "At the station",
+  "sun_title": "Sun",
+  "sun_up_all_day": "Up all day",
+  "sun_down_all_day": "Down all day",
+  "sunrise": "Sunrise",
+  "sunset": "Sunset",
+  "daylight": "{duration} of daylight",
+  "radiation": "Radiation",
+  "uv_index": "UV index",
+  "sensors_title": "Sensors",
+  "all_reporting": "All reporting",
+  "not_updating_for": "Not updating for {duration}",
+  "battery_low": "Battery low",
+  "rooms_title": "Rooms",
+  "room": "Room",
+  "temperature": "Temperature",
+  "if_aired": "If aired",
+  "if_aired_hint": "The humidity each room would settle at once its air had been replaced by outdoor air",
+  "airing_column": "Airing",
+  "air_it": "Air it",
+  "air_it_hint": "The outside air holds less water: warmed indoors, it would bring humidity down",
+  "keep_closed": "Keep closed",
+  "keep_closed_hint": "The outside air holds as much moisture or more: airing would not dry it",
+  "forecast_title": "Forecast",
+  "weather_model": "Weather model",
+  "forecast_source": [
+    {
+      "declarations": [
+        "input model",
+        "input time",
+        "input hour"
+      ],
+      "selectors": [
+        "hour"
+      ],
+      "match": {
+        "hour=*": "{model}, made {time}"
+      }
+    }
+  ],
+  "next_24_hours": "The next 24 hours",
+  "chance_of_rain": "Chance of rain",
+  "wind_gusts_hint": "Wind, gusts {gust}",
+  "forecast_error": "The forecast could not be loaded.",
+  "day": "Day",
+  "sky": "Sky",
+  "low": "Low",
+  "high": "High",
+  "records_title": "Highs and lows",
+  "period": "Period",
+  "period_today": "Today",
+  "records_error": "The records could not be loaded.",
+  "loading": "Loading…",
+  "chart": "Chart",
+  "range": "Range",
+  "range_day": "Day",
+  "range_week": "Week",
+  "range_month": "Month",
+  "range_year": "Year",
+  "range_hours": "{hours} h",
+  "model_toggle": "Model",
+  "model_hint": "The weather model's values for this location, dashed: {model}, from Open-Meteo",
+  "chart_error": "The chart could not be loaded.",
+  "chart_empty": "Nothing recorded for this in the chosen range.",
+  "settings": "Settings",
+  "as_stored": "As stored",
+  "wind_at": "Wind at",
+  "wind_at_10m_choice": "10 m, estimated",
+  "wind_at_sensor_choice": "The sensor",
+  "theme": "Theme",
+  "theme_system": "As the device",
+  "theme_light": "Light",
+  "theme_dark": "Dark",
+  "theme_sun": "Dark at night",
+  "fullscreen": "Full screen",
+  "fullscreen_hint": "Added to the home screen while this is on, the page opens full screen",
+  "language": "Language",
+  "language_browser": "As the browser",
+  "sensors_need_attention": [
+    {
+      "declarations": [
+        "input count"
+      ],
+      "selectors": [
+        "count"
+      ],
+      "match": {
+        "count=1": "{count} needs attention",
+        "count=*": "{count} need attention"
+      }
+    }
+  ]
+}

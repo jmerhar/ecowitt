@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  ago, axisLabels, clock, coming, dayLabel, duration, moment, number, quantity, today, uvRisk, whichDay, whole, zoneCity,
+  ago, axisLabels, clock, coming, dayLabel, duration, hourOf, moment, number, quantity, today, uvRisk, whichDay, whole, zoneCity,
 } from "./format";
+import { speaking } from "../testing";
 import { SYMBOLS } from "../testing";
 
 describe("number", () => {
@@ -142,5 +143,34 @@ describe("whole", () => {
     expect(whole(69.5, "pct", SYMBOLS)).toBe("70%");
     expect(whole(3.2, "", SYMBOLS)).toBe("3");
     expect(whole(null, "c", SYMBOLS)).toBe("–");
+  });
+});
+
+describe("in European Portuguese", () => {
+  // 10 Oct, 15:00 in Lisbon.
+  const now = new Date("2026-10-10T14:00:00Z");
+
+  it("names a time to come with the article its hour takes", () => {
+    speaking("pt-PT");
+    expect(coming("2026-10-10T17:00:00Z", "Europe/Lisbon", now)).toBe("hoje às 18:00");
+    expect(coming("2026-10-11T00:30:00Z", "Europe/Lisbon", now)).toBe("amanhã à 01:30");
+    expect(coming("2026-10-10T23:30:00Z", "Europe/Lisbon", now)).toBe("amanhã às 00:30");
+    expect(coming("2026-10-13T05:00:00Z", "Europe/Lisbon", now)).toMatch(/^ter[^,]*, 13\/10 às 06:00$/);
+  });
+
+  it("writes how long ago, days and numbers the Portuguese way", () => {
+    speaking("pt-PT");
+    expect(ago("2026-10-10T13:55:00Z", now)).toBe("há 5 min");
+    expect(dayLabel("2026-10-11T10:00:00Z", "Europe/Lisbon", now)).toBe("Amanhã");
+    expect(number(2.4, "mm")).toBe("2,4");
+    expect(uvRisk(9)).toBe("Muito elevado");
+  });
+});
+
+describe("hourOf", () => {
+  it("gives the hour at the station, midnight as 0", () => {
+    expect(hourOf("2026-10-10T23:30:00Z", "Europe/Lisbon")).toBe(0);
+    expect(hourOf("2026-10-11T00:15:00Z", "Europe/Lisbon")).toBe(1);
+    expect(hourOf("2026-10-10T12:00:00Z", "UTC")).toBe(12);
   });
 });

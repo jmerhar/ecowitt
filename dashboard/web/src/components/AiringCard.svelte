@@ -6,6 +6,7 @@
   import DoorOpenIcon from "@lucide/svelte/icons/door-open";
   import type { Notice, HouseAiring } from "../lib/api";
   import { coming, quantity } from "../lib/format";
+  import { m } from "../paraglide/messages.js";
 
   type Props = {
     notice?: Notice;
@@ -17,11 +18,7 @@
   };
   let { airing, symbols, onselect, notice, timezone = "UTC" }: Props = $props();
 
-  const HEADLINES = {
-    open: "Good time to air",
-    keep_closed: "Keep the windows closed",
-    no_need: "No need to air",
-  } as const;
+  const HEADLINES = { open: m.airing_open, keep_closed: m.airing_keep_closed, no_need: m.airing_no_need };
 
   const now = $derived(quantity(airing.humidity, "pct", symbols));
   const after = $derived(quantity(airing.humidity_after, "pct", symbols));
@@ -44,33 +41,31 @@
 </script>
 
 <button class="card airing {airing.advice} {notice?.level ?? ''}" onclick={() => onselect("rooms-humidity")}>
-  <h2><DoorOpenIcon size={16} aria-hidden="true" /> Airing</h2>
+  <h2><DoorOpenIcon size={16} aria-hidden="true" /> {m.airing_title()}</h2>
   {#if notice?.text}<p class="notice">{notice.text}</p>{/if}
-  <div class="big">{HEADLINES[airing.advice]}</div>
-  <div class="change" title="The middle room's humidity, now and once its air had been replaced by outdoor air">
-    <div><span class="value">{now}</span><span class="label">indoors now</span></div>
+  <div class="big">{HEADLINES[airing.advice]()}</div>
+  <div class="change" title={m.airing_change_hint()}>
+    <div><span class="value">{now}</span><span class="label">{m.airing_indoors_now()}</span></div>
     {#if airing.humidity_after !== null}
       <span class="arrow" aria-hidden="true">→</span>
-      <div><span class="value {colour}">{after}</span><span class="label">after airing</span></div>
+      <div><span class="value {colour}">{after}</span><span class="label">{m.airing_after()}</span></div>
     {/if}
   </div>
   <p>
     {#if airing.advice === "open"}
-      The outside air holds less water: warmed indoors, it would dry {airing.rooms.join(", ")}.
+      {m.airing_explain_open({ rooms: airing.rooms.join(", ") })}
     {:else if airing.advice === "keep_closed"}
-      The outside air holds more water: warmed indoors, it would take the rooms to {DAMP_PCT}% or
-      more, where damp starts.
+      {m.airing_explain_keep_closed({ damp: DAMP_PCT })}
     {:else if change === "up"}
-      Airing would make the rooms a little more humid, but not enough to matter: they would stay
-      under {DAMP_PCT}%.
+      {m.airing_explain_up({ damp: DAMP_PCT })}
     {:else if change === "same"}
-      Airing would make little difference: the outside air holds about as much water as the rooms.
+      {m.airing_explain_same()}
     {:else}
-      The rooms are dry enough.
+      {m.airing_explain_dry()}
     {/if}
   </p>
   {#if airing.drier_from}
-    <p class="later">Drier air expected from {coming(airing.drier_from, timezone)}: air the rooms then.</p>
+    <p class="later">{m.airing_drier_from({ time: coming(airing.drier_from, timezone) })}</p>
   {/if}
 </button>
 

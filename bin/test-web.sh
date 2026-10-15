@@ -11,5 +11,6 @@ if [ ! -d node_modules ]; then
   echo "dashboard/web/node_modules is missing; run 'make web-install'." >&2
   exit 1
 fi
+node build/compile-messages.ts
 npx svelte-check --tsconfig ./tsconfig.json --fail-on-warnings
 npx vitest run --coverage "$@"

@@ -10,6 +10,7 @@
   import type { WindHeight } from "../lib/prefs";
   import ArrowUpDownIcon from "@lucide/svelte/icons/arrow-up-down";
   import HouseIcon from "@lucide/svelte/icons/house";
+  import { m } from "../paraglide/messages.js";
 
   type Props = {
     api: Api;
@@ -25,7 +26,7 @@
   };
   let { api, meta, station, units, timezone, tick = 0, period = $bindable(), wind = "10m" }: Props = $props();
 
-  const PERIODS: Record<string, string> = { today: "Today", month: "This month", year: "This year" };
+  const PERIODS: Record<string, () => string> = { today: m.period_today, month: m.this_month, year: m.this_year };
   /** The wind's records at 10 m, and as the sensor measured it. */
   const TEN_M = ["wind.speed", "wind.gust"];
   const MEASURED = ["wind.measured_speed", "wind.measured_gust"];
@@ -33,7 +34,7 @@
   let answer = $state<ExtremesOut | null>(null);
   let error = $state("");
 
-  const labels = $derived(Object.fromEntries(meta.metrics.map((m) => [m.id, m.label])));
+  const labels = $derived(Object.fromEntries(meta.metrics.map((metric) => [metric.id, metric.label])));
   /**
    * The wind records not shown: the measured ones, or the 10 m ones for a visitor who leads with
    * the sensor -- unless the chosen ones are missing, as for a station without an estimate.
@@ -41,7 +42,7 @@
   const hidden = $derived.by(() => {
     const present = new Set((answer?.extremes ?? []).map((e) => e.metric));
     const [chosen, other] = wind === "sensor" ? [MEASURED, TEN_M] : [TEN_M, MEASURED];
-    return chosen.some((m) => present.has(m)) ? new Set(other) : new Set<string>();
+    return chosen.some((metric) => present.has(metric)) ? new Set(other) : new Set<string>();
   });
   /**
    * The outdoor and station-wide records. A record that is only a highest and is zero -- no
@@ -77,7 +78,7 @@
         if (!stale) [answer, error] = [found, ""];
       })
       .catch((exc: unknown) => {
-        if (!stale) error = exc instanceof ApiError ? exc.message : "The records could not be loaded.";
+        if (!stale) error = exc instanceof ApiError ? exc.message : m.records_error();
       });
     return () => {
       stale = true;
@@ -93,12 +94,12 @@
 {#snippet sides(record: Extreme)}
   {@const Icon = metricIcon(record.metric)}
   {#if record.min}
-    <dt><Icon size={13} aria-hidden="true" /> Low</dt>
+    <dt><Icon size={13} aria-hidden="true" /> {m.low()}</dt>
     <dd class="value">{quantity(record.min.value, record.unit, meta.symbols)}</dd>
     <dd class="when">{when(record.min.time)}</dd>
   {/if}
   {#if record.max}
-    <dt><Icon size={13} aria-hidden="true" /> High</dt>
+    <dt><Icon size={13} aria-hidden="true" /> {m.high()}</dt>
     <dd class="value">{quantity(record.max.value, record.unit, meta.symbols)}</dd>
     <dd class="when">{when(record.max.time)}</dd>
   {/if}
@@ -106,10 +107,10 @@
 
 <section class="card wide">
   <div class="toolbar">
-    <h2><ArrowUpDownIcon size={16} aria-hidden="true" /> Highs and lows</h2>
-    <div class="tabs" role="tablist" aria-label="Period">
+    <h2><ArrowUpDownIcon size={16} aria-hidden="true" /> {m.records_title()}</h2>
+    <div class="tabs" role="tablist" aria-label={m.period()}>
       {#each meta.periods as p (p)}
-        <button role="tab" aria-selected={p === period} onclick={() => (period = p)}>{PERIODS[p] ?? p}</button>
+        <button role="tab" aria-selected={p === period} onclick={() => (period = p)}>{PERIODS[p]?.() ?? p}</button>
       {/each}
     </div>
   </div>
@@ -123,12 +124,12 @@
           <div class="label"><Icon size={14} aria-hidden="true" /> {labels[record.metric] ?? record.metric}</div>
           <dl>
             {#if record.min}
-              <dt>Low</dt>
+              <dt>{m.low()}</dt>
               <dd class="value">{quantity(record.min.value, record.unit, meta.symbols)}</dd>
               <dd class="when">{when(record.min.time)}</dd>
             {/if}
             {#if record.max}
-              <dt>High</dt>
+              <dt>{m.high()}</dt>
               <dd class="value">{quantity(record.max.value, record.unit, meta.symbols)}</dd>
               <dd class="when">{when(record.max.time)}</dd>
             {/if}
@@ -138,7 +139,7 @@
     </div>
     {#if rooms.length}
       <details class="rooms">
-        <summary><HouseIcon size={14} aria-hidden="true" /> Rooms</summary>
+        <summary><HouseIcon size={14} aria-hidden="true" /> {m.rooms_title()}</summary>
         <div class="tiles">
           {#each rooms as room (room.name)}
             <div class="tile">
@@ -153,7 +154,7 @@
       </details>
     {/if}
   {:else}
-    <p class="muted">Loading…</p>
+    <p class="muted">{m.loading()}</p>
   {/if}
 </section>
 

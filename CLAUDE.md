@@ -122,11 +122,18 @@ dashboard/web/    the dashboard's page: Svelte 5, Vite, TypeScript, uPlot; a thi
   src/lib/        api.ts (types mirroring the OpenAPI models, the client), format.ts (values and
                   station-time times), chart.ts (chart tabs, aligning series for uPlot, the
                   model's dashed lines), prefs.ts, sky.ts (WMO code -> Meteocons icon),
-                  theme.ts (light, dark, or dark from sunset to sunrise)
+                  theme.ts (light, dark, or dark from sunset to sunrise), language.ts (which
+                  language: the visitor's choice, else the browser's, else English)
+  messages/       en.json and pt-PT.json, the page's words; Paraglide compiles them into
+                  src/paraglide (generated, not committed) as `m.<key>()`
+  project.inlang/ settings.json, Paraglide's project: the languages and the message plugin,
+                  loaded from node_modules rather than a CDN
   src/components/ one per card or section; Chart.svelte is the only one that touches uPlot
   src/testing.ts  API answers for the tests, and a fake Api
   icons/          app-icon.svg, the home-screen icon; bin/app-icons.sh renders public/icons/*.png
-  build/          legacy-css.ts, the Vite plugin that gives the stylesheet its legacy fallbacks
+  build/          legacy-css.ts, the Vite plugin that gives the stylesheet its legacy fallbacks;
+                  paraglide.ts, how messages compile, and compile-messages.ts, which writes them
+                  for svelte-check
   legacy-browser/ the Chromium 59 image and the check bin/test-legacy-browser.sh runs in it
 dashboard/Dockerfile  builds the page in a Node stage and serves it from the API's image
 grafana/          weather.json, the dashboard, and alerts.json, the alert rules: the collector's
@@ -268,9 +275,19 @@ CHANGELOG.md      every release's notes; new work goes under `## Unreleased`
   `test_i18n` fails until each is current, fully translated and keeps its placeholders. A message
   naming a time of day has plural forms chosen by its hour, for Portuguese's "à 01:00" / "às
   02:00". The page asks for its own language with `lang`, so the API's words always match it.
-- **The dashboard's page formats times itself, day first with a 24-hour clock** (`format.ts`
-  `LOCALE`), in the station's time zone, rather than following the browser's locale: an American
-  locale writes `10/11` and `12:56 AM`.
+- **The dashboard's page formats times itself, in its own language** (`language.ts`
+  `intlLocale`): English is `en-GB`, day first with a 24-hour clock, rather than the browser's
+  locale, since an American locale writes `10/11` and `12:56 AM`. Times are in the station's
+  time zone.
+- **The page's words are Paraglide messages**, in `messages/<locale>.json`, and every message
+  must exist in every file. Its language comes from two strategies of its own in `language.ts`,
+  not Paraglide's built-in localStorage and preferredLanguage. Paraglide writes the first language
+  it resolves back into every strategy, so the built-in one would save the browser's language as
+  if the visitor had chosen it. And preferredLanguage would not match "pt" to "pt-PT". A label
+  in a module-level constant is the message function itself (`m.view_wind`), called when drawn:
+  constants are evaluated before `main.ts` registers the strategies. Counts match exactly
+  (`count=1`) and times carry their `hour` for Portuguese's "à 01:00"; Paraglide's `plural`
+  selector needs `Intl.PluralRules`, which Chrome 59 lacks. A changed language reloads the page.
 - **The dashboard's page has a legacy build**, for browsers without ES modules down to Chrome 59
   (an Android 4.4 tablet): `@vitejs/plugin-legacy` compiles it down and polyfills it, and those
   browsers load it through `<script nomodule>`. What core-js cannot polyfill needs a fallback in

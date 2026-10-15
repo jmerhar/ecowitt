@@ -30,10 +30,12 @@ rules to be imported again. Either is listed under *Upgrading*.
   without reading its English: each notice adds `items`, each with a `code` and the value, unit,
   time or rooms it names; the pressure trend adds `code`; and `summary_parts` gives the summary
   part by part.
-- The dashboard API answers in European Portuguese as well as English: its notices, summary,
-  sky, wind and compass names, metric labels and default sensor names, with numbers written the
-  Portuguese way. A request chooses with `?lang=pt-PT` or its `Accept-Language`, and every answer
-  says its language in `Content-Language`. The dashboard's page still asks for English.
+- The dashboard is in European Portuguese as well as English. The page follows the browser's
+  language, or the *Language* chosen in its *Settings* menu, with dates and numbers to match. The
+  API answers in either: its notices, summary, sky, wind and compass names, metric labels and
+  default sensor names, with numbers written the Portuguese way. A request chooses with
+  `?lang=pt-PT` or its `Accept-Language`, and every answer says its language in
+  `Content-Language`.
 
 ### Changed
 

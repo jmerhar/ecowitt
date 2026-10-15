@@ -9,7 +9,7 @@ import Rooms from "./Rooms.svelte";
 import AiringCard from "./AiringCard.svelte";
 import Sensors from "./Sensors.svelte";
 import UnitsMenu from "./UnitsMenu.svelte";
-import { META, now, SYMBOLS, UNITS } from "../testing";
+import { META, now, speaking, SYMBOLS, UNITS } from "../testing";
 import type { SummaryPart } from "../lib/api";
 import { skyIcon } from "../lib/sky";
 
@@ -42,8 +42,9 @@ describe("NowCard", () => {
     expect(humidity.querySelector("span")!.style.width).toBe("93%");
     expect(dew).toHaveClass("warn");
     expect(dew).toHaveAttribute("title", "Muggy");
-    // Read aloud with its level, which a screen reader cannot see in the colour.
-    expect(screen.getByText("93%").closest("dd")).toHaveTextContent("93%, humid");
+    // Read aloud with its level, which a screen reader cannot see in the colour, in the level's
+    // own words: lowercasing them would be wrong in a language that capitalises nouns.
+    expect(screen.getByText("93%").closest("dd")).toHaveTextContent("93%, Humid");
   });
 
   it("draws no bar for a reading the sensor did not send", () => {
@@ -467,7 +468,59 @@ describe("Sensors", () => {
   });
 });
 
+describe("in European Portuguese", () => {
+  it("counts the sensors needing attention with the count's own form", () => {
+    speaking("pt-PT");
+    const one = render(Sensors, { sensors: now().sensors });
+    expect(screen.getByText("1 precisa de atenção")).toBeInTheDocument();
+    one.unmount();
+    const flat = { ...now().sensors[0], sensor: "ch2", battery_low: true };
+    render(Sensors, { sensors: [...now().sensors, flat] });
+    expect(screen.getByText("2 precisam de atenção")).toBeInTheDocument();
+  });
+
+  it("marks the compass with the language's own points", () => {
+    speaking("pt-PT");
+    const { container } = render(WindCard, { wind: now().wind!, units: UNITS, symbols: SYMBOLS, timezone: tz, onselect: vi.fn() });
+    expect([...container.querySelectorAll(".compass text")].map((t) => t.textContent)).toEqual(["N", "E", "S", "O"]);
+    expect(screen.getByText("Rajadas")).toBeInTheDocument();
+  });
+
+  it("writes the pressure's change with a decimal comma", () => {
+    speaking("pt-PT");
+    const trend = { change: -3, hours: 2.5, code: "falling" as const, tendency: "a descer" };
+    render(PressureCard, { pressure: { ...now().pressure!, trend }, units: UNITS, symbols: SYMBOLS, onselect: vi.fn() });
+    expect(screen.getByText("-3,0 hPa em 2,5 h", { exact: false })).toBeInTheDocument();
+  });
+
+  it("names the settings in the language", () => {
+    speaking("pt-PT");
+    render(UnitsMenu, { meta: META, chosen: {}, onchange: vi.fn() });
+    expect(screen.getByText("Definições")).toBeInTheDocument();
+    expect((screen.getByLabelText("Idioma") as HTMLSelectElement).options[0].textContent).toBe("Do navegador");
+  });
+});
+
 describe("UnitsMenu", () => {
+  it("offers the browser's language or each of the page's, each named in itself", async () => {
+    const onlanguage = vi.fn();
+    const shown = render(UnitsMenu, { meta: META, chosen: {}, onchange: vi.fn(), onlanguage });
+    const language = screen.getByLabelText("Language") as HTMLSelectElement;
+    expect(language.value).toBe("");
+    expect([...language.options].map((o) => [o.value, o.textContent, o.lang])).toEqual([
+      ["", "As the browser", ""],
+      ["en", "English", "en"],
+      ["pt-PT", "Português", "pt-PT"],
+    ]);
+    await fireEvent.change(language, { target: { value: "pt-PT" } });
+    expect(onlanguage).toHaveBeenLastCalledWith("pt-PT");
+    await fireEvent.change(language, { target: { value: "" } });
+    expect(onlanguage).toHaveBeenLastCalledWith(null);
+    shown.unmount();
+    render(UnitsMenu, { meta: META, chosen: {}, onchange: vi.fn(), language: "pt-PT" });
+    expect((screen.getByLabelText("Language") as HTMLSelectElement).value).toBe("pt-PT");
+  });
+
   it("offers each quantity's units and reports a choice, or its removal", async () => {
     const onchange = vi.fn();
     render(UnitsMenu, { meta: META, chosen: { wind: "mph" }, onchange });

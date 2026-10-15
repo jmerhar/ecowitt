@@ -2,11 +2,15 @@
   /**
    * The visitor's settings: units, one choice per quantity, where "station" leaves a quantity as
    * stored; for a station whose wind is estimated at 10 m, whether the page leads with that or the
-   * measurement; the theme; and full screen, where the browser offers it.
+   * measurement; the theme; full screen, where the browser offers it; and the page's language,
+   * or the browser's.
    */
   import type { Meta, UnitChoice, Units } from "../lib/api";
   import type { WindHeight } from "../lib/prefs";
   import type { ThemeChoice } from "../lib/theme";
+  import { LANGUAGE_NAMES } from "../lib/language";
+  import { locales, type Locale } from "../paraglide/runtime.js";
+  import { m } from "../paraglide/messages.js";
 
   type Props = {
     meta: Meta;
@@ -20,6 +24,9 @@
     /** Whether the page fills the screen now; null hides the switch, where the browser cannot. */
     fullscreen?: boolean | null;
     onfullscreen?: (fullscreen: boolean) => void;
+    /** The visitor's chosen language, or null to follow the browser's. */
+    language?: Locale | null;
+    onlanguage?: (language: Locale | null) => void;
   };
   let {
     meta,
@@ -31,20 +38,22 @@
     ontheme = () => {},
     fullscreen = null,
     onfullscreen = () => {},
+    language = null,
+    onlanguage = () => {},
   }: Props = $props();
 
-  const THEMES: Record<ThemeChoice, string> = {
-    system: "As the device",
-    light: "Light",
-    dark: "Dark",
-    sun: "Dark at night",
+  const THEMES: Record<ThemeChoice, () => string> = {
+    system: m.theme_system,
+    light: m.theme_light,
+    dark: m.theme_dark,
+    sun: m.theme_sun,
   };
 
-  const LABELS: Record<string, string> = {
-    temperature: "Temperature",
-    pressure: "Pressure",
-    wind: "Wind",
-    rain: "Rain",
+  const LABELS: Record<string, () => string> = {
+    temperature: m.temperature,
+    pressure: m.pressure_title,
+    wind: m.wind_title,
+    rain: m.rain_title,
   };
 
   function choose(quantity: string, code: string): void {
@@ -56,15 +65,15 @@
 </script>
 
 <details class="menu">
-  <summary>Settings</summary>
+  <summary>{m.settings()}</summary>
   <div class="panel">
     {#each Object.keys(LABELS) as quantity (quantity)}
       <label>
-        {LABELS[quantity]}
+        {LABELS[quantity]()}
         <select
           value={chosen[quantity as keyof Units] ?? ""}
           onchange={(e) => choose(quantity, e.currentTarget.value)}>
-          <option value="">As stored</option>
+          <option value="">{m.as_stored()}</option>
           {#each meta.units[quantity] ?? [] as unit (unit.code)}
             <option value={unit.code}>{unit.symbol}</option>
           {/each}
@@ -73,24 +82,31 @@
     {/each}
     {#if wind}
       <label>
-        Wind at
+        {m.wind_at()}
         <select value={wind} onchange={(e) => onwind(e.currentTarget.value as WindHeight)}>
-          <option value="10m">10 m, estimated</option>
-          <option value="sensor">The sensor</option>
+          <option value="10m">{m.wind_at_10m_choice()}</option>
+          <option value="sensor">{m.wind_at_sensor_choice()}</option>
         </select>
       </label>
     {/if}
     <label>
-      Theme
+      {m.theme()}
       <select value={theme} onchange={(e) => ontheme(e.currentTarget.value as ThemeChoice)}>
-        {#each Object.entries(THEMES) as [code, label] (code)}<option value={code}>{label}</option>{/each}
+        {#each Object.entries(THEMES) as [code, label] (code)}<option value={code}>{label()}</option>{/each}
+      </select>
+    </label>
+    <label>
+      {m.language()}
+      <select value={language ?? ""} onchange={(e) => onlanguage((e.currentTarget.value || null) as Locale | null)}>
+        <option value="">{m.language_browser()}</option>
+        {#each locales as code (code)}<option value={code} lang={code}>{LANGUAGE_NAMES[code]}</option>{/each}
       </select>
     </label>
     {#if fullscreen !== null}
       <!-- A home screen keeps how an app opens from when it was added: an icon added while this
            is on opens full screen every time. -->
-      <label title="Added to the home screen while this is on, the page opens full screen">
-        Full screen
+      <label title={m.fullscreen_hint()}>
+        {m.fullscreen()}
         <input type="checkbox" checked={fullscreen} onchange={(e) => onfullscreen(e.currentTarget.checked)} />
       </label>
     {/if}

@@ -10,8 +10,9 @@
   import { untrack } from "svelte";
   import type { Api, ForecastOut, UnitChoice } from "../lib/api";
   import { ApiError } from "../lib/api";
-  import { clock, dayLabel, quantity, whole } from "../lib/format";
+  import { clock, dayLabel, hourOf, quantity, whole } from "../lib/format";
   import { skyIcon } from "../lib/sky";
+  import { m } from "../paraglide/messages.js";
 
   type Props = {
     api: Api;
@@ -42,7 +43,7 @@
       .catch((exc: unknown) => {
         // A refresh that fails keeps the forecast already shown.
         if (stale) return;
-        error = exc instanceof ApiError ? exc.message : "The forecast could not be loaded.";
+        error = exc instanceof ApiError ? exc.message : m.forecast_error();
       });
     return () => {
       stale = true;
@@ -59,11 +60,15 @@
 {#if answer?.issued}
   <section class="card wide forecast">
     <h2>
-      <CalendarDaysIcon size={16} aria-hidden="true" /> Forecast
-      <span class="source">{answer.model?.label ?? "Weather model"}, made {clock(answer.issued, timezone)}</span>
+      <CalendarDaysIcon size={16} aria-hidden="true" /> {m.forecast_title()}
+      <span class="source">{m.forecast_source({
+        model: answer.model?.label ?? m.weather_model(),
+        time: clock(answer.issued, timezone),
+        hour: hourOf(answer.issued, timezone),
+      })}</span>
     </h2>
 
-    <div class="hours" role="list" aria-label="The next 24 hours">
+    <div class="hours" role="list" aria-label={m.next_24_hours()}>
       {#each answer.hours as h (h.time)}
         <div class="hour" role="listitem">
           <span class="time">{clock(h.time, timezone)}</span>
@@ -71,20 +76,20 @@
             <img src={skyIcon(h.weather_code, h.is_day)} alt={h.description ?? ""} title={h.description ?? ""} width="40" height="40" />
           {/if}
           <span class="temp">{whole(h.temperature, t, symbols)}</span>
-          <span class="humidity" title="Humidity">
+          <span class="humidity" title={m.humidity()}>
             <DropletsIcon size={11} aria-hidden="true" />{quantity(h.humidity, "pct", symbols)}
           </span>
           <!-- A model without a chance of rain still has its amount. -->
           {#if h.precipitation_probability === null && h.precipitation !== null}
-            <span class="rain" class:dry={h.precipitation === 0} title="Rain">
+            <span class="rain" class:dry={h.precipitation === 0} title={m.rain_title()}>
               <UmbrellaIcon size={11} aria-hidden="true" />{quantity(h.precipitation, r, symbols)}
             </span>
           {:else}
-            <span class="rain" class:dry={!wet(h.precipitation_probability)} title="Chance of rain">
+            <span class="rain" class:dry={!wet(h.precipitation_probability)} title={m.chance_of_rain()}>
               <UmbrellaIcon size={11} aria-hidden="true" />{quantity(h.precipitation_probability, "pct", symbols)}
             </span>
           {/if}
-          <span class="wind" title="Wind, gusts {whole(h.wind_gust, w, symbols)}">
+          <span class="wind" title={m.wind_gusts_hint({ gust: whole(h.wind_gust, w, symbols) })}>
             <span>{whole(h.wind_speed, w, symbols)}</span>
             <span>{h.compass ?? ""}</span>
           </span>
@@ -96,14 +101,14 @@
       <table class="days">
         <thead>
           <tr>
-            <th>Day</th><th><span class="visually-hidden">Sky</span></th>
-            <th class="num">Low</th><th class="num">High</th>
-            <th class="num">Rain</th><th class="num">
-              <span class="wide-only">Humidity</span>
-              <span class="narrow-only" title="Humidity">
-                <DropletsIcon size={14} aria-hidden="true" /><span class="visually-hidden">Humidity</span>
+            <th>{m.day()}</th><th><span class="visually-hidden">{m.sky()}</span></th>
+            <th class="num">{m.low()}</th><th class="num">{m.high()}</th>
+            <th class="num">{m.rain_title()}</th><th class="num">
+              <span class="wide-only">{m.humidity()}</span>
+              <span class="narrow-only" title={m.humidity()}>
+                <DropletsIcon size={14} aria-hidden="true" /><span class="visually-hidden">{m.humidity()}</span>
               </span>
-            </th><th class="num wide-only">Gusts</th>
+            </th><th class="num wide-only">{m.gusts()}</th>
           </tr>
         </thead>
         <tbody>

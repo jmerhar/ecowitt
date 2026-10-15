@@ -4,6 +4,8 @@
  * muggy it feels, whatever the temperature.
  */
 
+import { m } from "../paraglide/messages.js";
+
 /** A bar's fill, 0 to 100, its colour class, and the level in words. */
 export type Level = { fill: number; tone: "bad" | "warn" | "good" | "cool"; words: string };
 
@@ -16,11 +18,11 @@ const clamp = (value: number) => Math.min(100, Math.max(0, value));
  */
 export function humidityLevel(pct: number): Level {
   const fill = clamp(pct);
-  if (pct < 25) return { fill, tone: "bad", words: "Very dry" };
-  if (pct < 40) return { fill, tone: "warn", words: "Dry" };
-  if (pct < 75) return { fill, tone: "good", words: "Comfortable" };
-  if (pct < 95) return { fill, tone: "cool", words: "Humid" };
-  return { fill, tone: "warn", words: "Very humid outside: fog likely" };
+  if (pct < 25) return { fill, tone: "bad", words: m.level_very_dry() };
+  if (pct < 40) return { fill, tone: "warn", words: m.level_dry() };
+  if (pct < 75) return { fill, tone: "good", words: m.level_comfortable() };
+  if (pct < 95) return { fill, tone: "cool", words: m.level_humid() };
+  return { fill, tone: "warn", words: m.level_fog_likely() };
 }
 
 /** The dew point scale's ends, in °C: an empty bar and a full one. */
@@ -34,8 +36,8 @@ const DEW_FULL_C = 25;
 export function dewPointLevel(value: number, unit: string): Level {
   const c = unit === "f" ? ((value - 32) * 5) / 9 : value;
   const fill = clamp(((c - DEW_EMPTY_C) / (DEW_FULL_C - DEW_EMPTY_C)) * 100);
-  if (c < 10) return { fill, tone: "cool", words: "Dry, crisp" };
-  if (c < 16) return { fill, tone: "good", words: "Comfortable" };
-  if (c < 21) return { fill, tone: "warn", words: "Muggy" };
-  return { fill, tone: "bad", words: "Oppressive" };
+  if (c < 10) return { fill, tone: "cool", words: m.level_crisp() };
+  if (c < 16) return { fill, tone: "good", words: m.level_comfortable() };
+  if (c < 21) return { fill, tone: "warn", words: m.level_muggy() };
+  return { fill, tone: "bad", words: m.level_oppressive() };
 }

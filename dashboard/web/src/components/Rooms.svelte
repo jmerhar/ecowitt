@@ -7,6 +7,7 @@
   import type { Notice, Room, Units } from "../lib/api";
   import { quantity } from "../lib/format";
   import type { RoomSort } from "../lib/prefs";
+  import { m } from "../paraglide/messages.js";
 
   type Props = {
     rooms: Room[];
@@ -51,13 +52,10 @@
   }
 
   const ADVICE = {
-    open: { text: "Air it", hint: "The outside air holds less water: warmed indoors, it would bring humidity down" },
-    keep_closed: {
-      text: "Keep closed",
-      hint: "The outside air holds as much moisture or more: airing would not dry it",
-    },
-    no_need: { text: "", hint: "" },
-  } as const;
+    open: { text: m.air_it, hint: m.air_it_hint },
+    keep_closed: { text: m.keep_closed, hint: m.keep_closed_hint },
+    no_need: null,
+  };
 
   /** A smaller change is within the sensors' error: the API's DAMPER_BY_PCT. */
   const MARGIN_PCT = 5;
@@ -75,7 +73,7 @@
 </script>
 
 <section class="card wide {notice?.level ?? ''}">
-  <h2><HouseIcon size={16} aria-hidden="true" /> Rooms</h2>
+  <h2><HouseIcon size={16} aria-hidden="true" /> {m.rooms_title()}</h2>
   {#if notice?.text}<p class="notice">{notice.text}</p>{/if}
   <div class="table-wrap">
     <table>
@@ -87,12 +85,12 @@
                 >{sort?.column === column ? (sort.descending ? " ↓" : " ↑") : ""}</span></button>
             </th>
           {/snippet}
-          {@render header("name", "Room", "")}
-          {@render header("temperature", "Temperature", "num")}
-          {@render header("humidity", "Humidity", "num")}
-          {@render header("dew_point", "Dew point", "num wide-only")}
-          {@render header("after", "If aired", "num", "The humidity each room would settle at once its air had been replaced by outdoor air")}
-          {#if advised}<th class="wide-only">Airing</th>{/if}
+          {@render header("name", m.room(), "")}
+          {@render header("temperature", m.temperature(), "num")}
+          {@render header("humidity", m.humidity(), "num")}
+          {@render header("dew_point", m.dew_point(), "num wide-only")}
+          {@render header("after", m.if_aired(), "num", m.if_aired_hint())}
+          {#if advised}<th class="wide-only">{m.airing_column()}</th>{/if}
         </tr>
       </thead>
       <tbody>
@@ -107,8 +105,8 @@
             <td class="num wide-only">{quantity(room.dew_point, units.temperature, symbols)}</td>
             <td class="num {effect(room)}">{quantity(room.airing?.humidity_after, "pct", symbols)}</td>
             {#if advised}<td class="wide-only">
-              {#if advice?.text}
-                <span class="badge {room.airing?.advice}" title={advice.hint}>{advice.text}</span>
+              {#if advice}
+                <span class="badge {room.airing?.advice}" title={advice.hint()}>{advice.text()}</span>
               {/if}
             </td>{/if}
           </tr>

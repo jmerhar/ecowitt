@@ -1,5 +1,6 @@
 /** API answers for tests, shaped as the dashboard API gives them, and a stand-in Api. */
-import { vi } from "vitest";
+import { onTestFinished, vi } from "vitest";
+import { getLocale, overwriteGetLocale, type Locale } from "./paraglide/runtime.js";
 import type {
   Api, ExtremesOut, ForecastHour, ForecastOut, Meta, Now, SeriesOut, Station,
 } from "./lib/api";
@@ -182,4 +183,13 @@ export function forecast(overrides: Partial<ForecastOut> = {}): ForecastOut {
     ],
     ...overrides,
   };
+}
+
+/** Paraglide's own getLocale, which follows the page's strategies. */
+const pageLocale = getLocale;
+
+/** Renders the rest of the calling test in `locale`; the page's own language returns after it. */
+export function speaking(locale: Locale): void {
+  overwriteGetLocale(() => locale);
+  onTestFinished(() => overwriteGetLocale(pageLocale));
 }

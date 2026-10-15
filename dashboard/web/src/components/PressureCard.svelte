@@ -3,6 +3,8 @@
   import GaugeIcon from "@lucide/svelte/icons/gauge";
   import type { Notice, Pressure, Units } from "../lib/api";
   import { quantity } from "../lib/format";
+  import { intlLocale } from "../lib/language";
+  import { m } from "../paraglide/messages.js";
 
   type Props = {
     notice?: Notice;
@@ -20,18 +22,21 @@
 </script>
 
 <button class="card {notice?.level ?? ''}" onclick={() => onselect("pressure")}>
-  <h2><GaugeIcon size={16} aria-hidden="true" /> Pressure</h2>
+  <h2><GaugeIcon size={16} aria-hidden="true" /> {m.pressure_title()}</h2>
   {#if notice?.text}<p class="notice">{notice.text}</p>{/if}
   <div class="big">{quantity(pressure.sea_level ?? pressure.relative, units.pressure, symbols)}</div>
   {#if trend}
     <div class="muted">
       <span aria-hidden="true">{arrow}</span>
       <span class="tendency">{trend.tendency}</span>:
-      {trend.change > 0 ? "+" : ""}{quantity(trend.change, units.pressure, symbols)} in {trend.hours} h
+      {m.pressure_change({
+        change: `${trend.change > 0 ? "+" : ""}${quantity(trend.change, units.pressure, symbols)}`,
+        hours: trend.hours.toLocaleString(intlLocale()),
+      })}
     </div>
   {/if}
   <dl>
-    <div><dt>At the station</dt><dd>{quantity(pressure.absolute, units.pressure, symbols)}</dd></div>
+    <div><dt>{m.at_the_station()}</dt><dd>{quantity(pressure.absolute, units.pressure, symbols)}</dd></div>
   </dl>
 </button>
 

@@ -1,0 +1,276 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "never": "nunca",
+  "just_now": "agora mesmo",
+  "minutes_ago": "há {minutes} min",
+  "hours_ago": "há {hours} h",
+  "days_ago": "há {days} dias",
+  "duration_minutes": "{minutes} min",
+  "duration_hours_minutes": "{hours} h {minutes} min",
+  "uv_low": "Baixo",
+  "uv_moderate": "Moderado",
+  "uv_high": "Elevado",
+  "uv_very_high": "Muito elevado",
+  "uv_extreme": "Extremo",
+  "today": "Hoje",
+  "tomorrow": "Amanhã",
+  "today_at": [
+    {
+      "declarations": [
+        "input time",
+        "input hour"
+      ],
+      "selectors": [
+        "hour"
+      ],
+      "match": {
+        "hour=1": "hoje à {time}",
+        "hour=*": "hoje às {time}"
+      }
+    }
+  ],
+  "tomorrow_at": [
+    {
+      "declarations": [
+        "input time",
+        "input hour"
+      ],
+      "selectors": [
+        "hour"
+      ],
+      "match": {
+        "hour=1": "amanhã à {time}",
+        "hour=*": "amanhã às {time}"
+      }
+    }
+  ],
+  "day_at": [
+    {
+      "declarations": [
+        "input day",
+        "input time",
+        "input hour"
+      ],
+      "selectors": [
+        "hour"
+      ],
+      "match": {
+        "hour=1": "{day} à {time}",
+        "hour=*": "{day} às {time}"
+      }
+    }
+  ],
+  "level_very_dry": "Muito seco",
+  "level_dry": "Seco",
+  "level_comfortable": "Confortável",
+  "level_humid": "Húmido",
+  "level_fog_likely": "Muito húmido no exterior: nevoeiro provável",
+  "level_crisp": "Seco e fresco",
+  "level_muggy": "Abafado",
+  "level_oppressive": "Sufocante",
+  "view_temperature": "Temperatura",
+  "view_humidity": "Humidade",
+  "view_wind": "Vento",
+  "view_rain": "Chuva",
+  "view_pressure": "Pressão",
+  "view_sun": "Sol",
+  "view_rooms_temperature": "Divisões °",
+  "view_rooms_humidity": "Divisões %",
+  "chart_wind_speed_10m": "Velocidade do vento, a 10 m",
+  "chart_model_line": "{label} (modelo)",
+  "site_title": "Meteorologia",
+  "station": "Estação",
+  "zone_time": "hora da estação",
+  "reporting": "A comunicar",
+  "not_reporting": "Sem comunicação",
+  "updated_ago": "Atualizado {ago}",
+  "last_report_ago": "Último registo {ago}",
+  "error_loading": "Ocorreu um erro ao carregar os dados meteorológicos.",
+  "no_station": "Ainda nenhuma estação publicou as suas definições.",
+  "footer_model_data": "Dados do modelo meteorológico fornecidos por",
+  "footer_icons": "Ícones de Meteocons e Lucide",
+  "footer_licences": "Licenças",
+  "now_title": "Exterior",
+  "feels_like": "Sensação térmica de {value}",
+  "sky_from_model": [
+    {
+      "declarations": [
+        "input time",
+        "input hour"
+      ],
+      "selectors": [
+        "hour"
+      ],
+      "match": {
+        "hour=1": "Do modelo meteorológico, para a {time}",
+        "hour=*": "Do modelo meteorológico, para as {time}"
+      }
+    }
+  ],
+  "humidity": "Humidade",
+  "dew_point": "Ponto de orvalho",
+  "at_time": [
+    {
+      "declarations": [
+        "input time",
+        "input hour"
+      ],
+      "selectors": [
+        "hour"
+      ],
+      "match": {
+        "hour=1": "à {time}",
+        "hour=*": "às {time}"
+      }
+    }
+  ],
+  "airing_title": "Arejamento",
+  "airing_open": "Boa altura para arejar",
+  "airing_keep_closed": "Mantenha as janelas fechadas",
+  "airing_no_need": "Não é preciso arejar",
+  "airing_change_hint": "A humidade mediana das divisões, agora e depois de o ar ser trocado pelo ar exterior",
+  "airing_indoors_now": "dentro de casa agora",
+  "airing_after": "depois de arejar",
+  "airing_explain_open": "O ar exterior tem menos água: aquecido dentro de casa, secaria {rooms}.",
+  "airing_explain_keep_closed": "O ar exterior tem mais água: aquecido dentro de casa, levaria as divisões a {damp}% ou mais, o limiar da humidade excessiva.",
+  "airing_explain_up": "Arejar tornaria as divisões um pouco mais húmidas, mas sem importância: ficariam abaixo de {damp}%.",
+  "airing_explain_same": "Arejar faria pouca diferença: o ar exterior tem quase tanta água como as divisões.",
+  "airing_explain_dry": "As divisões estão suficientemente secas.",
+  "airing_drier_from": "Ar mais seco previsto a partir de {time}: areje as divisões nessa altura.",
+  "wind_title": "Vento",
+  "wind_basis_model": "A 10 m, do modelo meteorológico: vento demasiado fraco aqui para o sensor rodar",
+  "wind_basis_estimated": "Estimado a 10 m: ×{factor} o vento medido no sensor",
+  "wind_from": "De {compass}",
+  "wind_direction_unknown": "Direção desconhecida",
+  "compass_n": "N",
+  "compass_e": "E",
+  "compass_s": "S",
+  "compass_w": "O",
+  "wind_sensor_hint": "O que o anemómetro mediu, à sua própria altura",
+  "wind_at_sensor": "no sensor",
+  "wind_at_10m_model": "a 10 m, do modelo",
+  "wind_at_10m_estimated": "a 10 m, estimado",
+  "wind_description_from": "{description} de {compass}",
+  "gusts": "Rajadas",
+  "strongest_today": "Máximo de hoje",
+  "value_at_time": [
+    {
+      "declarations": [
+        "input value",
+        "input time",
+        "input hour"
+      ],
+      "selectors": [
+        "hour"
+      ],
+      "match": {
+        "hour=1": "{value} à {time}",
+        "hour=*": "{value} às {time}"
+      }
+    }
+  ],
+  "wind_at_10m": "A 10 m",
+  "wind_with_gusts": "{speed}, rajadas de {gust}",
+  "wind_measured_here": "Medido aqui",
+  "rain_title": "Chuva",
+  "raining_now": "A chover agora",
+  "today_not_raining": "hoje, sem chuva agora",
+  "last_24_hours": "Últimas 24 horas",
+  "this_month": "Este mês",
+  "this_year": "Este ano",
+  "pressure_title": "Pressão",
+  "pressure_change": "{change} em {hours} h",
+  "at_the_station": "Na estação",
+  "sun_title": "Sol",
+  "sun_up_all_day": "Acima do horizonte todo o dia",
+  "sun_down_all_day": "Abaixo do horizonte todo o dia",
+  "sunrise": "Nascer do sol",
+  "sunset": "Pôr do sol",
+  "daylight": "{duration} de luz do dia",
+  "radiation": "Radiação",
+  "uv_index": "Índice UV",
+  "sensors_title": "Sensores",
+  "all_reporting": "Todos a comunicar",
+  "not_updating_for": "Sem atualizações há {duration}",
+  "battery_low": "Bateria fraca",
+  "rooms_title": "Divisões",
+  "room": "Divisão",
+  "temperature": "Temperatura",
+  "if_aired": "Se arejada",
+  "if_aired_hint": "A humidade em que cada divisão ficaria depois de o seu ar ser substituído pelo ar exterior",
+  "airing_column": "Arejamento",
+  "air_it": "Arejar",
+  "air_it_hint": "O ar exterior tem menos água: aquecido dentro de casa, baixaria a humidade",
+  "keep_closed": "Manter fechada",
+  "keep_closed_hint": "O ar exterior tem tanta ou mais humidade: arejar não a secaria",
+  "forecast_title": "Previsão",
+  "weather_model": "Modelo meteorológico",
+  "forecast_source": [
+    {
+      "declarations": [
+        "input model",
+        "input time",
+        "input hour"
+      ],
+      "selectors": [
+        "hour"
+      ],
+      "match": {
+        "hour=1": "{model}, emitida à {time}",
+        "hour=*": "{model}, emitida às {time}"
+      }
+    }
+  ],
+  "next_24_hours": "Próximas 24 horas",
+  "chance_of_rain": "Probabilidade de chuva",
+  "wind_gusts_hint": "Vento, rajadas de {gust}",
+  "forecast_error": "Não foi possível carregar a previsão.",
+  "day": "Dia",
+  "sky": "Céu",
+  "low": "Mín.",
+  "high": "Máx.",
+  "records_title": "Máximos e mínimos",
+  "period": "Período",
+  "period_today": "Hoje",
+  "records_error": "Não foi possível carregar os registos.",
+  "loading": "A carregar…",
+  "chart": "Gráfico",
+  "range": "Intervalo",
+  "range_day": "Dia",
+  "range_week": "Semana",
+  "range_month": "Mês",
+  "range_year": "Ano",
+  "range_hours": "{hours} h",
+  "model_toggle": "Modelo",
+  "model_hint": "Os valores do modelo meteorológico para este local, a tracejado: {model}, da Open-Meteo",
+  "chart_error": "Não foi possível carregar o gráfico.",
+  "chart_empty": "Sem dados registados no período escolhido.",
+  "settings": "Definições",
+  "as_stored": "Como registado",
+  "wind_at": "Vento",
+  "wind_at_10m_choice": "A 10 m, estimado",
+  "wind_at_sensor_choice": "No sensor",
+  "theme": "Tema",
+  "theme_system": "Do sistema",
+  "theme_light": "Claro",
+  "theme_dark": "Escuro",
+  "theme_sun": "Escuro à noite",
+  "fullscreen": "Ecrã inteiro",
+  "fullscreen_hint": "Com esta opção ativa, a página adicionada ao ecrã principal abre em ecrã inteiro",
+  "language": "Idioma",
+  "language_browser": "Do navegador",
+  "sensors_need_attention": [
+    {
+      "declarations": [
+        "input count"
+      ],
+      "selectors": [
+        "count"
+      ],
+      "match": {
+        "count=1": "{count} precisa de atenção",
+        "count=*": "{count} precisam de atenção"
+      }
+    }
+  ]
+}

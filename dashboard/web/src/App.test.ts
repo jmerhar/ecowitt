@@ -2,7 +2,8 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/sve
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App.svelte";
 import { ApiError } from "./lib/api";
-import { fakeApi, now, STATION } from "./testing";
+import { fakeApi, now, speaking, STATION } from "./testing";
+import { LANGUAGE_KEY } from "./lib/language";
 
 vi.mock("./components/Chart.svelte", async () => ({ default: (await import("./components/ChartStub.svelte")).default }));
 
@@ -46,6 +47,24 @@ describe("App", () => {
     expect(title).toHaveAttribute("content", "Test weather");
     title.remove();
     expect(api.now).toHaveBeenCalledWith("Home", {});
+  });
+
+  it("keeps the language chosen in the settings, and reloads into it", async () => {
+    const storage = memory();
+    const reload = vi.fn();
+    render(App, { api: fakeApi(), storage, reload });
+    await fireEvent.change(await screen.findByLabelText("Language"), { target: { value: "pt-PT" } });
+    expect(storage.getItem(LANGUAGE_KEY)).toBe("pt-PT");
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect((screen.getByLabelText("Language") as HTMLSelectElement).value).toBe("pt-PT");
+  });
+
+  it("asks the API for its words in the page's language", async () => {
+    speaking("pt-PT");
+    const fetcher = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("[]"));
+    render(App, { storage: memory() });
+    await waitFor(() => expect(fetcher).toHaveBeenCalledWith("/api/v1/meta?lang=pt-PT", expect.anything()));
+    fetcher.mockRestore();
   });
 
   it("drills down from a card to its chart", async () => {

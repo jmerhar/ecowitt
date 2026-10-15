@@ -6,6 +6,9 @@
   import { onDestroy, onMount } from "svelte";
   import { Api, ApiError, type Meta, type Now, type Station, type UnitChoice } from "./lib/api";
   import { ago, today, zoneCity } from "./lib/format";
+  import { chooseLanguage, chosenLanguage } from "./lib/language";
+  import { m } from "./paraglide/messages.js";
+  import { getLocale } from "./paraglide/runtime.js";
   import { load, save, type Prefs } from "./lib/prefs";
   import { applyTheme, themeAt } from "./lib/theme";
   import { canFullscreen, enterFullscreen, exitFullscreen, isFullscreen, onFullscreenChange } from "./lib/fullscreen";
@@ -29,8 +32,16 @@
     /** How often the clock in the header moves, in milliseconds. */
     clockMs?: number;
     storage?: Storage;
+    /** Reloads the page, into a newly chosen language. */
+    reload?: () => void;
   };
-  let { api = new Api(), refreshMs = 60_000, clockMs = 10_000, storage }: Props = $props();
+  let {
+    api = new Api(undefined, undefined, getLocale()),
+    refreshMs = 60_000,
+    clockMs = 10_000,
+    storage,
+    reload = () => location.reload(),
+  }: Props = $props();
 
   // The saved choices are read once, when the page opens.
   // svelte-ignore state_referenced_locally
@@ -114,7 +125,7 @@
   }
 
   function message(exc: unknown): string {
-    return exc instanceof ApiError ? exc.message : "Something went wrong loading the weather.";
+    return exc instanceof ApiError ? exc.message : m.error_loading();
   }
 
   function chooseStation(id: string): void {
@@ -154,10 +165,10 @@
 
 <header>
   <div class="title">
-    <h1>{meta?.title ?? "Weather"}</h1>
+    <h1>{meta?.title ?? m.site_title()}</h1>
     {#if stations.length > 1}
       <label>
-        <span class="visually-hidden">Station</span>
+        <span class="visually-hidden">{m.station()}</span>
         <select value={station?.id} onchange={(e) => chooseStation(e.currentTarget.value)}>
           {#each stations as s (s.id)}<option value={s.id}>{s.id}</option>{/each}
         </select>
@@ -168,17 +179,18 @@
   </div>
   <div class="status">
     {#if station}
-      <span class="time" title={timezone}>{today(clock.toISOString(), timezone)} {zoneCity(timezone)} time</span>
+      <span class="time" title={timezone}>{today(clock.toISOString(), timezone)} {m.zone_time({ city: zoneCity(timezone) })}</span>
     {/if}
     {#if now}
-      <span class="dot" class:offline={!now.online} title={now.online ? "Reporting" : "Not reporting"}></span>
-      <span>{now.online ? "Updated" : "Last report"} {ago(now.time, clock)}</span>
+      <span class="dot" class:offline={!now.online} title={now.online ? m.reporting() : m.not_reporting()}></span>
+      <span>{now.online ? m.updated_ago({ ago: ago(now.time, clock) }) : m.last_report_ago({ ago: ago(now.time, clock) })}</span>
     {/if}
     {#if meta}
       <UnitsMenu {meta} chosen={prefs.units} onchange={chooseUnits}
         wind={estimatesWind ? prefs.wind : null} onwind={(w) => (prefs.wind = w)}
         theme={prefs.theme} ontheme={(t) => (prefs.theme = t)}
-        fullscreen={canFullscreen() || fullscreen ? fullscreen : null} onfullscreen={chooseFullscreen} />
+        fullscreen={canFullscreen() || fullscreen ? fullscreen : null} onfullscreen={chooseFullscreen}
+        language={chosenLanguage(storage)} onlanguage={(l) => chooseLanguage(l, storage, reload)} />
     {/if}
   </div>
 </header>
@@ -187,7 +199,7 @@
   {#if error}<p class="banner" role="alert">{error}</p>{/if}
 
   {#if meta && !stations.length && !error}
-    <p class="empty">No station has published its settings yet.</p>
+    <p class="empty">{m.no_station()}</p>
   {/if}
 
   {#if now && station && meta}
@@ -226,10 +238,10 @@
 
 <footer>
   {#if station?.weather_model}
-    Weather model data by <a href="https://open-meteo.com/">Open-Meteo.com</a>
+    {m.footer_model_data()} <a href="https://open-meteo.com/">Open-Meteo.com</a>
     (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>) ·
   {/if}
-  Icons by Meteocons and Lucide · <a href="/licenses.md">Licences</a>
+  {m.footer_icons()} · <a href="/licenses.md">{m.footer_licences()}</a>
   {#if meta}· Ecowitt Server {meta.version}{/if}
 </footer>
 

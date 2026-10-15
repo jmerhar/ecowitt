@@ -6,22 +6,24 @@
 
 import type { Series, SeriesOut } from "./api";
 import type { WindHeight } from "./prefs";
+import { m } from "../paraglide/messages.js";
 
 /** How one metric is drawn. */
 export type Style = "line" | "band" | "points" | "bars" | "thin";
 
 /** A chart tab: its metrics, how each is drawn, on which axis, and a label of its own if the
- * metric's would mislead in this view. */
+ * metric's would mislead in this view. Labels are message functions, read when drawn in the
+ * page's language. */
 export type View = {
   id: string;
-  label: string;
-  metrics: { id: string; style: Style; axis: "left" | "right"; label?: string }[];
+  label: () => string;
+  metrics: { id: string; style: Style; axis: "left" | "right"; label?: () => string }[];
 };
 
 export const VIEWS: View[] = [
   {
     id: "temperature",
-    label: "Temperature",
+    label: m.view_temperature,
     metrics: [
       { id: "outdoor.temperature", style: "band", axis: "left" },
       { id: "outdoor.dew_point", style: "line", axis: "left" },
@@ -29,12 +31,12 @@ export const VIEWS: View[] = [
   },
   {
     id: "humidity",
-    label: "Humidity",
+    label: m.view_humidity,
     metrics: [{ id: "outdoor.humidity", style: "band", axis: "left" }],
   },
   {
     id: "wind",
-    label: "Wind",
+    label: m.view_wind,
     // Speed and gust at 10 m; what the sensor measured, faint behind them.
     metrics: [
       { id: "wind.speed", style: "line", axis: "left" },
@@ -45,7 +47,7 @@ export const VIEWS: View[] = [
   },
   {
     id: "rain",
-    label: "Rain",
+    label: m.view_rain,
     metrics: [
       { id: "rain.daily", style: "bars", axis: "left" },
       { id: "rain.rate", style: "line", axis: "right" },
@@ -53,12 +55,12 @@ export const VIEWS: View[] = [
   },
   {
     id: "pressure",
-    label: "Pressure",
+    label: m.view_pressure,
     metrics: [{ id: "pressure.sea_level", style: "band", axis: "left" }],
   },
   {
     id: "sun",
-    label: "Sun",
+    label: m.view_sun,
     metrics: [
       { id: "solar.radiation", style: "line", axis: "left" },
       { id: "solar.uv_index", style: "line", axis: "right" },
@@ -66,12 +68,12 @@ export const VIEWS: View[] = [
   },
   {
     id: "rooms-temperature",
-    label: "Rooms °",
+    label: m.view_rooms_temperature,
     metrics: [{ id: "rooms.temperature", style: "line", axis: "left" }],
   },
   {
     id: "rooms-humidity",
-    label: "Rooms %",
+    label: m.view_rooms_humidity,
     metrics: [{ id: "rooms.humidity", style: "line", axis: "left" }],
   },
 ];
@@ -80,12 +82,12 @@ export const VIEWS: View[] = [
  * behind it, in the places the measured lines take in the 10 m view, so the colours swap too. */
 export const MEASURED_WIND: View = {
   id: "wind",
-  label: "Wind",
+  label: m.view_wind,
   metrics: [
     { id: "wind.measured_speed", style: "line", axis: "left" },
     { id: "wind.measured_gust", style: "line", axis: "left" },
     { id: "wind.direction", style: "points", axis: "right" },
-    { id: "wind.speed", style: "thin", axis: "left", label: "Wind speed, at 10 m" },
+    { id: "wind.speed", style: "thin", axis: "left", label: m.chart_wind_speed_10m },
   ],
 };
 
@@ -130,7 +132,7 @@ function main(series: Series): string {
  * station's, plain lines however the metric is drawn.
  */
 export function align(view: View, answer: SeriesOut, labels: Record<string, string>): ChartData {
-  const wanted = new Map(view.metrics.map((m) => [m.id, m]));
+  const wanted = new Map(view.metrics.map((metric) => [metric.id, metric]));
   const chosen = answer.series.filter((s) => wanted.has(s.metric));
   const times = [...new Set(chosen.flatMap((s) => s.t))].sort((a, b) => a - b);
   const position = new Map(times.map((t, i) => [t, i]));
@@ -145,13 +147,13 @@ export function align(view: View, answer: SeriesOut, labels: Record<string, stri
   const counts = new Map<string, number>();
   const measured = chosen.filter((s) => s.source !== "model");
   const several = new Set(
-    measured.map((s) => s.metric).filter((m, i, all) => all.indexOf(m) !== i),
+    measured.map((s) => s.metric).filter((metric, i, all) => all.indexOf(metric) !== i),
   );
   const lines = measured.map((series) => {
     const how = wanted.get(series.metric)!;
     const index = counts.get(series.metric) ?? 0;
     counts.set(series.metric, index + 1);
-    const metricLabel = how.label ?? labels[series.metric] ?? series.metric;
+    const metricLabel = how.label?.() ?? labels[series.metric] ?? series.metric;
     const line: Line = {
       metric: series.metric,
       // A per-room chart names each line by its room; a station-wide one by its metric.
@@ -176,7 +178,7 @@ export function align(view: View, answer: SeriesOut, labels: Record<string, stri
     const how = wanted.get(series.metric)!;
     lines.push({
       metric: series.metric,
-      label: `${how.label ?? labels[series.metric] ?? series.metric} (model)`,
+      label: m.chart_model_line({ label: how.label?.() ?? labels[series.metric] ?? series.metric }),
       unit: series.unit,
       style: how.style === "points" ? "points" : "line",
       axis: how.axis,
@@ -196,7 +198,7 @@ export const PALETTE = [
 
 /** The colour of a line: its metric's place in the view, then the line's within the metric. */
 export function colour(view: View, line: Line): string {
-  const metricIndex = Math.max(0, view.metrics.findIndex((m) => m.id === line.metric));
+  const metricIndex = Math.max(0, view.metrics.findIndex((metric) => metric.id === line.metric));
   return PALETTE[(metricIndex + line.index) % PALETTE.length];
 }
 

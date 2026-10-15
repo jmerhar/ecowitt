@@ -4,10 +4,11 @@
    * day's range and one line in words.
    */
   import type { Notice, Now } from "../lib/api";
-  import { clock, quantity } from "../lib/format";
+  import { clock, hourOf, quantity } from "../lib/format";
   import { skyIcon } from "../lib/sky";
   import { dewPointLevel, humidityLevel, type Level } from "../lib/levels";
   import ThermometerIcon from "@lucide/svelte/icons/thermometer";
+  import { m } from "../paraglide/messages.js";
 
   type Props = {
     notice?: Notice;
@@ -33,18 +34,18 @@
 </script>
 
 <button class="card hero {notice?.level ?? ''}" onclick={() => onselect("temperature")}>
-  <h2><ThermometerIcon size={16} aria-hidden="true" /> Outdoors</h2>
+  <h2><ThermometerIcon size={16} aria-hidden="true" /> {m.now_title()}</h2>
   <div class="headline">
     {#if outdoor}
       <div>
         <div class="temperature">{quantity(outdoor.temperature, t, symbols)}</div>
         {#if outdoor.feels_like !== null && outdoor.feels_like !== outdoor.temperature}
-          <div class="feels">Feels like {quantity(outdoor.feels_like, t, symbols)}</div>
+          <div class="feels">{m.feels_like({ value: quantity(outdoor.feels_like, t, symbols) })}</div>
         {/if}
       </div>
     {/if}
     {#if sky}
-      <div class="sky" title="From the weather model, for {clock(sky.time, timezone)}">
+      <div class="sky" title={m.sky_from_model({ time: clock(sky.time, timezone), hour: hourOf(sky.time, timezone) })}>
         <img src={skyIcon(sky.code, sky.is_day)} alt="" width="72" height="72" />
         <span>{sky.description}</span>
       </div>
@@ -60,17 +61,17 @@
           {#if level}
             <span class="bar {level.tone}" title={level.words}><span style="width: {level.fill}%"></span></span>
           {/if}
-          <dd>{value}{#if level}<span class="visually-hidden">, {level.words.toLowerCase()}</span>{/if}</dd>
+          <dd>{value}{#if level}<span class="visually-hidden">, {level.words}</span>{/if}</dd>
         </div>
       {/snippet}
-      {@render bar("Humidity", quantity(outdoor.humidity, "pct", symbols), humidity)}
-      {@render bar("Dew point", quantity(outdoor.dew_point, t, symbols), dew)}
+      {@render bar(m.humidity(), quantity(outdoor.humidity, "pct", symbols), humidity)}
+      {@render bar(m.dew_point(), quantity(outdoor.dew_point, t, symbols), dew)}
       {#if outdoor.high && outdoor.low}
         <div>
-          <dt>Today</dt>
+          <dt>{m.today()}</dt>
           <dd>
-            <span title="at {clock(outdoor.low.time, timezone)}">↓ {quantity(outdoor.low.value, t, symbols)}</span>
-            <span title="at {clock(outdoor.high.time, timezone)}">↑ {quantity(outdoor.high.value, t, symbols)}</span>
+            <span title={m.at_time({ time: clock(outdoor.low.time, timezone), hour: hourOf(outdoor.low.time, timezone) })}>↓ {quantity(outdoor.low.value, t, symbols)}</span>
+            <span title={m.at_time({ time: clock(outdoor.high.time, timezone), hour: hourOf(outdoor.high.time, timezone) })}>↑ {quantity(outdoor.high.value, t, symbols)}</span>
           </dd>
         </div>
       {/if}

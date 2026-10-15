@@ -3,6 +3,7 @@
   import RadioIcon from "@lucide/svelte/icons/radio";
   import type { Notice, SensorHealth } from "../lib/api";
   import { duration } from "../lib/format";
+  import { m } from "../paraglide/messages.js";
 
   let { sensors, notice }: { sensors: SensorHealth[]; notice?: Notice } = $props();
 
@@ -11,9 +12,9 @@
 
 <details class="card wide {notice?.level ?? ''}" open={problems.length > 0}>
   <summary>
-    <h2><RadioIcon size={16} aria-hidden="true" /> Sensors</h2>
+    <h2><RadioIcon size={16} aria-hidden="true" /> {m.sensors_title()}</h2>
     <span class:bad={problems.length > 0} class="muted">
-      {problems.length ? `${problems.length} need${problems.length === 1 ? "s" : ""} attention` : "All reporting"}
+      {problems.length ? m.sensors_need_attention({ count: problems.length }) : m.all_reporting()}
     </span>
   </summary>
   <ul>
@@ -21,9 +22,9 @@
       <li>
         <span>{sensor.name}</span>
         <span class="muted">
-          {#if !sensor.updating}<span class="bad">Not updating for {duration(sensor.unchanged_s)}</span>
-          {:else}Reporting{/if}
-          {#if sensor.battery_low}· <span class="bad">Battery low</span>{/if}
+          {#if !sensor.updating}<span class="bad">{m.not_updating_for({ duration: duration(sensor.unchanged_s) })}</span>
+          {:else}{m.reporting()}{/if}
+          {#if sensor.battery_low}· <span class="bad">{m.battery_low()}</span>{/if}
         </span>
       </li>
     {/each}

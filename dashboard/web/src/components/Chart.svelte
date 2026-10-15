@@ -5,7 +5,8 @@
   import "uplot/dist/uPlot.min.css";
   import type { ChartData, PlotSpec, View } from "../lib/chart";
   import { spec } from "../lib/chart";
-  import { axisLabels, LOCALE, moment } from "../lib/format";
+  import { axisLabels, moment } from "../lib/format";
+  import { intlLocale } from "../lib/language";
 
   type Props = {
     view: View;
@@ -36,7 +37,7 @@
       grid: { stroke: grid, show: side === 3 },
       ticks: { stroke: grid },
       values: (_: uPlot, ticks: number[]) =>
-        ticks.map((v) => `${v.toLocaleString(LOCALE)}${symbols[unit] ? ` ${symbols[unit]}` : ""}`),
+        ticks.map((v) => `${v.toLocaleString(intlLocale())}${symbols[unit] ? ` ${symbols[unit]}` : ""}`),
       size: 70,
     });
     const options: uPlot.Options = {
@@ -78,7 +79,7 @@
             ? { show: s.style === "points", size: 6, width: 1.5, stroke: s.stroke, fill: css("--card") }
             : { show: s.style === "points", size: 4, fill: s.stroke },
           value: (_: uPlot, v: number | null) =>
-            v === null ? "–" : `${v.toLocaleString(LOCALE)}${symbols[s.unit] ? ` ${symbols[s.unit]}` : ""}`,
+            v === null ? "–" : `${v.toLocaleString(intlLocale())}${symbols[s.unit] ? ` ${symbols[s.unit]}` : ""}`,
         })),
       ],
       bands: built.bands,

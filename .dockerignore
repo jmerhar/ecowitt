@@ -19,6 +19,8 @@
 !dashboard/web/svelte.config.js
 !dashboard/web/tsconfig.json
 !dashboard/web/src/
+!dashboard/web/project.inlang/settings.json
+!dashboard/web/messages/
 !dashboard/web/public/
 **/node_modules
 **/*.test.ts

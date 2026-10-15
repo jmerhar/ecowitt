@@ -2,17 +2,19 @@
  * Values and times as a visitor reads them. Times are shown in the station's time zone, since
  * "today's high at 14:10" means the station's afternoon wherever the visitor is.
  *
- * The page is in English with dates day first and a 24-hour clock ("9 Oct, 14:05") whatever the
- * browser's locale: a month-first short date is ambiguous to most of the world.
+ * Dates and numbers follow the page's language (`intlLocale`), English with the day first and a
+ * 24-hour clock ("9 Oct, 14:05") whatever the browser's locale: a month-first short date is
+ * ambiguous to most of the world.
  */
 
-export const LOCALE = "en-GB";
+import { intlLocale } from "./language";
+import { m } from "../paraglide/messages.js";
 
 /** Decimal places worth showing per unit, as the API rounds them; anything else gets one. */
 const DECIMALS: Record<string, number> = { inhg: 2, in: 2, in_h: 2, pct: 0, deg: 0, wm2: 0, "": 0 };
 
 /** A number to the precision its unit is worth, or an en dash when there is none. */
-export function number(value: number | null | undefined, unit = "", locale = LOCALE): string {
+export function number(value: number | null | undefined, unit = "", locale = intlLocale()): string {
   if (value === null || value === undefined || Number.isNaN(value)) return "–";
   const digits = DECIMALS[unit] ?? 1;
   return value.toLocaleString(locale, {
@@ -26,7 +28,7 @@ export function quantity(
   value: number | null | undefined,
   unit: string,
   symbols: Record<string, string>,
-  locale = LOCALE,
+  locale = intlLocale(),
 ): string {
   const text = number(value, unit, locale);
   const symbol = symbols[unit] ?? "";
@@ -40,7 +42,7 @@ export function whole(
   value: number | null | undefined,
   unit: string,
   symbols: Record<string, string>,
-  locale = LOCALE,
+  locale = intlLocale(),
 ): string {
   if (value === null || value === undefined || Number.isNaN(value)) return "–";
   const symbol = symbols[unit] ?? "";
@@ -50,7 +52,7 @@ export function whole(
 }
 
 /** The time of day at the station: "14:05". */
-export function clock(iso: string | null | undefined, timezone: string, locale = LOCALE): string {
+export function clock(iso: string | null | undefined, timezone: string, locale = intlLocale()): string {
   if (!iso) return "–";
   return new Intl.DateTimeFormat(locale, {
     hour: "2-digit",
@@ -59,8 +61,18 @@ export function clock(iso: string | null | undefined, timezone: string, locale =
   }).format(new Date(iso));
 }
 
+/**
+ * The hour of a time at the station, 0 to 23, for a message whose words agree with it (the
+ * Portuguese "à 01:00" but "às 02:00"). Read from the 24-hour clock: Intl's hourCycle option is
+ * missing from the oldest browsers the page runs in, and hour12: false gives 24 for midnight in
+ * some of them.
+ */
+export function hourOf(iso: string, timezone: string): number {
+  return Number(clock(iso, timezone, "en-GB").split(":")[0]) % 24;
+}
+
 /** A date and time at the station: "9 Oct, 14:05" -- day first, as most of the world reads it. */
-export function moment(iso: string | null | undefined, timezone: string, locale = LOCALE): string {
+export function moment(iso: string | null | undefined, timezone: string, locale = intlLocale()): string {
   if (!iso) return "–";
   return new Intl.DateTimeFormat(locale, {
     day: "numeric",
@@ -73,23 +85,23 @@ export function moment(iso: string | null | undefined, timezone: string, locale 
 
 /** How long ago something happened, in the largest unit that fits: "just now", "5 min ago". */
 export function ago(iso: string | null | undefined, now: Date = new Date()): string {
-  if (!iso) return "never";
+  if (!iso) return m.never();
   const seconds = Math.max(0, (now.getTime() - new Date(iso).getTime()) / 1000);
-  if (seconds < 90) return "just now";
+  if (seconds < 90) return m.just_now();
   const minutes = Math.round(seconds / 60);
-  if (minutes < 90) return `${minutes} min ago`;
+  if (minutes < 90) return m.minutes_ago({ minutes });
   const hours = Math.round(minutes / 60);
-  if (hours < 36) return `${hours} h ago`;
-  return `${Math.round(hours / 24)} days ago`;
+  if (hours < 36) return m.hours_ago({ hours });
+  return m.days_ago({ days: Math.round(hours / 24) });
 }
 
 /**
  * A chart's time labels: the time of day for steps under a day, with the date beneath at
  * midnight and on the first label; the date alone for longer steps.
  */
-export function axisLabels(ticks: number[], stepSeconds: number, timezone: string): string[] {
-  const day = new Intl.DateTimeFormat(LOCALE, { day: "numeric", month: "short", timeZone: timezone });
-  const time = new Intl.DateTimeFormat(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: timezone });
+export function axisLabels(ticks: number[], stepSeconds: number, timezone: string, locale = intlLocale()): string[] {
+  const day = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: timezone });
+  const time = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", timeZone: timezone });
   return ticks.map((t, i) => {
     const at = new Date(t * 1000);
     if (stepSeconds >= 86400) return day.format(at);
@@ -99,7 +111,7 @@ export function axisLabels(ticks: number[], stepSeconds: number, timezone: strin
 }
 
 /** The day, date and time at the station: "Sun 11 Oct, 12:20". */
-export function today(iso: string, timezone: string, locale = LOCALE): string {
+export function today(iso: string, timezone: string, locale = intlLocale()): string {
   return new Intl.DateTimeFormat(locale, {
     weekday: "short",
     day: "numeric",
@@ -121,25 +133,27 @@ export function duration(seconds: number | null | undefined): string {
   if (seconds === null || seconds === undefined) return "–";
   const minutes = Math.round(seconds / 60);
   const hours = Math.floor(minutes / 60);
-  return hours ? `${hours} h ${minutes % 60} min` : `${minutes} min`;
+  return hours ? m.duration_hours_minutes({ hours, minutes: minutes % 60 }) : m.duration_minutes({ minutes });
 }
 
 /** The WHO's words for a UV index. */
 export function uvRisk(index: number | null | undefined): string {
   if (index === null || index === undefined) return "";
-  if (index < 3) return "Low";
-  if (index < 6) return "Moderate";
-  if (index < 8) return "High";
-  if (index < 11) return "Very high";
-  return "Extreme";
+  if (index < 3) return m.uv_low();
+  if (index < 6) return m.uv_moderate();
+  if (index < 8) return m.uv_high();
+  if (index < 11) return m.uv_very_high();
+  return m.uv_extreme();
 }
 
 /** A time to come at the station: "14:00" today, "tomorrow 06:00", or "Thu 15 Oct, 06:00". */
 export function coming(iso: string, timezone: string, now: Date = new Date()): string {
   const time = clock(iso, timezone);
+  const hour = hourOf(iso, timezone);
   const day = whichDay(iso, timezone, now);
-  if (day === "today") return time;
-  return day === "tomorrow" ? `tomorrow ${time}` : `${dayLabel(iso, timezone, now)}, ${time}`;
+  if (day === "today") return m.today_at({ time, hour });
+  if (day === "tomorrow") return m.tomorrow_at({ time, hour });
+  return m.day_at({ day: dayLabel(iso, timezone, now), time, hour });
 }
 
 /** Whether a moment falls on today, tomorrow or another day, by the station's calendar. */
@@ -154,11 +168,11 @@ export function whichDay(iso: string, timezone: string, now: Date = new Date()):
 }
 
 /** A day at the station, as a forecast names it: "Today", "Tomorrow", or "Thu 15 Oct". */
-export function dayLabel(iso: string, timezone: string, now: Date = new Date()): string {
+export function dayLabel(iso: string, timezone: string, now: Date = new Date(), locale = intlLocale()): string {
   const day = whichDay(iso, timezone, now);
-  if (day === "today") return "Today";
-  if (day === "tomorrow") return "Tomorrow";
-  return new Intl.DateTimeFormat(LOCALE, {
+  if (day === "today") return m.today();
+  if (day === "tomorrow") return m.tomorrow();
+  return new Intl.DateTimeFormat(locale, {
     weekday: "short",
     day: "numeric",
     month: "short",

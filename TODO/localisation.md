@@ -103,7 +103,7 @@ the client: they are needed before any answer arrives, and each client has scree
   means regenerating the lockfile with `bin/lockfile.sh`, and the legacy build must still pass
   `make test-legacy-browser`.
   - The language comes from `navigator.languages` by default. The menu offers an override,
-    stored with the other preferences in `prefs.ts`.
+    kept under a key of its own (`language.ts`).
   - `LOCALE` in `format.ts` becomes the chosen language's locale, with day-first dates and a
     24-hour clock forced for English (`en-GB`).
   - `<html lang>` follows the chosen language.
@@ -137,8 +137,8 @@ the client: they are needed before any answer arrives, and each client has scree
 1. Codes in the API, English only, beside the English fields. *Done.*
 2. The page uses the codes and stops parsing prose. *Done.*
 3. Server-side catalogue, language negotiation and `text`. *Done, with European Portuguese.*
-4. The page's own catalogue and language preference.
-5. First additional language.
+4. The page's own catalogue and language preference. *Done, with Paraglide.*
+5. First additional language. *Done: European Portuguese.*
 
 Effort: about 2–3 days for steps 1–2, 1–2 days for step 3 and 1–2 days for step 4. Each
 language after that takes a few hours plus review.
