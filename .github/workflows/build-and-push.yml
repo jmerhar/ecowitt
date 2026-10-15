@@ -194,7 +194,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           junit: "*/junit/*.xml,dashboard/api/junit/*.xml"
 
-      # Fails the build if line coverage drops below the bound in coverage.toml. publish needs
+      # Fails the build if line coverage drops below the bound in coverage.toml. images needs
       # this job, so a regression blocks the image.
       - uses: jmerhar/coverage/.github/actions/gate@v1
 
@@ -206,11 +206,11 @@ jobs:
           token: ${{ secrets.COVERAGE_PAGES_TOKEN }}
           description: HTML coverage report
 
-  publish:
+  images:
     # Only after everything is green: the image a deployment pulls is never built from code
-    # whose tests did not pass.
+    # whose tests did not pass. A pull request builds both images without pushing them, since
+    # nothing else builds the dashboard's page or installs either image's dependencies.
     needs: [coverage, lint]
-    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -227,6 +227,7 @@ jobs:
       - uses: docker/setup-buildx-action@v4
 
       - uses: docker/login-action@v4
+        if: github.event_name != 'pull_request'
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -250,15 +251,15 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: ${{ github.event_name != 'pull_request' && 'type=gha,mode=max' || '' }}
 
   release:
     # The GitHub release for a version, once its images are published.
-    needs: [publish]
+    needs: [images]
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     permissions:
