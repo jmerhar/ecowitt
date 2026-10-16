@@ -467,3 +467,33 @@ async def test_misting_is_judged_as_the_station_has_lately_read_from_the_model()
 
     assert "mist" not in await rooms(offset_rows(0.0))
     assert "Windows likely to mist up from tomorrow 01:00." in await rooms(offset_rows(-1.5))
+
+
+async def test_a_showers_steam_does_not_mist_the_windows_overnight() -> None:
+    """The bathroom at a 21 °C dew point just after a shower, 15.4 °C before it: a 12 °C night
+    mists glass only for the steam, which has passed by then."""
+    steam = [
+        r
+        for r in readings()
+        if not (r.table == "derived" and dict(r.tags).get("sensor") == "ch1")
+    ] + [
+        row("derived", NOW - timedelta(minutes=m), {"dewpoint_c": 15.4 if m > 20 else 21.0},
+            sensor="ch1", name="ch1")
+        for m in range(1, 181, 10)
+    ]  # fmt: skip
+    night = coming(**{str(h): {"temp_c": 12.0} for h in range(1, 25)})
+    found = await Dashboard(
+        MemoryReader([*steam, *night], {"example": MODELLED}), clock=lambda: NOW
+    ).now("example")
+    assert "mist" not in (found.notices["rooms"].text if "rooms" in found.notices else "")
+
+
+async def test_a_room_without_three_hours_of_dew_points_is_not_judged() -> None:
+    """A sensor just back after an outage has no lowest dew point over the three hours yet."""
+    recent = [
+        r for r in readings() if not (r.table == "derived" and dict(r.tags).get("sensor") == "ch1")
+    ] + [row("derived", NOW - timedelta(minutes=1), {"dewpoint_c": 15.4}, sensor="ch1", name="ch1")]
+    night = coming(**{str(h): {"temp_c": 9.0} for h in range(1, 25)})
+    reader = MemoryReader([*recent, *night], {"example": MODELLED})
+    found = await Dashboard(reader, clock=lambda: NOW).now("example")
+    assert "mist" not in (found.notices["rooms"].text if "rooms" in found.notices else "")

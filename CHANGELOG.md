@@ -11,7 +11,8 @@ rules to be imported again. Either is listed under *Upgrading*.
 ### Added
 
 - The rooms card warns when windows are likely to mist up overnight: the forecast night air cold
-  enough for the inside of double-glazed glass to fall to a room's dew point.
+  enough for the inside of double-glazed glass to fall to a room's lowest dew point of the last
+  three hours, which a shower's passing steam does not raise.
 - An *Air the bathroom* alert, sent at any hour when a room is still damp 40 minutes after a
   shower: its humidity rose 10 points within 10 minutes and has not come back down. One shower
   sends one message, and a room damp enough for *Damp room* is left to that alert.

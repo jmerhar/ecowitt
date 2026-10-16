@@ -445,7 +445,8 @@ menu fixes either. Dates and numbers follow it -- English with the day first and
 
 For a station storing its model's [forecast](#forecast), the page shows it — the next 24 hours
 and the days ahead — and the cards say what is coming within the day: rain likely within six
-hours, frost or heat, strong gusts, windows likely to mist up (a room's dew point above the inside
+hours, frost or heat, strong gusts, windows likely to mist up (a room's lowest dew point of the last three hours, so not a
+shower's steam, above the inside
 of double-glazed glass on the night forecast), and drier air to open the windows for. Forecast
 temperatures are judged moved by how far the station has read from its model over the last 24
 hours: a model running a degree warm would otherwise miss a frost. For a station with a

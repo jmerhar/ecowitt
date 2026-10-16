@@ -87,6 +87,9 @@ TREND_STEP = timedelta(minutes=10)
 OFFSET_OVER = timedelta(hours=24)
 #: ...and at least this many of them; without, the forecast is taken as it stands.
 OFFSET_HOURS = 12
+#: A room's windows are judged by its lowest dew point over this many hours: a shower's steam
+#: passes, and leaves no more moisture to mist the glass overnight than the room held before.
+MIST_DEW_POINT_H = 3
 #: A trend needs readings from nearly the whole of its three hours.
 PRESSURE_TREND_COVERAGE = timedelta(hours=2, minutes=50)
 #: A station is online while its latest report is younger than this many upload intervals...
@@ -119,6 +122,8 @@ class _Latest:
     house: Span | None = None
     #: Each room's lowest humidity in each hour of the last weather.DAMP_FOR_H.
     room_lows: list[Buckets] = field(default_factory=list)
+    #: Each sensor's lowest dew point in each hour of the last MIST_DEW_POINT_H.
+    dew_point_lows: list[Buckets] = field(default_factory=list)
     #: The house's rows over the last weather.DAMPER_LOW_WITHIN_H hours: whether it was aired,
     #: and its rooms' humidity.
     house_recent: list[Point] = field(default_factory=list)
@@ -315,7 +320,7 @@ class Dashboard:
             zone,
             self.clock(),
             language,
-            offset_c=_model_offset(latest, values, stored),
+            offset_c=_model_offset(latest, stored),
             rooms=_room_dew_points(latest, values, stored),
         )
         if answer.airing is not None and answer.airing.advice != "open":
@@ -491,7 +496,7 @@ class Dashboard:
         rain_fields += [f(b, R) for b in ("monthly", "yearly")] + [rate]
         (
             outdoor, derived, wind, rain, pressure, solar, indoor, channel, ventilation, house,
-            house_recent, indoor_lows, channel_lows, outdoor_hourly, model_hourly,
+            house_recent, indoor_lows, channel_lows, dew_point_lows, outdoor_hourly, model_hourly,
             outdoor_dewpoint, battery,
             temperature_today, wind_today, sky,
             recent_wind, recent_rain, wind_10m, wind_10m_today, recent_wind_10m,
@@ -524,6 +529,15 @@ class Dashboard:
                     origin=end + timedelta(seconds=1),
                 )
                 for table in ("indoor", "channel")
+            ),
+            self.reader.buckets(
+                station,
+                "derived",
+                [(f("dewpoint", T), Aggregate.MIN)],
+                start=end - timedelta(hours=MIST_DEW_POINT_H) + timedelta(seconds=1),
+                end=end,
+                step=timedelta(hours=1),
+                origin=end + timedelta(seconds=1),
             ),
             *(
                 self.reader.buckets(
@@ -574,6 +588,7 @@ class Dashboard:
             house=_first(house),
             house_recent=house_recent,
             room_lows=indoor_lows + channel_lows,
+            dew_point_lows=dew_point_lows,
             outdoor_hourly=outdoor_hourly,
             model_hourly=[g for g in model_hourly if g.tags.get("model") == info.weather_model],
             outdoor_dewpoint=outdoor_dewpoint,
@@ -969,7 +984,7 @@ def _rooms(
     """Each room, indoor sensor first, with its airing advice."""
     T, H = Kind.TEMPERATURE, Kind.HUMIDITY
     dew_points = {s.sensor: s.last.get(field_name("dewpoint", T, stored)) for s in latest.derived}
-    lows = _lowest_humidity(latest.room_lows, stored)
+    lows = _lowest(latest.room_lows, "humidity", Kind.HUMIDITY, weather.DAMP_FOR_H, stored)
     by_sensor = {r.sensor: r for r in air}
     rooms = []
     for span in sorted(latest.rooms, key=lambda s: _natural(s.sensor or "")):
@@ -998,16 +1013,18 @@ def _rooms(
     return rooms
 
 
-def _lowest_humidity(groups: list[Buckets], stored: Units) -> dict[str, float]:
-    """Each room's lowest humidity over the last weather.DAMP_FOR_H hours, for the rooms with
-    readings in every one of them."""
-    name = field_name("humidity", Kind.HUMIDITY, stored)
+def _lowest(
+    groups: list[Buckets], base: str, kind: Kind, hours: int, stored: Units
+) -> dict[str, float]:
+    """Each sensor's lowest value of a field over the last `hours` hours, in metric units, for
+    the sensors with readings in every one of them."""
+    key = (field_name(base, kind, stored), Aggregate.MIN)
     found = {}
     for group in groups:
-        lows = [v for v in group.values.get((name, Aggregate.MIN), []) if v is not None]
+        lows = [v for v in group.values.get(key, []) if v is not None]
         sensor = group.tags.get("sensor")
-        if sensor and len(lows) >= weather.DAMP_FOR_H:
-            found[sensor] = convert(Kind.HUMIDITY, min(lows), stored, METRIC)
+        if sensor and len(lows) >= hours:
+            found[sensor] = convert(kind, min(lows), stored, METRIC)
     return found
 
 
@@ -1207,19 +1224,18 @@ def _forecast_notices(
         say("rooms", models.NoticeCode.MIST_FORECAST, mist.time)
 
 
-def _model_offset(latest: _Latest, values: _Values, stored: Units) -> float:
+def _model_offset(latest: _Latest, stored: Units) -> float:
     """How far, in °C, the station's outdoor temperature has read above its weather model's over
     the last OFFSET_OVER; 0 without OFFSET_HOURS hours of both."""
-    name = (field_name("temp", Kind.TEMPERATURE, stored), Aggregate.MEAN)
+    key = (field_name("temp", Kind.TEMPERATURE, stored), Aggregate.MEAN)
 
     def hourly(groups: list[Buckets]) -> dict[datetime, float]:
-        found = {}
-        for group in groups[:1]:
-            for time, value in zip(group.times, group.values.get(name, []), strict=True):
-                metric = values.metric(Kind.TEMPERATURE, value)
-                if metric is not None:
-                    found[time] = metric
-        return found
+        return {
+            time: convert(Kind.TEMPERATURE, value, stored, METRIC)
+            for group in groups[:1]
+            for time, value in zip(group.times, group.values.get(key, []), strict=True)
+            if value is not None
+        }
 
     station, model = hourly(latest.outdoor_hourly), hourly(latest.model_hourly)
     both = station.keys() & model.keys()
@@ -1229,15 +1245,15 @@ def _model_offset(latest: _Latest, values: _Values, stored: Units) -> float:
 
 
 def _room_dew_points(latest: _Latest, values: _Values, stored: Units) -> list[tuple[float, float]]:
-    """Each room's temperature and dew point now, in °C, for the rooms with both."""
+    """Each room's temperature now and lowest dew point over the last MIST_DEW_POINT_H hours,
+    in °C, for the rooms with both."""
     T = Kind.TEMPERATURE
-    dew = {s.sensor: s.last.get(field_name("dewpoint", T, stored)) for s in latest.derived}
+    dew = _lowest(latest.dew_point_lows, "dewpoint", T, MIST_DEW_POINT_H, stored)
     found = []
     for span in latest.rooms:
         temp = values.metric(T, span.last.get(field_name("temp", T, stored)))
-        point = values.metric(T, dew.get(span.sensor))
-        if temp is not None and point is not None:
-            found.append((temp, point))
+        if temp is not None and span.sensor in dew:
+            found.append((temp, dew[span.sensor]))
     return found
 
 
