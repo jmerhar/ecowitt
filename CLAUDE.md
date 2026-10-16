@@ -105,14 +105,16 @@ dashboard/api/src/ecowitt/dashboard/   the public dashboard's read-only API
                   its series when asked), extremes; cached in stored units
   catalogue.py    the metrics served: table, base field, kind, aggregates, which sensors, and
                   the weather model's field for the same quantity
-  weather.py      compass, Beaufort, feels-like, pressure tendency, airing advice
+  weather.py      compass, Beaufort, feels-like, pressure tendency, airing advice and open
+                  windows, room flags, misting glass
   messages.py     every word an answer carries but its error messages, in English, and each in a
                   request's language (and the home-screen manifest's description);
                   template() is the gettext template the catalogues are kept against
   i18n.py         the languages: locale/<locale>/LC_MESSAGES/messages.po read with Babel, and
                   the choice of one per request (?lang=, then Accept-Language, then English)
   forecast.py     the stored forecast read back (the newest row per hour and day), and what the
-                  cards warn of from it: rain, frost, heat, gusts, a drier spell for airing
+                  cards warn of from it: rain, frost, heat, gusts, misting windows, a drier spell
+                  for airing (temperatures moved by the station's recent offset from its model)
   sun.py          sunrise, solar noon and sunset (NOAA's equations)
   siteconfig.py   /data/dashboard.yaml, written once by setup; edited or deleted by hand after
   cache.py        a TTL cache whose concurrent requests share one computation
@@ -201,6 +203,14 @@ CHANGELOG.md      every release's notes; new work goes under `## Unreleased`
   difference, `%{unit speed}`, `%{symbol speed}`, `%{decimals pressure}`), then `make grafana`.
   Tests fail until `grafana/*.json` match the default render, and until no field, display unit
   or unit word in the default units is written outside a placeholder.
+- **An alert annotation never compares a value with a rendered number.** Go templates refuse to
+  compare a float with an integer, and a threshold of 2 °C renders as `2`, so Grafana would send
+  the template unexpanded. Decide the comparison in a math step and test its 1 or 0 (`eq
+  $values.E.Value 1.0`); `test_no_template_compares_a_value_with_a_number` guards it.
+- **The airing, damp and shower rules are tied to the dashboard's.** `weather.py`'s thresholds
+  and windows are the alert rules' (`test_the_thresholds_match_the_alert_rules`), and *Air the
+  bathroom* speaks only for a room below the level *Damp room* clears at, over the same six
+  hours, so the two never fire together; change them together.
 - **The rule file and the API spell a rule differently.** `grafana/alerts.json` is a
   provisioning file, which reads `keepFiringFor` and silently drops keys it does not know; the
   provisioning API takes `keep_firing_for` and the interval in seconds. `admin/grafana.py`

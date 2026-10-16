@@ -45,8 +45,8 @@ rules to be imported again. Either is listed under *Upgrading*.
   now and after airing, as it stands when sent.
 - *Damp room* counts a room as dry again only once it drops below 65%, so a room hovering at 70%
   no longer clears and fires again on a passing dip; sends no resolve message; is `info`, so quiet
-  hours hold it back; and says whether airing
-  would dry the room or it needs heating or a dehumidifier.
+  hours hold it back; and says whether airing would dry the room or it needs heating or a
+  dehumidifier.
 - While the windows look open, the dashboard's airing card says to close them once the air coming
   in is getting damper, as the *Close the windows* alert does, and otherwise that the house is
   aired enough, instead of that airing would make little difference. A drawing of an open window
@@ -73,9 +73,12 @@ rules to be imported again. Either is listed under *Upgrading*.
 ### Upgrading
 
 - Import the Grafana dashboard again for its airing panels, and the alert rules for *Close the
-  windows*, *Good time to air*, *Damp room* and *Air the bathroom*. Route warnings that carry
-  `resolve_message=off` to a contact point without resolve messages. Both read the `house` table, which older collectors do not write, and so does the
-  dashboard's airing advice: upgrade the collector with the dashboard.
+  windows*, *Good time to air*, *Damp room* and *Air the bathroom*. The panels, the rules and the
+  dashboard's airing advice read the `house` table, which older collectors do not write: upgrade
+  the collector with the dashboard.
+- Route warnings that carry `resolve_message=off` to a contact point without resolve messages, as
+  info alerts with that label already are, so *Air the bathroom* is sent at any hour without a
+  resolve message.
 
 ## 3.0.0 — 2026-10-15
 

@@ -354,7 +354,7 @@ the file here, written for the default ones (°C, hPa, km/h, mm). It expects a d
 ## Grafana alerts
 
 [`grafana/alerts.json`](grafana/alerts.json) holds alert rules in Grafana's provisioning format,
-one alert per room or station (*Close the windows* is one per station). The thresholds below are
+one alert per room or station (*Good time to air* and *Close the windows* are one per station). The thresholds below are
 in the default units; the [Grafana page](#the-grafana-page) converts them for others:
 
 | Rule | Fires when | Severity |
@@ -381,17 +381,16 @@ in the default units; the [Grafana page](#the-grafana-page) converts them for ot
   sends no message when the condition clears. *Air the bathroom* is a warning so that quiet hours
   do not hold back an evening shower's message until it no longer matters; route warnings with
   `resolve_message=off` to the contact point without resolve messages too. *Damp room* and both
-  airing rules carry `notify=daily`: they
-  describe the house over hours, so a message each time another room joins is noise -- route
-  them with a long group interval and a 24-hour repeat interval, so a room that turns damp while
-  others still are waits for a later message.
+  airing rules carry `notify=daily`: they describe the house over hours, so route them with a long
+  group interval and a 24-hour repeat interval; a room that turns damp while others still are then
+  waits for a later message rather than sending one of its own.
 - Each rule's `summary` annotation is a complete sentence, ready to send as the notification.
   Rules with an alert per room also have a `headline`, the same for every room, and an `item`
   naming the room: a message about several rooms reads better as the headline once and an item
   per room.
-- The weather rules (both airing rules, wind, rain, pressure) keep firing for 30 minutes, or an
-  hour for pressure, after their condition clears, so a value hovering at a threshold does not
-  send a stream of firing and resolved messages.
+- The weather rules (both airing rules, wind, rain, pressure) and *Air the bathroom* keep firing
+  for 30 minutes, or an hour for pressure, after their condition clears, so a value hovering at a
+  threshold does not send a stream of messages.
 - *Sensor not updating* counts a sensor's age against the station's last report, so a station
   that stops uploading does not flag every sensor; watch the station itself with the heartbeat.
   A sensor silent for more than 7 days drops out of the rule.
@@ -424,16 +423,17 @@ talks to the server's own listeners, so publishing it changes nothing about who 
 those.
 
 The page shows a station at a glance — temperature with what it feels like and today's range,
-humidity and dew point as bars coloured by level (dry to very humid; crisp to oppressive),
-wind on a compass, rain, pressure and its three-hour trend, sunrise and sunset, each room with
-whether airing it would help, and any sensor that needs attention — then charts over the last 1,
-3, 6 or 12 hours, a day, a week, a month or a year, and the highs and lows of today, this month or this year. A card with
-something to act on is edged in colour and says what: cold (5 °C or below) or heat, very humid
-(99%, saturated) or very dry air, strong gusts, heavy rain, pressure falling fast, very high UV, a room that is cold,
-hot, damp (70% or more for 6 hours) or dry, a good time to air the house or one to keep its windows closed (when airing
-would leave the rooms at 65% or more and damper than they are), open windows to close because the
-air coming in is getting damper, a sensor that needs attention —
-the thresholds of the [Grafana alerts](#grafana-alerts) where there is one. Visitors choose their own units; times are in the station's time zone.
+humidity and dew point as bars coloured by level (dry to very humid; crisp to oppressive), wind on a
+compass, rain, pressure and its three-hour trend, sunrise and sunset, each room with whether airing
+it would help, and any sensor that needs attention — then charts over the last 1, 3, 6 or 12 hours,
+a day, a week, a month or a year, and the highs and lows of today, this month or this year. A card
+with something to act on is edged in colour and says what: cold (5 °C or below) or heat, very humid
+(99%, saturated) or very dry air, strong gusts, heavy rain, pressure falling fast, very high UV, a
+room that is cold, hot, damp (70% or more for 6 hours) or dry, a good time to air the house or one
+to keep its windows closed (when airing would leave the rooms at 65% or more and damper than they
+are), open windows to close because the air coming in is getting damper, a sensor that needs
+attention — the thresholds of the [Grafana alerts](#grafana-alerts) where there is one. Visitors
+choose their own units; times are in the station's time zone.
 
 The page is light or dark as the device is. *Theme* in its *Settings* menu fixes either, or
 chooses *Dark at night*: dark from sunset to sunrise at the station, for a screen left on a wall
@@ -443,17 +443,16 @@ browser.
 The page is in English or European Portuguese, as the browser asks; *Language* in the *Settings*
 menu fixes either. Dates and numbers follow it -- English with the day first and a 24-hour clock.
 
-For a station storing its model's [forecast](#forecast), the page shows it — the next 24 hours
-and the days ahead — and the cards say what is coming within the day: rain likely within six
-hours, frost or heat, strong gusts, windows likely to mist up (a room's lowest dew point of the last three hours, so not a
-shower's steam, above the inside
-of double-glazed glass on the night forecast), and drier air to open the windows for. Forecast
-temperatures are judged moved by how far the station has read from its model over the last 24
-hours: a model running a degree warm would otherwise miss a frost. For a station with a
-[weather model](#weather-model), it also shows the sky the model gives — clear,
-overcast, rain, fog — with an icon from [Meteocons](https://meteocons.com), and the charts can
-draw the model's values dashed beside the station's (*Model*, beside the range). The page credits
-Open-Meteo, as its data's licence asks, and lists the licences of what it bundles at
+For a station storing its model's [forecast](#forecast), the page shows it — the next 24 hours and
+the days ahead — and the cards say what is coming within the day: rain likely within six hours,
+frost or heat, strong gusts, windows likely to mist up (a room's lowest dew point of the last three
+hours, so not a shower's steam, above the inside of double-glazed glass on the night forecast), and
+drier air to open the windows for. Forecast temperatures are judged moved by how far the station has
+read from its model over the last 24 hours: a model running a degree warm would otherwise miss a
+frost. For a station with a [weather model](#weather-model), it also shows the sky the model gives —
+clear, overcast, rain, fog — with an icon from [Meteocons](https://meteocons.com), and the charts
+can draw the model's values dashed beside the station's (*Model*, beside the range). The page
+credits Open-Meteo, as its data's licence asks, and lists the licences of what it bundles at
 `/licenses.md`.
 
 Served over HTTPS, the page can be added to a phone's or tablet's home screen (*Add to Home
