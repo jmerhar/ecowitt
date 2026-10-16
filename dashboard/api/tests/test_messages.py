@@ -26,7 +26,7 @@ def test_every_tendency_is_worded() -> None:
 
 
 def test_every_room_flag_is_worded() -> None:
-    raised = {*weather.room_flags(-10, 100), *weather.room_flags(40, 0)}
+    raised = {*weather.room_flags(-10, 100, 100), *weather.room_flags(40, 0, 0)}
     assert raised == set(messages.ROOM_FLAGS)
 
 

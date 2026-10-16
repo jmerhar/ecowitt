@@ -530,6 +530,35 @@ def outdoor_dew_points(
         reader.rows.append(row("derived", at, fields, sensor="outdoor", name="out"))
 
 
+async def test_a_room_is_damp_only_after_six_damp_hours(reader: MemoryReader) -> None:
+    """A shower leaves the bathroom at 90% now; only six hours at 70% or more make it damp, an
+    hour without readings leaves it unjudged, and a dry spell before the six hours does not
+    count."""
+    hour = timedelta(hours=1)
+
+    def flags(humidities: dict[int, float]) -> list[str]:
+        rows = [
+            r for r in reader.rows if not (r.table == "channel" and dict(r.tags)["sensor"] == "ch1")
+        ]
+        rows += [
+            row("channel", LAST - n * hour, {"temp_c": 22.0, "humidity_pct": h}, sensor="ch1",
+                name="ch1", channel="1")
+            for n, h in humidities.items()
+        ]  # fmt: skip
+        return rows
+
+    showered = flags({5: 62.0, 4: 60.0, 3: 61.0, 2: 60.0, 1: 63.0, 0: 90.0})
+    damp = flags({5: 72.0, 4: 71.0, 3: 73.0, 2: 70.0, 1: 72.0, 0: 74.0})
+    gap = flags({5: 72.0, 4: 71.0, 2: 70.0, 1: 72.0, 0: 74.0})
+    lately = flags({6: 55.0, 5: 72.0, 4: 71.0, 3: 73.0, 2: 70.0, 1: 72.0, 0: 74.0})
+    found = []
+    for rows in (showered, damp, gap, lately):
+        reader.rows = rows
+        now = await Dashboard(reader, clock=lambda: NOW).now("example")
+        found.append(next(r.flags for r in now.rooms if r.sensor == "ch1"))
+    assert found == [[], ["damp"], [], ["damp"]], "dry seven hours ago, damp for the last six"
+
+
 async def test_open_windows_and_rooms_getting_damper_say_close(reader: MemoryReader) -> None:
     windows_open(reader, humidity=(65.0, 70.0))
     now = await Dashboard(reader, clock=lambda: NOW).now("example")

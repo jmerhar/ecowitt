@@ -25,6 +25,9 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ### Changed
 
+- The dashboard flags a room as damp once it has stayed at 70% or more for 6 hours, as the *Damp
+  room* alert judges it, rather than at any reading of 70%: a bathroom after a shower is not a
+  damp room.
 - A sensor counts as not updating after 6 hours of unchanged readings rather than 3, in the
   *Sensor not updating* alert and on the dashboard: a still room at night can hold its readings
   for over two hours, and a lost sensor holds them for good.

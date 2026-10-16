@@ -112,6 +112,8 @@ class _Latest:
     ventilation: list[Span] = field(default_factory=list)
     #: The house's median room against the outdoor air, as the collector stores it.
     house: Span | None = None
+    #: Each room's lowest humidity in each hour of the last weather.DAMP_FOR_H.
+    room_lows: list[Buckets] = field(default_factory=list)
     #: The house's rows over the last weather.DAMPER_LOW_WITHIN_H hours: whether it was aired,
     #: and its rooms' humidity.
     house_recent: list[Point] = field(default_factory=list)
@@ -471,7 +473,8 @@ class Dashboard:
         rain_fields += [f(b, R) for b in ("monthly", "yearly")] + [rate]
         (
             outdoor, derived, wind, rain, pressure, solar, indoor, channel, ventilation, house,
-            house_recent, outdoor_dewpoint, battery, temperature_today, wind_today, sky,
+            house_recent, indoor_lows, channel_lows, outdoor_dewpoint, battery,
+            temperature_today, wind_today, sky,
             recent_wind, recent_rain, wind_10m, wind_10m_today, recent_wind_10m,
         ) = await asyncio.gather(
             span("outdoor", f("temp", T), f("humidity", H), sensors=["outdoor"]),
@@ -490,6 +493,18 @@ class Dashboard:
                 ["aired", f("humidity", H)],
                 start=end - timedelta(hours=weather.DAMPER_LOW_WITHIN_H),
                 end=end,
+            ),
+            *(
+                self.reader.buckets(
+                    station,
+                    table,
+                    [(f("humidity", H), Aggregate.MIN)],
+                    start=end - timedelta(hours=weather.DAMP_FOR_H) + timedelta(seconds=1),
+                    end=end,
+                    step=timedelta(hours=1),
+                    origin=end + timedelta(seconds=1),
+                )
+                for table in ("indoor", "channel")
             ),
             # Buckets end a second after each step, so the last holds the latest report.
             self.reader.buckets(
@@ -526,6 +541,7 @@ class Dashboard:
             ventilation=ventilation,
             house=_first(house),
             house_recent=house_recent,
+            room_lows=indoor_lows + channel_lows,
             outdoor_dewpoint=outdoor_dewpoint,
             battery=battery,
             temperature_today=_first(temperature_today),
@@ -919,6 +935,7 @@ def _rooms(
     """Each room, indoor sensor first, with its airing advice."""
     T, H = Kind.TEMPERATURE, Kind.HUMIDITY
     dew_points = {s.sensor: s.last.get(field_name("dewpoint", T, stored)) for s in latest.derived}
+    lows = _lowest_humidity(latest.room_lows, values, stored)
     by_sensor = {r.sensor: r for r in air}
     rooms = []
     for span in sorted(latest.rooms, key=lambda s: _natural(s.sensor or "")):
@@ -941,10 +958,25 @@ def _rooms(
                 humidity=None if humidity is None else values.from_metric(H, humidity),
                 dew_point=values.out(T, dew_points.get(sensor)),
                 airing=advice,
-                flags=weather.room_flags(temp, humidity),
+                flags=weather.room_flags(temp, humidity, lows.get(sensor)),
             )
         )
     return rooms
+
+
+def _lowest_humidity(groups: list[Buckets], values: _Values, stored: Units) -> dict[str, float]:
+    """Each room's lowest humidity over the last weather.DAMP_FOR_H hours, for the rooms with
+    readings in every one of them."""
+    name = field_name("humidity", Kind.HUMIDITY, stored)
+    found = {}
+    for group in groups:
+        lows = [v for v in group.values.get((name, Aggregate.MIN), []) if v is not None]
+        sensor = group.tags.get("sensor")
+        if sensor and len(lows) >= weather.DAMP_FOR_H:
+            low = values.metric(Kind.HUMIDITY, min(lows))
+            if low is not None:
+                found[sensor] = low
+    return found
 
 
 def _health(latest: _Latest, info: StationInfo, language: Language) -> list[models.SensorHealth]:

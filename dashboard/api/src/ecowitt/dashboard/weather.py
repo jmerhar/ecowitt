@@ -57,8 +57,10 @@ FAST_FALL_HPA = 3.0
 #: A room too cold or too hot, in °C.
 ROOM_COLD_C = 8.0
 ROOM_HOT_C = 32.0
-#: A damp room, in % humidity: the Damp room rule's level, though not its six hours.
+#: A damp room: one that has not dropped below this humidity, in %, for DAMP_FOR_H hours, as the
+#: Damp room alert rule judges it.
 ROOM_DAMP_PCT = 70.0
+DAMP_FOR_H = 6
 #: A room dry enough to be uncomfortable, in %.
 ROOM_DRY_PCT = 30.0
 #: Cold enough outdoors for frost on a clear night, in °C: the ground cools below the air, so frost
@@ -252,14 +254,21 @@ def _dampens(humidity_pct: float, after_pct: float | None) -> bool:
     )
 
 
-def room_flags(temp_c: float | None, humidity_pct: float | None) -> list[str]:
-    """What is wrong with a room, if anything: cold, hot, damp or dry."""
+def room_flags(
+    temp_c: float | None, humidity_pct: float | None, lowest_pct: float | None = None
+) -> list[str]:
+    """What is wrong with a room, if anything: cold, hot, damp or dry.
+
+    Damp is judged from `lowest_pct`, the room's lowest humidity over the last DAMP_FOR_H hours
+    (None without readings through all of them): a shower or an evening's cooking passes, and
+    only a room that stays damp is one mould grows in.
+    """
     flags = []
     if temp_c is not None and temp_c < ROOM_COLD_C:
         flags.append("cold")
     if temp_c is not None and temp_c > ROOM_HOT_C:
         flags.append("hot")
-    if humidity_pct is not None and humidity_pct >= ROOM_DAMP_PCT:
+    if lowest_pct is not None and lowest_pct >= ROOM_DAMP_PCT:
         flags.append("damp")
     if humidity_pct is not None and humidity_pct <= ROOM_DRY_PCT:
         flags.append("dry")

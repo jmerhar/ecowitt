@@ -96,6 +96,17 @@ def readings() -> list[Row]:
         row("pressure", LAST, {"sea_hpa": 1012.0, "abs_hpa": 1000.0, "rel_hpa": 1013.0}),
         row("solar", LAST, {"radiation_wm2": 450.4, "uv_index": 4.0}),
         row("indoor", LAST, {"temp_c": 21.0, "humidity_pct": 55.0}, **lounge),
+        # Damp through the last six hours.
+        *(
+            row(
+                "channel",
+                NOW - n * hour,
+                {"temp_c": 22.0, "humidity_pct": 71.0},
+                **bath,
+                channel="1",
+            )
+            for n in (6, 5, 4, 3)
+        ),
         row("channel", NOW - 2 * hour, {"temp_c": 22.0, "humidity_pct": 70.0}, **bath, channel="1"),
         row("channel", LAST, {"temp_c": 20.0, "humidity_pct": 75.0}, **bath, channel="1"),
         row(

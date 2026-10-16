@@ -244,19 +244,26 @@ def test_damper(dewpoint_rise: float | None, humidity_rise: float | None, expect
 
 
 @pytest.mark.parametrize(
-    ("temp", "humidity", "flags"),
+    ("temp", "humidity", "lowest", "flags"),
     [
-        (21, 50, []),
-        (7.9, 50, ["cold"]),
-        (32.1, 50, ["hot"]),
-        (20, 70, ["damp"]),
-        (20, 30, ["dry"]),
-        (5, 80, ["cold", "damp"]),
-        (None, None, []),
+        (21, 50, 45, []),
+        (7.9, 50, 45, ["cold"]),
+        (32.1, 50, 45, ["hot"]),
+        # Damp for six hours, whatever it reads now.
+        (20, 72, 70, ["damp"]),
+        (20, 60, 70, ["damp"]),
+        # Damp now, after a shower: it has not stayed so.
+        (20, 90, 62, []),
+        (20, 90, None, []),
+        (20, 30, 28, ["dry"]),
+        (5, 80, 75, ["cold", "damp"]),
+        (None, None, None, []),
     ],
 )
-def test_room_flags(temp: float | None, humidity: float | None, flags: list[str]) -> None:
-    assert weather.room_flags(temp, humidity) == flags
+def test_room_flags(
+    temp: float | None, humidity: float | None, lowest: float | None, flags: list[str]
+) -> None:
+    assert weather.room_flags(temp, humidity, lowest) == flags
 
 
 def test_the_notices_share_the_alert_rules_thresholds() -> None:
@@ -277,3 +284,5 @@ def test_the_notices_share_the_alert_rules_thresholds() -> None:
     assert threshold("Room too hot") == weather.ROOM_HOT_C
     # The rule compares whole percents with "above 69.5".
     assert threshold("Damp room") == weather.ROOM_DAMP_PCT - 0.5
+    damp = next(d for d in rules["Damp room"]["data"] if d["refId"] == "A")["model"]["rawSql"]
+    assert f"interval '{weather.DAMP_FOR_H} hours'" in damp
