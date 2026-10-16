@@ -4105,11 +4105,11 @@
                     },
                     {
                       "color": "orange",
-                      "value": 3600
+                      "value": 10800
                     },
                     {
                       "color": "red",
-                      "value": 10800
+                      "value": 21600
                     }
                   ]
                 }

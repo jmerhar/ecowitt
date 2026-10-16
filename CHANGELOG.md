@@ -16,9 +16,15 @@ rules to be imported again. Either is listed under *Upgrading*.
   span, rule and whether they were sent or resolved, and the Grafana dashboard has a panel of
   them.
 
+### Changed
+
+- The Grafana dashboard's *Sensors* table marks a sensor unchanged for 3 hours orange and for 6
+  hours red, as *Sensor not updating* judges it.
+
 ### Upgrading
 
-- Import the Grafana dashboard again for its notifications panel. To record notifications, start recording on the Grafana page and add the webhook
+- Import the Grafana dashboard again for its notifications panel and the *Sensors* table's
+  thresholds. To record notifications, start recording on the Grafana page and add the webhook
   it describes to each contact point.
 
 ## 3.1.0 — 2026-10-17
