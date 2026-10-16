@@ -8,6 +8,14 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ## Unreleased
 
+### Added
+
+- A `house` table says whether the house is being aired: `aired` is true while the rooms' dew
+  points have converged on each other and on the outdoor one, at close to the outdoor
+  temperature. It stores the measures that decide it and the rooms' median humidity.
+- Each room's `ventilation` row adds its temperature difference from outdoors and its dew point's
+  difference from the rooms' median, which show a room aired on its own.
+
 ### Changed
 
 - The dashboard's *Settings* menu opens from a sliders icon instead of the word, which stays as

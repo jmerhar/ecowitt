@@ -30,20 +30,21 @@ derived,name=pressure,sensor=pressure,station=example unchanged_s=0.0 1791554971
 derived,name=rain,sensor=rain,station=example unchanged_s=0.0 1791554971
 derived,name=solar,sensor=solar,station=example unchanged_s=0.0 1791554971
 derived,name=wind,sensor=wind,station=example unchanged_s=0.0 1791554971
+house,station=example aired=false,dewpoint_delta_c=0.6809,dewpoint_spread_c=3.4214,humidity_pct=46.0,rooms=9.0,temp_delta_c=0.8889 1791554971
 indoor,name=Lounge,sensor=indoor,station=example humidity_pct=43.0,temp_c=23.8889 1791554971
 outdoor,name=outdoor,sensor=outdoor,station=example humidity_pct=45.0,temp_c=21.6111,vpd_hpa=14.189 1791554971
 pressure,station=example abs_hpa=1008.602,rel_error_hpa=-30.4363,rel_hpa=1008.602,sea_hpa=1038.1779,sea_temp_source="outdoor" 1791554971
 rain,gauge=bucket,station=example daily_mm=0.7874,event_mm=0.0,hourly_mm=0.0,last24h_mm=0.7874,monthly_mm=0.7874,rate_mm_h=0.0,weekly_mm=0.7874,yearly_mm=0.7874 1791554971
 solar,station=example radiation_wm2=614.74,uv_index=5.0 1791554971
 station,station=example clock_skew_s=2.0,freq="868M",heap_bytes=22528.0,interval_s=60.0,model="HP2551AE_Pro_V2.1.4",runtime_s=62684.0,stationtype="EasyWeatherPro_V5.2.7" 1791554971
-ventilation,name=Attic,sensor=ch4,station=example dewpoint_delta_c=0.8071,predicted_humidity_pct=42.6267 1791554971
-ventilation,name=Bathroom,sensor=ch1,station=example dewpoint_delta_c=0.301,predicted_humidity_pct=47.0379 1791554971
-ventilation,name=Bedroom,sensor=ch5,station=example dewpoint_delta_c=0.6809,predicted_humidity_pct=43.9439 1791554971
-ventilation,name=En-suite,sensor=ch6,station=example dewpoint_delta_c=-0.2297,predicted_humidity_pct=46.7177 1791554971
-ventilation,name=Kitchen,sensor=ch8,station=example dewpoint_delta_c=2.2697,predicted_humidity_pct=40.3932 1791554971
-ventilation,name=Lounge,sensor=indoor,station=example dewpoint_delta_c=1.3834,predicted_humidity_pct=39.1948 1791554971
-ventilation,name=Nursery,sensor=ch7,station=example dewpoint_delta_c=3.1917,predicted_humidity_pct=42.0556 1791554971
-ventilation,name=Spare\ room,sensor=ch3,station=example dewpoint_delta_c=0.1993,predicted_humidity_pct=47.3605 1791554971
-ventilation,name=Study,sensor=ch2,station=example dewpoint_delta_c=0.2305,predicted_humidity_pct=41.3537 1791554971
+ventilation,name=Attic,sensor=ch4,station=example dewpoint_delta_c=0.8071,house_dewpoint_delta_c=0.1263,predicted_humidity_pct=42.6267,temp_delta_c=0.8889 1791554971
+ventilation,name=Bathroom,sensor=ch1,station=example dewpoint_delta_c=0.301,house_dewpoint_delta_c=-0.3799,predicted_humidity_pct=47.0379,temp_delta_c=-0.7222 1791554971
+ventilation,name=Bedroom,sensor=ch5,station=example dewpoint_delta_c=0.6809,house_dewpoint_delta_c=0.0,predicted_humidity_pct=43.9439,temp_delta_c=0.3889 1791554971
+ventilation,name=En-suite,sensor=ch6,station=example dewpoint_delta_c=-0.2297,house_dewpoint_delta_c=-0.9106,predicted_humidity_pct=46.7177,temp_delta_c=-0.6111 1791554971
+ventilation,name=Kitchen,sensor=ch8,station=example dewpoint_delta_c=2.2697,house_dewpoint_delta_c=1.5889,predicted_humidity_pct=40.3932,temp_delta_c=1.7778 1791554971
+ventilation,name=Lounge,sensor=indoor,station=example dewpoint_delta_c=1.3834,house_dewpoint_delta_c=0.7026,predicted_humidity_pct=39.1948,temp_delta_c=2.2778 1791554971
+ventilation,name=Nursery,sensor=ch7,station=example dewpoint_delta_c=3.1917,house_dewpoint_delta_c=2.5109,predicted_humidity_pct=42.0556,temp_delta_c=1.1111 1791554971
+ventilation,name=Spare\ room,sensor=ch3,station=example dewpoint_delta_c=0.1993,house_dewpoint_delta_c=-0.4816,predicted_humidity_pct=47.3605,temp_delta_c=-0.8333 1791554971
+ventilation,name=Study,sensor=ch2,station=example dewpoint_delta_c=0.2305,house_dewpoint_delta_c=-0.4504,predicted_humidity_pct=41.3537,temp_delta_c=1.3889 1791554971
 wind,station=example dir_avg10m_deg=137.0,dir_deg=125.0,gust_kmh=20.1651,max_daily_gust_kmh=27.7129,speed_kmh=8.6422 1791554971
 wind_10m,station=example gust_kmh=20.1651,max_daily_gust_kmh=27.7129,source="sensor",speed_kmh=8.6422 1791554971

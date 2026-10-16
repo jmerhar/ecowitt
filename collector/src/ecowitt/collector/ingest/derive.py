@@ -3,7 +3,8 @@
 Every sensor reporting both temperature and humidity -- indoor, outdoor, each channel, the air
 quality combo -- gets its dew point, absolute humidity, mixing ratio and vapour pressure
 deficit. Every indoor one also gets a comparison with the outdoor air, which is what answers
-whether opening a window would dry that room. Pressure is reduced to sea level from the
+whether opening a window would dry that room, and the indoor ones together say whether the house
+as a whole is being aired. Pressure is reduced to sea level from the
 operator's altitude, and the console's own relative pressure is checked against it. Wind is
 estimated at the standard 10 m from the anemometer's height (`windheight`).
 
@@ -14,6 +15,7 @@ step in the data wherever the source changed.
 
 from __future__ import annotations
 
+import statistics
 from collections import defaultdict
 from collections.abc import Hashable, Iterable
 
@@ -53,9 +55,9 @@ def derive(
 
     outdoor = climate.get("outdoor")
     if outdoor is not None:
-        for sensor, (temp, humidity) in climate.items():
-            if sensor != "outdoor":
-                derived += _ventilation(sensor, temp, humidity, *outdoor)
+        rooms = {sensor: values for sensor, values in climate.items() if sensor != "outdoor"}
+        derived += _ventilation(rooms, outdoor)
+        derived += _house(rooms, outdoor)
 
     if preferences.altitude_m is not None and "abs" in pressure:
         derived += _sea_level(pressure, preferences.altitude_m, climate)
@@ -153,21 +155,80 @@ def _moisture(
     return [_per_sensor("derived", sensor, field, kind, value) for field, kind, value in values]
 
 
+#: The fewest rooms whose agreement says anything about the house: two can agree by chance.
+HOUSE_MIN_ROOMS = 3
+#: The house reads as aired when its rooms' dew points lie within this many °C of each other...
+AIRED_SPREAD_C = 1.0
+#: ...their median within this of the outdoor dew point...
+AIRED_DEWPOINT_C = 0.7
+#: ...and their median temperature within this of the outdoor temperature.
+AIRED_TEMP_C = 2.5
+
+
 def _ventilation(
-    sensor: str, temp: float, humidity: float, outdoor_temp: float, outdoor_humidity: float
+    rooms: dict[str, tuple[float, float]], outdoor: tuple[float, float]
 ) -> list[Reading]:
-    """What exchanging this room's air for the outdoor air would do to its humidity.
+    """What exchanging each room's air for the outdoor air would do, and how close it is now.
 
     A positive dew-point difference means the outdoor air is drier, so ventilating removes
     moisture. The predicted humidity is what the room would read once its air had been replaced
     and brought back to its present temperature -- the number that says whether it is worth it.
+    The temperature difference, and the dew point's difference from the house's median, say how
+    far the room has already gone towards the outdoor air and away from the other rooms, which
+    is what a room aired on its own looks like.
     """
-    delta = psychro.dew_point(temp, humidity) - psychro.dew_point(outdoor_temp, outdoor_humidity)
+    outdoor_temp, outdoor_humidity = outdoor
+    outdoor_dewpoint = psychro.dew_point(outdoor_temp, outdoor_humidity)
     outdoor_vapour = psychro.vapour_pressure(outdoor_temp, outdoor_humidity)
-    predicted = psychro.humidity_at(outdoor_vapour, temp)
+    dewpoints = {sensor: psychro.dew_point(t, h) for sensor, (t, h) in rooms.items()}
+    house = statistics.median(dewpoints.values()) if len(rooms) >= HOUSE_MIN_ROOMS else None
+
+    readings = []
+    for sensor, (temp, _) in rooms.items():
+        values = [
+            ("dewpoint_delta", Kind.TEMPERATURE_DELTA, dewpoints[sensor] - outdoor_dewpoint),
+            ("predicted_humidity", Kind.HUMIDITY, psychro.humidity_at(outdoor_vapour, temp)),
+            ("temp_delta", Kind.TEMPERATURE_DELTA, temp - outdoor_temp),
+        ]
+        if house is not None:
+            values.append(
+                ("house_dewpoint_delta", Kind.TEMPERATURE_DELTA, dewpoints[sensor] - house)
+            )
+        readings += [_per_sensor("ventilation", sensor, f, k, v) for f, k, v in values]
+    return readings
+
+
+def _house(rooms: dict[str, tuple[float, float]], outdoor: tuple[float, float]) -> list[Reading]:
+    """Whether the house as a whole is being aired, and the measures that decide it.
+
+    A closed house keeps a moisture level per room -- a bathroom after a shower, a bedroom
+    overnight -- and, with people living in it, sits above the outdoor dew point. Air flowing
+    through open windows makes the rooms one body of air with the outdoors: their dew points
+    converge on each other and on the outdoor one. The temperature condition keeps out a still
+    night, when a closed, warmer house can meet the outdoor dew point by chance. A single room
+    aired behind a closed door leaves the others as they were, so it does not count here; its
+    own `ventilation` row shows it.
+    """
+    if len(rooms) < HOUSE_MIN_ROOMS:
+        return []
+    dewpoints = [psychro.dew_point(t, h) for t, h in rooms.values()]
+    spread = max(dewpoints) - min(dewpoints)
+    dewpoint_delta = statistics.median(dewpoints) - psychro.dew_point(*outdoor)
+    temp_delta = statistics.median(t for t, _ in rooms.values()) - outdoor[0]
+    aired = (
+        spread <= AIRED_SPREAD_C
+        and abs(dewpoint_delta) <= AIRED_DEWPOINT_C
+        and abs(temp_delta) <= AIRED_TEMP_C
+    )
     return [
-        _per_sensor("ventilation", sensor, "dewpoint_delta", Kind.TEMPERATURE_DELTA, delta),
-        _per_sensor("ventilation", sensor, "predicted_humidity", Kind.HUMIDITY, predicted),
+        Reading("house", "rooms", Kind.COUNT, float(len(rooms))),
+        Reading(
+            "house", "humidity", Kind.HUMIDITY, statistics.median(h for _, h in rooms.values())
+        ),
+        Reading("house", "dewpoint_spread", Kind.TEMPERATURE_DELTA, spread),
+        Reading("house", "dewpoint_delta", Kind.TEMPERATURE_DELTA, dewpoint_delta),
+        Reading("house", "temp_delta", Kind.TEMPERATURE_DELTA, temp_delta),
+        Reading("house", "aired", Kind.FLAG, aired),
     ]
 
 

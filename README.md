@@ -25,7 +25,8 @@ hardware it talks to.</sub>
   vapour pressure deficit for every temperature/humidity pair, and sea-level pressure from
   your altitude rather than from the console's calibration.
 - **Answers "should I open the windows?"** For each room it compares the indoor dew point with
-  the outdoor one and works out the humidity that room would settle at after ventilating.
+  the outdoor one and works out the humidity that room would settle at after ventilating, and
+  it tells from the rooms together whether the house is being aired.
 - **Keeps readings through an outage.** A station has no backlog: whatever it sends while your
   database is down is gone for ever. Reports that cannot be written are spooled to disk and
   replayed oldest first once InfluxDB answers again — across restarts of either — so restarting
@@ -276,7 +277,8 @@ tables) and `name` (its display name).
 | `wind`, `rain`, `solar` | as reported; `rain` is tagged `gauge=bucket` or `gauge=piezo` |
 | `wind_10m` | the wind estimated at the standard 10 m (see [Wind at 10 m](#wind-at-10-m)): speed, gust, 10-minute average speed and the day's strongest gust, and `source`, `sensor` or `model` |
 | `derived` | per sensor: dew point, absolute humidity, mixing ratio, vapour pressure deficit, and how long its values have been unchanged |
-| `ventilation` | per indoor sensor: dew-point difference from outdoors, and the humidity the room would settle at after airing |
+| `ventilation` | per indoor sensor: dew-point and temperature difference from outdoors, dew-point difference from the rooms' median (with three rooms or more), and the humidity the room would settle at after airing |
+| `house` | per station with an outdoor sensor and three rooms or more: the rooms' median humidity, how far apart their dew points are (`dewpoint_spread`), their median dew point and temperature against outdoors, and `aired`, true while the rooms share the outdoor air (see [Airing the house](#airing-the-house)) |
 | `battery` | per sensor, in whichever form that sensor reports: a low flag, a voltage or a level |
 | `station` | the console's model, firmware, uptime, upload interval and clock skew |
 | `model` | per located station, a weather model's values every 15 minutes, tagged `source` and `model`; see [Weather model](#weather-model). Precipitation (`precip_15m_mm`) is the 15 minutes ending at the row's time |
@@ -291,6 +293,23 @@ series under the new name, so group by `sensor` in dashboards and use `name` for
 
 Retention is whatever the database was created with, and InfluxDB 3 cannot change it later.
 Create it before first use if you want anything other than keeping everything.
+
+## Airing the house
+
+A closed house keeps a moisture level per room and, with people living in it, sits above the
+outdoor dew point. With its windows open, air flowing through makes the rooms one body of air
+with the outdoors, and `house.aired` reads true while all of these hold:
+
+- the rooms' dew points lie within 1 °C of each other;
+- their median is within 0.7 °C of the outdoor dew point;
+- their median temperature is within 2.5 °C of the outdoor temperature, which keeps out a still
+  night when a closed house can meet the outdoor dew point by chance.
+
+It describes the house as a whole: with the doors between rooms open, a few open windows air
+every room, and which ones are open cannot be told apart. A room aired behind a closed door
+leaves the others as they were and does not set it; its `ventilation` row, closing on the
+outdoor air and leaving the house's median, is what shows it. The house can still read as aired
+for a while after the windows are closed, until the rooms' own moisture sets them apart again.
 
 ## Grafana dashboard
 

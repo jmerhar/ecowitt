@@ -1,4 +1,4 @@
-"""Derived quantities: moisture, ventilation, sea-level pressure and staleness."""
+"""Derived quantities: moisture, ventilation, the house's airing, sea-level pressure, staleness."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ def run(
     )
 
 
-def values(readings: list[Reading], table: str, sensor: str) -> dict[str, object]:
+def values(readings: list[Reading], table: str, sensor: str | None) -> dict[str, object]:
     return {r.field: r.value for r in readings if r.table == table and r.sensor == sensor}
 
 
@@ -99,6 +99,126 @@ def test_humid_outdoor_air_gives_a_negative_delta() -> None:
 def test_no_ventilation_without_an_outdoor_sensor() -> None:
     """Until the outdoor sensor reports, there is nothing to compare with."""
     assert not [r for r in run(climate("ch1", 21.0, 60.0)) if r.table == "ventilation"]
+
+
+def test_ventilation_says_how_close_each_room_is_to_outdoors_and_to_the_house() -> None:
+    """Each room's temperature against outdoors, and its dew point against the rooms' median."""
+    readings = [
+        *climate("outdoor", 15.0, 80.0, "outdoor"),
+        *climate("ch1", 21.0, 60.0),
+        *climate("ch2", 19.0, 70.0),
+        *climate("ch3", 23.0, 50.0),
+    ]
+    dewpoints = sorted(psychro.dew_point(t, h) for t, h in [(21, 60), (19, 70), (23, 50)])
+
+    derived = run(readings)
+    got = values(derived, "ventilation", "ch2")
+
+    assert got["temp_delta"] == pytest.approx(4.0)
+    assert got["house_dewpoint_delta"] == pytest.approx(
+        psychro.dew_point(19.0, 70.0) - dewpoints[1]
+    )
+    assert values(derived, "ventilation", "ch3")["temp_delta"] == pytest.approx(8.0)
+
+
+def test_too_few_rooms_have_no_house_to_compare_with() -> None:
+    """Two rooms can agree by chance, so neither the house nor a room's place in it is derived."""
+    readings = [
+        *climate("outdoor", 15.0, 80.0, "outdoor"),
+        *climate("ch1", 21.0, 60.0),
+        *climate("ch2", 19.0, 70.0),
+    ]
+
+    derived = run(readings)
+
+    assert "house_dewpoint_delta" not in values(derived, "ventilation", "ch1")
+    assert values(derived, "ventilation", "ch1")["temp_delta"] == pytest.approx(6.0)
+    assert not [r for r in derived if r.table == "house"]
+
+
+def at_dewpoint(sensor: str, temp: float, dewpoint: float) -> list[Reading]:
+    """A room at `temp` whose air holds the moisture of a dew point of `dewpoint`."""
+    humidity = psychro.humidity_at(psychro.vapour_pressure(dewpoint, 100.0), temp)
+    return climate(sensor, temp, humidity)
+
+
+def house(readings: list[Reading]) -> dict[str, object]:
+    """The house's row, which describes no one sensor."""
+    return values(run(readings), "house", None)
+
+
+OUTDOOR = climate("outdoor", 20.0, 70.0, "outdoor")
+OUTDOOR_DEWPOINT = psychro.dew_point(20.0, 70.0)
+
+
+def test_rooms_that_share_the_outdoor_air_read_as_aired() -> None:
+    """One moisture level throughout, the outdoor one, at nearly the outdoor temperature."""
+    rooms = [at_dewpoint(f"ch{i}", 21.0 + i / 2, OUTDOOR_DEWPOINT) for i in range(1, 4)]
+
+    got = house([*OUTDOOR, *(r for room in rooms for r in room)])
+
+    assert got["aired"] is True
+    assert got["rooms"] == 3.0
+    assert got["dewpoint_spread"] == pytest.approx(0.0, abs=1e-9)
+    assert got["dewpoint_delta"] == pytest.approx(0.0, abs=1e-9)
+    assert got["temp_delta"] == pytest.approx(2.0)
+
+
+@pytest.mark.parametrize(
+    ("rooms", "why"),
+    [
+        (
+            [(21.0, OUTDOOR_DEWPOINT)] * 3 + [(21.0, OUTDOOR_DEWPOINT + 1.5)],
+            "one room keeps moisture of its own",
+        ),
+        ([(21.0, OUTDOOR_DEWPOINT + 1.0)] * 4, "the rooms are damper than outdoors"),
+        ([(21.0, OUTDOOR_DEWPOINT - 1.0)] * 4, "the rooms are drier than outdoors"),
+        ([(23.0, OUTDOOR_DEWPOINT)] * 4, "the rooms are warmer than outdoors"),
+        ([(17.0, OUTDOOR_DEWPOINT)] * 4, "the rooms are cooler than outdoors"),
+    ],
+)
+def test_a_house_apart_from_the_outdoor_air_is_not_aired(
+    rooms: list[tuple[float, float]], why: str
+) -> None:
+    """Each condition alone keeps the house from reading as aired."""
+    readings = [*OUTDOOR]
+    for i, (temp, dewpoint) in enumerate(rooms, start=1):
+        readings += at_dewpoint(f"ch{i}", temp, dewpoint)
+
+    assert house(readings)["aired"] is False, why
+
+
+def test_the_house_is_its_rooms_alone() -> None:
+    """The outdoor sensor is what the rooms are compared with, not one of them; the house's
+    humidity and temperature are its rooms' medians, which one odd room does not drag."""
+    readings = [
+        *climate("outdoor", 10.0, 90.0, "outdoor"),
+        *climate("indoor", 21.0, 55.0, "indoor"),
+        *climate("ch1", 20.0, 60.0),
+        *climate("ch2", 26.0, 40.0),
+    ]
+    dewpoints = [psychro.dew_point(t, h) for t, h in [(21, 55), (20, 60), (26, 40)]]
+
+    got = house(readings)
+
+    assert got["rooms"] == 3.0
+    assert got["humidity"] == pytest.approx(55.0)
+    assert got["dewpoint_spread"] == pytest.approx(max(dewpoints) - min(dewpoints))
+    assert got["dewpoint_delta"] == pytest.approx(
+        sorted(dewpoints)[1] - psychro.dew_point(10.0, 90.0)
+    )
+    assert got["temp_delta"] == pytest.approx(11.0)
+
+
+def test_no_house_without_an_outdoor_sensor() -> None:
+    """Without the outdoor air there is nothing to say the house is open to."""
+    readings = [
+        *climate("ch1", 21.0, 60.0),
+        *climate("ch2", 21.0, 60.0),
+        *climate("ch3", 21.0, 60.0),
+    ]
+
+    assert not [r for r in run(readings) if r.table == "house"]
 
 
 class TestSeaLevel:

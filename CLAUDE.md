@@ -51,7 +51,8 @@ collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init_
     pipeline.py   report fields -> rows: parse, derive, render   <- the data path
     fields.py     the declarative table: which key is stored where, in what unit
     parse.py      fields -> readings in canonical units (°C, hPa, mm, m/s, km); never raises
-    derive.py     moisture, ventilation, sea-level pressure, wind at 10 m, staleness
+    derive.py     moisture, ventilation, whether the house is aired, sea-level pressure,
+                  wind at 10 m, staleness
     points.py     readings -> rows in the operator's units, with tags
     staleness.py  how long each sensor's values have gone unchanged
 
