@@ -42,8 +42,8 @@ AIRING_HUMIDITY_PCT = 65.0
 #: Airing is advised against only when it would do harm: leave a room at least
 #: AIRING_HUMIDITY_PCT humid and this many points damper than it is. Humidity sensors are good to
 #: a few points, and the humidity after airing adds the outdoor sensor's error to the room's, so
-#: a smaller difference says nothing. The Close the windows alert rule applies the same to the
-#: house's median room, and the page treats a smaller change either way as none.
+#: a smaller difference says nothing. The page applies the same to the house's median room, and
+#: treats a smaller change either way as none.
 DAMPER_BY_PCT = 5.0
 
 # What deserves a visitor's attention. Each threshold with an alert rule in grafana/alerts.json is

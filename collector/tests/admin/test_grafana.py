@@ -201,7 +201,7 @@ class TestPush:
                 "9.9",
             )
 
-        assert done == "Pushed the dashboard and 11 alert rules to the Weather folder."
+        assert done == "Pushed the dashboard and 10 alert rules to the Weather folder."
         steps = [(r.method, r.path) for r in s.requests]
         assert steps == [
             ("GET", "/api/user"),
@@ -235,7 +235,7 @@ class TestPush:
         ("part", "sent", "left", "said"),
         [
             ("dashboard", "/api/dashboards/db", "/rule-groups/", "Pushed the dashboard to"),
-            ("rules", "/rule-groups/", "/api/dashboards/db", "Pushed 11 alert rules to"),
+            ("rules", "/rule-groups/", "/api/dashboards/db", "Pushed 10 alert rules to"),
         ],
     )
     async def test_each_part_can_be_pushed_alone(
@@ -391,7 +391,7 @@ class TestPushPage:
             response = rig.post("/grafana/push", {})
 
         assert response.status_code == 303
-        assert "Pushed+the+dashboard+and+11+alert+rules" in response.headers["location"]
+        assert "Pushed+the+dashboard+and+10+alert+rules" in response.headers["location"]
         assert [(m, p) for m, p, _, _ in fake.requests][-1] == (
             "PUT",
             "/api/v1/provisioning/folder/new-folder/rule-groups/ecowitt",

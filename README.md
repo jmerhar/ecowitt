@@ -345,14 +345,13 @@ the file here, written for the default ones (°C, hPa, km/h, mm). It expects a d
 ## Grafana alerts
 
 [`grafana/alerts.json`](grafana/alerts.json) holds alert rules in Grafana's provisioning format,
-one alert per room or station (both *Close* rules are one per station). The thresholds below are
+one alert per room or station (*Close the windows* is one per station). The thresholds below are
 in the default units; the [Grafana page](#the-grafana-page) converts them for others:
 
 | Rule | Fires when | Severity |
 |---|---|---|
 | Good time to air | a room is at 65% humidity or more and the outdoor dew point is more than 2 °C below the room's, for 15 minutes | info |
-| Close the windows | airing would leave the rooms at a median of 65% humidity or more, and at least 5 points damper than they are (less is within the sensors' error), for 30 minutes, while no room would be dried by airing: the advice the dashboard gives | info |
-| Close the open windows | the house has read as [aired](#airing-the-house) for 30 of the last 40 minutes, with the rooms at a median of 65% humidity or more, and the outdoor dew point has risen 0.7 °C or more in an hour or the rooms are 4 points or more above their lowest in 2 hours, for 10 minutes | info |
+| Close the windows | the house has read as [aired](#airing-the-house) for 30 of the last 40 minutes, and the outdoor dew point has risen 0.7 °C or more in an hour or the rooms are 4 points or more above their lowest in 2 hours, for 10 minutes | info |
 | Damp room | a room has not dropped below 70% humidity in 6 hours | warning |
 | Sensor not updating | a room or outdoor sensor's readings have not changed, or not arrived, for 3 hours of the station's reports | warning |
 | Battery low | a sensor's low-battery flag has been set for an hour | warning |
@@ -369,7 +368,7 @@ in the default units; the [Grafana page](#the-grafana-page) converts them for ot
 - Routing is yours to set up. Every rule carries the labels `app=ecowitt` and `severity`
   (`warning` or `info`, the second suiting quiet hours); *Good time to air* also carries
   `resolve_message=off`, for a contact point that sends no message when the window closes, and
-  so do both *Close* rules. *Damp room* and the airing and closing rules carry `notify=daily`: they
+  so does *Close the windows*. *Damp room* and both airing rules carry `notify=daily`: they
   describe the house over hours, so a message each time another room joins is noise -- route
   them with a long group interval and a 24-hour repeat interval, so a room that turns damp while
   others still are waits for a later message.
@@ -377,7 +376,7 @@ in the default units; the [Grafana page](#the-grafana-page) converts them for ot
   Rules with an alert per room also have a `headline`, the same for every room, and an `item`
   naming the room: a message about several rooms reads better as the headline once and an item
   per room.
-- The weather rules (the airing and closing rules, wind, rain, pressure) keep firing for 30 minutes, or an
+- The weather rules (both airing rules, wind, rain, pressure) keep firing for 30 minutes, or an
   hour for pressure, after their condition clears, so a value hovering at a threshold does not
   send a stream of firing and resolved messages.
 - *Sensor not updating* counts a sensor's age against the station's last report, so a station

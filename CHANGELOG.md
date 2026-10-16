@@ -15,15 +15,17 @@ rules to be imported again. Either is listed under *Upgrading*.
   rooms or more it also says whether the house is being aired: `aired` is true while the rooms'
   dew points have converged on each other and on the outdoor one, at close to the outdoor
   temperature. The rooms are the indoor sensor and the channels.
-- A *Close the open windows* alert, sent when the house reads as aired and the air coming in is
-  getting damper: the outdoor dew point up 0.7 °C or more in an hour, or the rooms 4 points
-  above their lowest in 2 hours, with the rooms at 65% or more. *Close the windows* cannot see
-  this, since with the windows open the rooms already read what airing predicts.
 - Each room's `ventilation` row adds its temperature difference from outdoors and its dew point's
   difference from the rooms' median, which show a room aired on its own.
 
 ### Changed
 
+- *Close the windows* is sent when the windows are open and the air coming in is getting damper:
+  the house reads as aired for 30 of the last 40 minutes, and the outdoor dew point has risen
+  0.7 °C or more in an hour or the rooms are 4 points above their lowest in 2 hours. It no longer
+  advises keeping closed windows shut, which the dashboard's airing card still does; with the
+  windows open, the rooms already read what airing predicts, so that rule could not warn while
+  they were.
 - The dashboard's *Settings* menu opens from a sliders icon instead of the word, which stays as
   the button's name for screen readers and its tooltip.
 
@@ -38,9 +40,9 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ### Upgrading
 
-- Import the Grafana alert rules again for *Close the open windows*. It reads the `house` table,
-  which older collectors do not write, and the dashboard's airing advice reads it too: upgrade
-  the collector with the dashboard.
+- Import the Grafana alert rules again for *Close the windows*. It reads the `house` table, which
+  older collectors do not write, and the dashboard's airing advice reads it too: upgrade the
+  collector with the dashboard.
 
 ## 3.0.0 — 2026-10-15
 

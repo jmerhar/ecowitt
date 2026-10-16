@@ -113,7 +113,6 @@ def test_rule_uids_are_unique() -> None:
     "uid",
     [
         "ecowitt-airing",
-        "ecowitt-close-windows",
         "ecowitt-open-windows-damper",
         "ecowitt-gusts",
         "ecowitt-rain",
@@ -180,7 +179,6 @@ def test_daily_rules_are_the_slow_house_conditions() -> None:
         "Damp room",
         "Good time to air",
         "Close the windows",
-        "Close the open windows",
     }
 
 

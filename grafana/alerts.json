@@ -93,91 +93,8 @@
           "isPaused": false
         },
         {
-          "uid": "ecowitt-close-windows",
-          "title": "Close the windows",
-          "condition": "C",
-          "data": [
-            {
-              "refId": "A",
-              "relativeTimeRange": {
-                "from": 600,
-                "to": 0
-              },
-              "datasourceUid": "weather",
-              "model": {
-                "refId": "A",
-                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(predicted_humidity_pct ORDER BY time) AS after\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station, median(vent.after) AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor\nGROUP BY rh.station",
-                "rawQuery": true,
-                "editorMode": "code",
-                "format": "table",
-                "dataset": "iox"
-              }
-            },
-            {
-              "refId": "B",
-              "relativeTimeRange": {
-                "from": 600,
-                "to": 0
-              },
-              "datasourceUid": "weather",
-              "model": {
-                "refId": "B",
-                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(predicted_humidity_pct ORDER BY time) AS after\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station, median(rh.rh) AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor\nGROUP BY rh.station",
-                "rawQuery": true,
-                "editorMode": "code",
-                "format": "table",
-                "dataset": "iox"
-              }
-            },
-            {
-              "refId": "D",
-              "relativeTimeRange": {
-                "from": 600,
-                "to": 0
-              },
-              "datasourceUid": "weather",
-              "model": {
-                "refId": "D",
-                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, temp_c, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, temp_c, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(dewpoint_delta_c ORDER BY time) AS delta\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station, sum(CASE WHEN rh.rh >= 65 AND vent.delta > 2 THEN 1 ELSE 0 END) AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor\nGROUP BY rh.station",
-                "rawQuery": true,
-                "editorMode": "code",
-                "format": "table",
-                "dataset": "iox"
-              }
-            },
-            {
-              "refId": "C",
-              "relativeTimeRange": {
-                "from": 0,
-                "to": 0
-              },
-              "datasourceUid": "__expr__",
-              "model": {
-                "refId": "C",
-                "type": "math",
-                "expression": "$A >= 65 && $A >= $B + 5 && $D == 0"
-              }
-            }
-          ],
-          "noDataState": "OK",
-          "execErrState": "Error",
-          "for": "30m",
-          "keepFiringFor": "30m",
-          "annotations": {
-            "summary": "Airing would leave the house damp: the rooms, at {{ printf \"%.0f\" $values.B.Value }}% humidity, would settle at {{ printf \"%.0f\" $values.A.Value }}% with the outside air. Keep the windows closed.",
-            "description": "Airing would leave the rooms at a median of 65% humidity or more, and at least 5 points damper than they are (less is within the sensors' error), for 30 minutes, while no room would be dried by airing (which Good time to air announces instead): the outside air holds more moisture than theirs."
-          },
-          "labels": {
-            "app": "ecowitt",
-            "severity": "info",
-            "resolve_message": "off",
-            "notify": "daily"
-          },
-          "isPaused": false
-        },
-        {
           "uid": "ecowitt-open-windows-damper",
-          "title": "Close the open windows",
+          "title": "Close the windows",
           "condition": "E",
           "data": [
             {
@@ -254,7 +171,7 @@
               "model": {
                 "refId": "E",
                 "type": "math",
-                "expression": "$A >= 0.75 && $B >= 65 && ($C >= 0.7 || $D >= 4)"
+                "expression": "$A >= 0.75 && ($C >= 0.7 || $D >= 4)"
               }
             }
           ],
@@ -264,7 +181,7 @@
           "keepFiringFor": "30m",
           "annotations": {
             "summary": "The windows look open and the air coming in is getting damper: the rooms are at {{ printf \"%.0f\" $values.B.Value }}% humidity and following it up. Close the windows.",
-            "description": "The house has read as aired (its rooms sharing the outdoor air) for most of 40 minutes, with the rooms at a median of 65% humidity or more, for 10 minutes, while the outdoor dew point has risen 0.7 °C or more in an hour or the rooms have climbed 4 points or more above their lowest in 2 hours. Airing longer only lets the house follow the outside air up."
+            "description": "The house has read as aired (its rooms sharing the outdoor air) for most of 40 minutes, while the outdoor dew point has risen 0.7 °C or more in an hour or the rooms have climbed 4 points or more above their lowest in 2 hours, for 10 minutes. Airing longer only lets the house follow the outside air up."
           },
           "labels": {
             "app": "ecowitt",

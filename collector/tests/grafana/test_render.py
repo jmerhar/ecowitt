@@ -116,8 +116,11 @@ def test_numbers_follow_the_units() -> None:
     # A difference of 2 °C is 3.6 °F: no 32 added.
     airing = next(s for s in _rule(alerts, "ecowitt-airing")["data"] if s["refId"] == "C")
     assert airing["model"]["expression"] == "$A > 3.6 && $B >= 65"
-    close = next(s for s in _rule(alerts, "ecowitt-close-windows")["data"] if s["refId"] == "D")
-    assert "vent.delta > 3.6 " in close["model"]["rawSql"]
+    # 0.7 °C is 1.26 °F.
+    close = next(
+        s for s in _rule(alerts, "ecowitt-open-windows-damper")["data"] if s["refId"] == "E"
+    )
+    assert close["model"]["expression"] == "$A >= 0.75 && ($C >= 1.26 || $D >= 4)"
     temperature = _panel(dashboard, 3)["fieldConfig"]["defaults"]
     assert [s["value"] for s in temperature["thresholds"]["steps"]] == [None, 41, 77, 89.6]
     assert temperature["unit"] == "fahrenheit"
