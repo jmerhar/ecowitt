@@ -545,3 +545,21 @@ msgid_plural "Gusts to {value} at tomorrow {clock}."
 msgstr[0] "Rajadas até {value} amanhã à {clock}."
 msgstr[1] "Rajadas até {value} amanhã às {clock}."
 
+#. {clock} is a time of day, 00:00 to 23:59. The plural forms are chosen by its hour, for a
+#. language whose words agree with it.
+#, python-brace-format
+msgctxt "notice"
+msgid "Windows likely to mist up from {clock}."
+msgid_plural "Windows likely to mist up from {clock}."
+msgstr[0] "As janelas devem embaciar a partir da {clock}."
+msgstr[1] "As janelas devem embaciar a partir das {clock}."
+
+#. {clock} is a time of day, 00:00 to 23:59. The plural forms are chosen by its hour, for a
+#. language whose words agree with it.
+#, python-brace-format
+msgctxt "notice"
+msgid "Windows likely to mist up from tomorrow {clock}."
+msgid_plural "Windows likely to mist up from tomorrow {clock}."
+msgstr[0] "As janelas devem embaciar amanhã a partir da {clock}."
+msgstr[1] "As janelas devem embaciar amanhã a partir das {clock}."
+

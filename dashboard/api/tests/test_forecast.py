@@ -399,3 +399,71 @@ async def test_the_forecast_and_its_notices_are_in_the_language_asked_for() -> N
     assert (found.hours[0].description, found.hours[0].compass) == ("Céu encoberto", "N")
     assert (found.days[0].description, found.days[0].compass) == ("Chuva fraca", "N")
     assert found.model is not None and found.model.label == "Melhor para este local"
+
+
+async def test_windows_misting_up_tonight_are_on_the_rooms_card() -> None:
+    """The bathroom, at 20 °C with a 15.4 °C dew point, mists up once the air outside is at
+    9.8 °C or less; the living room, drier, does not."""
+    mild = await board(*coming(**{str(h): {"temp_c": 12.0} for h in range(1, 25)})).now("example")
+    assert "mist" not in (mild.notices["rooms"].text if "rooms" in mild.notices else "")
+    # An hour the model gave no temperature for says nothing either way.
+    rows = coming(
+        **{str(h): {"temp_c": 12.0 if h < 10 else 9.0} for h in range(1, 25)}
+        | {"9": {"temp_c": None}}
+    )
+    found = await board(*rows).now("example")
+    item = next(
+        i for i in found.notices["rooms"].items if i.code is models.NoticeCode.MIST_FORECAST
+    )
+    assert item.time == NOW + 10 * HOUR
+    assert item.text == "Windows likely to mist up from tomorrow 01:00."
+    portuguese = await board(*rows).now("example", language=LANGUAGES["pt-PT"])
+    assert "As janelas devem embaciar amanhã a partir da 01:00." in portuguese.notices["rooms"].text
+
+
+def offset_rows(station_minus_model: float, hours: int = 24) -> list:
+    """A day of hourly outdoor readings and model values, the station that much warmer; one
+    hour the model gave no temperature for, which is left out of the comparison."""
+    rows = []
+    for n in range(hours):
+        at = NOW - timedelta(minutes=1) - n * HOUR
+        outdoor = {"temp_c": 15.0 + station_minus_model}
+        rows.append(row("outdoor", at, outdoor, sensor="outdoor", name="Garden"))
+        model = {"humidity_pct": 70.0} if n == 5 else {"temp_c": 15.0}
+        rows.append(row("model", at, model, model="best_match", source="open_meteo"))
+    return rows
+
+
+async def test_the_forecast_is_judged_as_the_station_has_lately_read_from_it() -> None:
+    """A model reading 1.5 °C warmer than the station: its 3 °C low is a 1.5 °C one, frost."""
+    base = [r for r in readings() if r.table != "outdoor"]
+    low = coming(**{"10": {"temp_c": 3.0}})
+
+    async def outdoor(extra: list) -> str:
+        reader = MemoryReader([*base, *extra, *low], {"example": MODELLED})
+        notices = (await Dashboard(reader, clock=lambda: NOW).now("example")).notices
+        return notices["outdoor"].text if "outdoor" in notices else ""
+
+    assert await outdoor(offset_rows(0.0)) == ""
+    assert await outdoor(offset_rows(-1.5)) == "Down to 1.5 °C at tomorrow 01:00: frost possible."
+    # Too few hours of both to say how far apart they read.
+    assert await outdoor(offset_rows(-1.5, hours=11)) == ""
+    # Another model's values are not this station's model.
+    other = [r if r.table != "model" else dataclasses.replace(
+        r, tags=tuple((k, "icon_seamless" if k == "model" else v) for k, v in r.tags)
+    ) for r in offset_rows(-1.5)]  # fmt: skip
+    assert await outdoor(other) == ""
+
+
+async def test_misting_is_judged_as_the_station_has_lately_read_from_the_model() -> None:
+    """A 10.5 °C night in a model reading 1.5 °C warm is a 9 °C one: the bathroom mists up."""
+    base = [r for r in readings() if r.table != "outdoor"]
+    night = coming(**{str(h): {"temp_c": 12.0 if h < 10 else 10.5} for h in range(1, 25)})
+
+    async def rooms(extra: list) -> str:
+        reader = MemoryReader([*base, *extra, *night], {"example": MODELLED})
+        notices = (await Dashboard(reader, clock=lambda: NOW).now("example")).notices
+        return notices["rooms"].text if "rooms" in notices else ""
+
+    assert "mist" not in await rooms(offset_rows(0.0))
+    assert "Windows likely to mist up from tomorrow 01:00." in await rooms(offset_rows(-1.5))

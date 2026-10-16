@@ -250,6 +250,35 @@ def extreme(
     return pick(found, key=lambda c: c.value)
 
 
+def corrected(coming: Coming | None, offset_c: float) -> Coming | None:
+    """A forecast temperature moved by how far the station has lately read from its model."""
+    return None if coming is None else Coming(coming.time, coming.value + offset_c)
+
+
+def mist_from(
+    stored: Stored,
+    values: Values,
+    info: StationInfo,
+    now: datetime,
+    rooms: list[tuple[float, float]],
+    offset_c: float = 0.0,
+) -> Coming | None:
+    """The first hour within WARN_WITHIN when the forecast air, moved by `offset_c`, is cold
+    enough for one of the `rooms` (temperature and dew point, °C) to mist its windows up: the
+    forecast temperature there."""
+    if not rooms:
+        return None
+    name = field_name("temp", Kind.TEMPERATURE, info.units)
+    for p in _within(stored.hours, now, WARN_WITHIN, under_way=False):
+        temp = values.metric(Kind.TEMPERATURE, p.values.get(name))
+        if temp is None:
+            continue
+        outdoor = temp + offset_c
+        if any(weather.glass_mists(t, dew, outdoor) for t, dew in rooms):
+            return Coming(p.time, outdoor)
+    return None
+
+
 def drier_from(
     stored: Stored, values: Values, info: StationInfo, now: datetime, room_deltas: list[float]
 ) -> datetime | None:

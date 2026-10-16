@@ -82,6 +82,11 @@ PRESSURE_TREND = timedelta(hours=3)
 #: windows.
 DEWPOINT_TREND = timedelta(minutes=70)
 TREND_STEP = timedelta(minutes=10)
+#: How far the station's outdoor temperature has read from its weather model's is the mean
+#: difference over this long, from hours when both have a value...
+OFFSET_OVER = timedelta(hours=24)
+#: ...and at least this many of them; without, the forecast is taken as it stands.
+OFFSET_HOURS = 12
 #: A trend needs readings from nearly the whole of its three hours.
 PRESSURE_TREND_COVERAGE = timedelta(hours=2, minutes=50)
 #: A station is online while its latest report is younger than this many upload intervals...
@@ -117,6 +122,9 @@ class _Latest:
     #: The house's rows over the last weather.DAMPER_LOW_WITHIN_H hours: whether it was aired,
     #: and its rooms' humidity.
     house_recent: list[Point] = field(default_factory=list)
+    #: The outdoor temperature's hourly means over OFFSET_OVER: the station's, and its model's.
+    outdoor_hourly: list[Buckets] = field(default_factory=list)
+    model_hourly: list[Buckets] = field(default_factory=list)
     #: The outdoor dew point's means over DEWPOINT_TREND, in TREND_STEP buckets.
     outdoor_dewpoint: list[Buckets] = field(default_factory=list)
     battery: list[Span] = field(default_factory=list)
@@ -299,7 +307,17 @@ class Dashboard:
         answer.sensors = _health(latest, info, language)
         answer.notices = _notices(latest, values, stored, answer, language)
         coming = await self._stored_forecast(station, info)
-        _forecast_notices(answer, coming, values, info, zone, self.clock(), language)
+        _forecast_notices(
+            answer,
+            coming,
+            values,
+            info,
+            zone,
+            self.clock(),
+            language,
+            offset_c=_model_offset(latest, values, stored),
+            rooms=_room_dew_points(latest, values, stored),
+        )
         if answer.airing is not None and answer.airing.advice != "open":
             damp = [r for r in air if r.humidity >= weather.AIRING_HUMIDITY_PCT]
             answer.airing.drier_from = forecast.drier_from(
@@ -473,7 +491,8 @@ class Dashboard:
         rain_fields += [f(b, R) for b in ("monthly", "yearly")] + [rate]
         (
             outdoor, derived, wind, rain, pressure, solar, indoor, channel, ventilation, house,
-            house_recent, indoor_lows, channel_lows, outdoor_dewpoint, battery,
+            house_recent, indoor_lows, channel_lows, outdoor_hourly, model_hourly,
+            outdoor_dewpoint, battery,
             temperature_today, wind_today, sky,
             recent_wind, recent_rain, wind_10m, wind_10m_today, recent_wind_10m,
         ) = await asyncio.gather(
@@ -505,6 +524,19 @@ class Dashboard:
                     origin=end + timedelta(seconds=1),
                 )
                 for table in ("indoor", "channel")
+            ),
+            *(
+                self.reader.buckets(
+                    station,
+                    table,
+                    [(f("temp", T), Aggregate.MEAN)],
+                    start=end - OFFSET_OVER + timedelta(seconds=1),
+                    end=end,
+                    step=timedelta(hours=1),
+                    origin=end + timedelta(seconds=1),
+                    sensors=sensors,
+                )
+                for table, sensors in (("outdoor", ["outdoor"]), (weathermodel.TABLE, None))
             ),
             # Buckets end a second after each step, so the last holds the latest report.
             self.reader.buckets(
@@ -542,6 +574,8 @@ class Dashboard:
             house=_first(house),
             house_recent=house_recent,
             room_lows=indoor_lows + channel_lows,
+            outdoor_hourly=outdoor_hourly,
+            model_hourly=[g for g in model_hourly if g.tags.get("model") == info.weather_model],
             outdoor_dewpoint=outdoor_dewpoint,
             battery=battery,
             temperature_today=_first(temperature_today),
@@ -935,7 +969,7 @@ def _rooms(
     """Each room, indoor sensor first, with its airing advice."""
     T, H = Kind.TEMPERATURE, Kind.HUMIDITY
     dew_points = {s.sensor: s.last.get(field_name("dewpoint", T, stored)) for s in latest.derived}
-    lows = _lowest_humidity(latest.room_lows, values, stored)
+    lows = _lowest_humidity(latest.room_lows, stored)
     by_sensor = {r.sensor: r for r in air}
     rooms = []
     for span in sorted(latest.rooms, key=lambda s: _natural(s.sensor or "")):
@@ -964,7 +998,7 @@ def _rooms(
     return rooms
 
 
-def _lowest_humidity(groups: list[Buckets], values: _Values, stored: Units) -> dict[str, float]:
+def _lowest_humidity(groups: list[Buckets], stored: Units) -> dict[str, float]:
     """Each room's lowest humidity over the last weather.DAMP_FOR_H hours, for the rooms with
     readings in every one of them."""
     name = field_name("humidity", Kind.HUMIDITY, stored)
@@ -973,9 +1007,7 @@ def _lowest_humidity(groups: list[Buckets], values: _Values, stored: Units) -> d
         lows = [v for v in group.values.get((name, Aggregate.MIN), []) if v is not None]
         sensor = group.tags.get("sensor")
         if sensor and len(lows) >= weather.DAMP_FOR_H:
-            low = values.metric(Kind.HUMIDITY, min(lows))
-            if low is not None:
-                found[sensor] = low
+            found[sensor] = convert(Kind.HUMIDITY, min(lows), stored, METRIC)
     return found
 
 
@@ -1112,11 +1144,16 @@ def _forecast_notices(
     zone: tzinfo,
     at: datetime,
     language: Language,
+    *,
+    offset_c: float = 0.0,
+    rooms: list[tuple[float, float]] | None = None,
 ) -> None:
     """Add to the cards' notices what the forecast says is coming within the day.
 
     Rain on the rain card while it is dry; frost or heat on the outdoor card; strong gusts on the
-    wind card while they are not blowing already. Times are in the station's time.
+    wind card while they are not blowing already; misted windows on the rooms card, for `rooms`
+    (temperature and dew point, °C). Forecast temperatures are judged moved by `offset_c`, how far
+    the station has lately read from its model. Times are in the station's time.
     """
     target = values.target
     today = at.astimezone(zone).date()
@@ -1146,7 +1183,9 @@ def _forecast_notices(
     if rain is not None and not raining:
         soon = rain.time <= at
         say("rain", models.NoticeCode.RAIN_SOON if soon else models.NoticeCode.RAIN_FROM, rain.time)
-    low = forecast.extreme(coming, values, info, at, "temp", Kind.TEMPERATURE, lowest=True)
+    low = forecast.corrected(
+        forecast.extreme(coming, values, info, at, "temp", Kind.TEMPERATURE, lowest=True), offset_c
+    )
     if low is not None and low.value <= forecast.FROST_C:
         # The forecast's frost is more precise than the present reading's hint of it.
         outdoor = now.notices.get("outdoor")
@@ -1154,12 +1193,52 @@ def _forecast_notices(
             outdoor.items = [i for i in outdoor.items if i.code is not models.NoticeCode.COLD]
             outdoor.text = _line(outdoor.items)
         say("outdoor", models.NoticeCode.FROST_FORECAST, low.time, Kind.TEMPERATURE, low.value)
-    high = forecast.extreme(coming, values, info, at, "temp", Kind.TEMPERATURE, lowest=False)
+    high = forecast.corrected(
+        forecast.extreme(coming, values, info, at, "temp", Kind.TEMPERATURE, lowest=False),
+        offset_c,
+    )
     if high is not None and high.value >= weather.HEAT_FEELS_C:
         say("outdoor", models.NoticeCode.HEAT_FORECAST, high.time, Kind.TEMPERATURE, high.value)
     gust = forecast.extreme(coming, values, info, at, "gust", Kind.SPEED, lowest=False)
     if gust is not None and gust.value > weather.STRONG_GUST_KMH and "wind" not in now.notices:
         say("wind", models.NoticeCode.GUSTS_FORECAST, gust.time, Kind.SPEED, gust.value)
+    mist = forecast.mist_from(coming, values, info, at, rooms or [], offset_c)
+    if mist is not None:
+        say("rooms", models.NoticeCode.MIST_FORECAST, mist.time)
+
+
+def _model_offset(latest: _Latest, values: _Values, stored: Units) -> float:
+    """How far, in °C, the station's outdoor temperature has read above its weather model's over
+    the last OFFSET_OVER; 0 without OFFSET_HOURS hours of both."""
+    name = (field_name("temp", Kind.TEMPERATURE, stored), Aggregate.MEAN)
+
+    def hourly(groups: list[Buckets]) -> dict[datetime, float]:
+        found = {}
+        for group in groups[:1]:
+            for time, value in zip(group.times, group.values.get(name, []), strict=True):
+                metric = values.metric(Kind.TEMPERATURE, value)
+                if metric is not None:
+                    found[time] = metric
+        return found
+
+    station, model = hourly(latest.outdoor_hourly), hourly(latest.model_hourly)
+    both = station.keys() & model.keys()
+    if len(both) < OFFSET_HOURS:
+        return 0.0
+    return sum(station[t] - model[t] for t in both) / len(both)
+
+
+def _room_dew_points(latest: _Latest, values: _Values, stored: Units) -> list[tuple[float, float]]:
+    """Each room's temperature and dew point now, in °C, for the rooms with both."""
+    T = Kind.TEMPERATURE
+    dew = {s.sensor: s.last.get(field_name("dewpoint", T, stored)) for s in latest.derived}
+    found = []
+    for span in latest.rooms:
+        temp = values.metric(T, span.last.get(field_name("temp", T, stored)))
+        point = values.metric(T, dew.get(span.sensor))
+        if temp is not None and point is not None:
+            found.append((temp, point))
+    return found
 
 
 def _say(notice: models.Notice, item: models.NoticeItem) -> None:

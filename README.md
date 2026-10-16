@@ -428,8 +428,8 @@ humidity and dew point as bars coloured by level (dry to very humid; crisp to op
 wind on a compass, rain, pressure and its three-hour trend, sunrise and sunset, each room with
 whether airing it would help, and any sensor that needs attention — then charts over the last 1,
 3, 6 or 12 hours, a day, a week, a month or a year, and the highs and lows of today, this month or this year. A card with
-something to act on is edged in colour and says what: cold (5 °C or below) or heat, very humid or
-very dry air, strong gusts, heavy rain, pressure falling fast, very high UV, a room that is cold,
+something to act on is edged in colour and says what: cold (5 °C or below) or heat, very humid
+(99%, saturated) or very dry air, strong gusts, heavy rain, pressure falling fast, very high UV, a room that is cold,
 hot, damp (70% or more for 6 hours) or dry, a good time to air the house or one to keep its windows closed (when airing
 would leave the rooms at 65% or more and damper than they are), open windows to close because the
 air coming in is getting damper, a sensor that needs attention —
@@ -445,7 +445,10 @@ menu fixes either. Dates and numbers follow it -- English with the day first and
 
 For a station storing its model's [forecast](#forecast), the page shows it — the next 24 hours
 and the days ahead — and the cards say what is coming within the day: rain likely within six
-hours, frost or heat, strong gusts, and drier air to open the windows for. For a station with a
+hours, frost or heat, strong gusts, windows likely to mist up (a room's dew point above the inside
+of double-glazed glass on the night forecast), and drier air to open the windows for. Forecast
+temperatures are judged moved by how far the station has read from its model over the last 24
+hours: a model running a degree warm would otherwise miss a frost. For a station with a
 [weather model](#weather-model), it also shows the sky the model gives — clear,
 overcast, rain, fog — with an icon from [Meteocons](https://meteocons.com), and the charts can
 draw the model's values dashed beside the station's (*Model*, beside the range). The page credits

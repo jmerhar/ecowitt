@@ -66,8 +66,9 @@ ROOM_DRY_PCT = 30.0
 #: Cold enough outdoors for frost on a clear night, in °C: the ground cools below the air, so frost
 #: forms while the air at sensor height is still a few degrees above zero.
 COLD_C = 5.0
-#: Outdoor air humid enough for fog and condensation, or dry enough for fire risk, in %.
-HUMID_AIR_PCT = 95.0
+#: Outdoor air humid enough for fog and condensation, or dry enough for fire risk, in %. A
+#: coastal site reads 95% on most nights; 99% is as high as most sensors read, saturated air.
+HUMID_AIR_PCT = 99.0
 DRY_AIR_PCT = 25.0
 #: Heat: a feels-like temperature at or above the US National Weather Service's "extreme
 #: caution" level for the heat index (90 °F), in °C.
@@ -230,6 +231,19 @@ DAMPER_DEWPOINT_RISE_C = 0.7
 #: Close the windows alert rule in grafana/alerts.json uses the same numbers.
 DAMPER_HUMIDITY_RISE_PCT = 4.0
 DAMPER_LOW_WITHIN_H = 2
+
+
+#: How far the inside of a window's glass sits from the outdoor temperature towards the room's:
+#: the temperature factor condensation checks use (ISO 13788), about 0.55 at the edge of double
+#: glazing, where misting starts.
+GLASS_EDGE_FACTOR = 0.55
+
+
+def glass_mists(room_temp_c: float, room_dewpoint_c: float, outdoor_c: float) -> bool:
+    """Whether a room's window mists up with the air outside at `outdoor_c`: its glass falls to
+    the room's dew point."""
+    glass = outdoor_c + GLASS_EDGE_FACTOR * (room_temp_c - outdoor_c)
+    return room_dewpoint_c >= glass
 
 
 def windows_open(aired_share: float | None) -> bool:

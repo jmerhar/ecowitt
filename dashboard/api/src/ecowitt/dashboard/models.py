@@ -190,6 +190,8 @@ class NoticeCode(Enum):
     HEAT_FORECAST = "heat_forecast"
     #: The forecast's strongest gust, `value` at `time`.
     GUSTS_FORECAST = "gusts_forecast"
+    #: The forecast's air cold enough, from `time`, for a room's windows to mist up.
+    MIST_FORECAST = "mist_forecast"
     #: The `rooms` with one of the rooms' `flag`s.
     ROOM_FLAG = "room_flag"
 

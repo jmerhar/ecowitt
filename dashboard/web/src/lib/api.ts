@@ -125,7 +125,7 @@ export type Sky = {
 export type NoticeCode =
   | "cold" | "heat" | "humid_air" | "dry_air"
   | "strong_gusts" | "heavy_rain" | "pressure_falling_fast" | "uv_very_high"
-  | "rain_soon" | "rain_from" | "frost_forecast" | "heat_forecast" | "gusts_forecast"
+  | "rain_soon" | "rain_from" | "frost_forecast" | "heat_forecast" | "gusts_forecast" | "mist_forecast"
   | "room_flag";
 
 /** One thing a notice says: a code, what it names, and the same in words. */

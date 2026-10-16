@@ -45,6 +45,10 @@ NOTICES_AT: dict[NoticeCode, tuple[str, str]] = {
         "Gusts to {value} at {clock}.",
         "Gusts to {value} at tomorrow {clock}.",
     ),
+    NoticeCode.MIST_FORECAST: (
+        "Windows likely to mist up from {clock}.",
+        "Windows likely to mist up from tomorrow {clock}.",
+    ),
 }
 
 #: A room's flags, as a room_flag notice names them.

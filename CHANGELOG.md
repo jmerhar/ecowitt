@@ -10,6 +10,8 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ### Added
 
+- The rooms card warns when windows are likely to mist up overnight: the forecast night air cold
+  enough for the inside of double-glazed glass to fall to a room's dew point.
 - An *Air the bathroom* alert, sent at any hour when a room is still damp 40 minutes after a
   shower: its humidity rose 10 points within 10 minutes and has not come back down.
 - A `house` table holds the rooms' median humidity now and after airing, and their median dew
@@ -25,6 +27,10 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ### Changed
 
+- The dashboard's very humid air notice needs 99% outdoors rather than 95%, which a coastal site
+  reads on most nights.
+- Frost and heat forecast on the dashboard are judged moved by how far the station's outdoor
+  temperature has read from its weather model over the last 24 hours.
 - The dashboard flags a room as damp once it has stayed at 70% or more for 6 hours, as the *Damp
   room* alert judges it, rather than at any reading of 70%: a bathroom after a shower is not a
   damp room.

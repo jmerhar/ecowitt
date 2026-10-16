@@ -622,6 +622,20 @@ async def test_windows_open_only_lately_do_not_count_yet(reader: MemoryReader) -
     assert not now.airing.windows_open
 
 
+async def test_a_house_whose_humidity_is_not_recent_has_no_rise(reader: MemoryReader) -> None:
+    """Aired rows without a humidity in the last ten minutes: open windows, but nothing says
+    whether the rooms are getting damper."""
+    windows_open(reader, humidity=(60.0, 75.0))
+    reader.rows = [
+        dataclasses.replace(r, fields={k: v for k, v in r.fields.items() if k != "humidity_pct"})
+        if r.table == "house" and r.timestamp >= (LAST - timedelta(minutes=10)).timestamp()
+        else r
+        for r in reader.rows
+    ]
+    now = await Dashboard(reader, clock=lambda: NOW).now("example")
+    assert now.airing is not None and now.airing.windows_open
+
+
 async def test_a_house_without_its_recent_rows_is_judged_as_closed(reader: MemoryReader) -> None:
     """The example's one house row has no aired flag: nothing says the windows are open."""
     now = await Dashboard(reader, clock=lambda: NOW).now("example")
@@ -701,7 +715,7 @@ async def test_weather_worth_a_warning_is_flagged(reader: MemoryReader) -> None:
     later = LAST + timedelta(seconds=30)
     reader.rows += [
         row("station", later, {"interval_s": 60.0}),
-        row("outdoor", later, {"temp_c": 5.0, "humidity_pct": 95.0}, sensor="outdoor"),
+        row("outdoor", later, {"temp_c": 5.0, "humidity_pct": 99.0}, sensor="outdoor"),
         row("wind", later, {"speed_kmh": 40.0, "gust_kmh": 61.0, "dir_deg": 0.0}),
         row("wind_10m", later, {"speed_kmh": 40.0, "gust_kmh": 61.0, "source": "sensor"}),
         row("rain", later, {"rate_mm_h": 10.5}, gauge="bucket"),

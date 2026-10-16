@@ -286,3 +286,21 @@ def test_the_notices_share_the_alert_rules_thresholds() -> None:
     assert threshold("Damp room") == weather.ROOM_DAMP_PCT - 0.5
     damp = next(d for d in rules["Damp room"]["data"] if d["refId"] == "A")["model"]["rawSql"]
     assert f"interval '{weather.DAMP_FOR_H} hours'" in damp
+
+
+@pytest.mark.parametrize(
+    ("room", "dew_point", "outdoor", "mists"),
+    [
+        # Glass at 9 + 0.55 * (20 - 9) = 15.05 °C, under a dew point of 15.4 °C.
+        (20.0, 15.4, 9.0, True),
+        # 11 + 0.55 * 9 = 15.95 °C: clear.
+        (20.0, 15.4, 11.0, False),
+        # 10 + 0.55 * 10 = 15.5 °C: just clear.
+        (20.0, 15.4, 10.0, False),
+        # A dry room needs a frost: 13.25 °C glass against a 12 °C dew point at 5 °C outside.
+        (21.0, 12.0, 5.0, False),
+        (21.0, 12.0, 0.0, True),
+    ],
+)
+def test_glass_mists(room: float, dew_point: float, outdoor: float, mists: bool) -> None:
+    assert weather.glass_mists(room, dew_point, outdoor) is mists
