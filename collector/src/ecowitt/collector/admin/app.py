@@ -10,12 +10,14 @@ except `/healthz` is behind the optional login once one is set.
 
 from __future__ import annotations
 
+import json
 import logging
 import math
 import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from importlib.metadata import version as package_version
 from pathlib import Path
 from typing import Any
@@ -30,7 +32,7 @@ from pydantic import ValidationError
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, RedirectResponse, Response
 
-from ecowitt.collector.admin import auth, grafana, lookups, timezones
+from ecowitt.collector.admin import auth, grafana, lookups, notifications, timezones
 from ecowitt.collector.admin.calibration import CalibrationMonitor
 from ecowitt.collector.admin.configstore import ConfigStore
 from ecowitt.collector.admin.modelcompare import judge
@@ -39,6 +41,7 @@ from ecowitt.collector.admin.stationconfig import (
     AdminLogin,
     ConfigDocument,
     GrafanaEntry,
+    NotificationsEntry,
     Station,
     StationEntry,
     StoreEntry,
@@ -49,12 +52,13 @@ from ecowitt.collector.delivery.recompute import WindRecompute
 from ecowitt.collector.delivery.spool import Spool
 from ecowitt.collector.grafana import render
 from ecowitt.collector.http import BodyTooLarge, read_capped_body
-from ecowitt.collector.ingest.handler import StationHandler
+from ecowitt.collector.ingest.handler import Sink, StationHandler
 from ecowitt.collector.ingest.pending import PendingStations
 from ecowitt.collector.state import State
 from ecowitt.core import weathermodel, windheight
 from ecowitt.core.ratelimit import RateLimiter
 from ecowitt.core.store import settings as store_settings
+from ecowitt.core.store.query import Reader, ReadError
 from ecowitt.core.units import SYMBOLS, Kind, Units, from_canonical
 
 logger = logging.getLogger(__name__)
@@ -237,6 +241,11 @@ class AdminContext:
     recompute: WindRecompute | None = None
     #: Station names to report when there is no store, for processes run without one.
     stations: list[str] = field(default_factory=list)
+    #: Where rows the admin listener itself writes go -- the notifications Grafana sends.
+    sink: Sink | None = None
+    #: A reader of the configured database, for the notifications page; None when it cannot be
+    #: read back.
+    make_reader: Callable[[], Reader | None] | None = None
 
     @property
     def document(self) -> ConfigDocument:
@@ -261,12 +270,14 @@ def build_app(context: AdminContext) -> FastAPI:
     async def require_login(request: Request, call_next: Any) -> Response:
         """Refuse unknown host names, and ask for the admin login once one is set.
 
-        `/healthz` is exempt from both, so a health probe works under any name.
+        `/healthz` is exempt from both, so a health probe works under any name, and so is the
+        notifications route, which Grafana posts to from wherever it runs and which checks its
+        own token instead (`notifications`).
 
         Failed attempts spend from a small per-address budget, so the password cannot be
         guessed at speed even by someone who can reach the listener.
         """
-        if request.url.path == "/healthz":
+        if request.url.path in ("/healthz", notifications.PATH):
             return await call_next(request)
         if not auth.host_allowed(
             request.headers.get("host", ""), context.settings.admin_host_names
@@ -441,6 +452,39 @@ def build_app(context: AdminContext) -> FastAPI:
             page="/",
         )
 
+    @app.post(notifications.PATH)
+    async def record_notification(request: Request) -> Response:
+        """Record a notification Grafana sent, posted by a webhook carrying the token."""
+        entry = context.document.notifications
+        client = request.client.host if request.client else "unknown"
+        if not notifications.authorised(
+            request.headers.get("authorization"), entry.token_hash if entry else None
+        ):
+            if not failed_logins.allow(client):
+                return PlainTextResponse("Too many failed attempts; wait a minute.", 429)
+            return PlainTextResponse("A valid token is required.", status_code=401)
+        if context.sink is None:
+            return PlainTextResponse("This process cannot write.", status_code=503)
+        try:
+            body = await read_capped_body(request, notifications.MAX_BYTES)
+            found = notifications.row(json.loads(body), int(time.time()))
+        except BodyTooLarge:
+            return PlainTextResponse("Too large.", status_code=413)
+        except ValueError as exc:
+            return PlainTextResponse(f"Not a notification: {exc}", status_code=400)
+        await context.sink.submit([found])
+        return PlainTextResponse("Recorded.")
+
+    @app.get("/notifications")
+    async def notifications_page(request: Request) -> Response:
+        """The notifications Grafana sent, newest first, filtered as the query string asks."""
+        return _render(
+            request,
+            context,
+            "notifications.html",
+            await _notifications_view(context, dict(request.query_params)),
+        )
+
     @app.get("/grafana")
     async def grafana_page(request: Request) -> Response:
         return _render(request, context, "grafana.html", _grafana_view(context))
@@ -463,6 +507,13 @@ def build_app(context: AdminContext) -> FastAPI:
         if isinstance(form, Response):
             return form
         return await _grafana_connection_action(request, context, form)
+
+    @app.post("/grafana/notifications")
+    async def grafana_notifications(request: Request) -> Response:
+        form = await _form(request, context)
+        if isinstance(form, Response):
+            return form
+        return _notifications_action(request, context, form)
 
     @app.post("/grafana/push")
     async def push_grafana(request: Request) -> Response:
@@ -612,8 +663,10 @@ def _grafana_view(
     message: str | None = None,
     error: str | None = None,
     draft: dict[str, str] | None = None,
+    token: str | None = None,
 ) -> dict[str, object]:
-    """What the Grafana page shows: the files, and the connection they are pushed through."""
+    """What the Grafana page shows: the files, the connection they are pushed through, and
+    whether notifications are recorded -- with the token, just after it is made."""
     units = context.document.units
     files = _grafana_files(context)
     kinds = (Kind.TEMPERATURE, Kind.PRESSURE, Kind.RAIN, Kind.SPEED)
@@ -627,7 +680,110 @@ def _grafana_view(
         "draft": draft,
         "message": message,
         "error": error,
+        "recording": context.document.notifications is not None,
+        "notifications_path": notifications.PATH,
+        "token": token,
     }
+
+
+#: The spans the notifications page offers, in days, and the one it opens with.
+NOTIFICATION_DAYS = (1, 7, 30, 365)
+DEFAULT_NOTIFICATION_DAYS = 7
+#: The most notifications the page lists at once.
+NOTIFICATION_LIMIT = 500
+
+
+async def _notifications_view(context: AdminContext, query: dict[str, str]) -> dict[str, object]:
+    """The notifications within the chosen span, newest first, and the choices to filter by."""
+    days = int(query["days"]) if query.get("days", "").isdigit() else DEFAULT_NOTIFICATION_DAYS
+    days = days if days in NOTIFICATION_DAYS else DEFAULT_NOTIFICATION_DAYS
+    view: dict[str, object] = {
+        "days": days,
+        "spans": NOTIFICATION_DAYS,
+        "rule": query.get("rule", ""),
+        "status": query.get("status", ""),
+        "recording": context.document.notifications is not None,
+        "items": [],
+        "rules": [],
+        "more": False,
+    }
+    reader = context.make_reader() if context.make_reader else None
+    if reader is None:
+        view["error"] = (
+            "The database cannot be read back, so recorded notifications cannot be shown."
+        )
+        return view
+    end = datetime.now(UTC)
+    try:
+        points = await reader.points(
+            None,
+            notifications.TABLE,
+            ["title", "message", "rooms", "alerts"],
+            start=end - timedelta(days=days),
+            end=end,
+        )
+    except ReadError as exc:
+        view["error"] = f"Could not read the notifications: {exc}"
+        return view
+    finally:
+        await reader.aclose()
+    view["rules"] = sorted({p.tags.get("rule", "") for p in points} - {""})
+    chosen = [
+        p
+        for p in reversed(points)
+        if (not view["rule"] or p.tags.get("rule") == view["rule"])
+        and (not view["status"] or p.tags.get("status") == view["status"])
+    ]
+    view["more"] = len(chosen) > NOTIFICATION_LIMIT
+    view["items"] = [_notification(context, p) for p in chosen[:NOTIFICATION_LIMIT]]
+    return view
+
+
+def _notification(context: AdminContext, point: Any) -> dict[str, object]:
+    """One notification as the page lists it, its time in its station's time zone."""
+    station = point.tags.get("station", "")
+    entry = context.document.station(station) if station else None
+    zone = ZoneInfo(entry.timezone) if entry and entry.timezone else UTC
+    message = str(point.values.get("message", ""))
+    return {
+        "time": f"{point.time.astimezone(zone):%-d %b %Y %H:%M}",
+        "zone": str(zone),
+        "status": point.tags.get("status", ""),
+        "rule": point.tags.get("rule", ""),
+        "station": station,
+        "receiver": point.tags.get("receiver", ""),
+        "rooms": point.values.get("rooms", ""),
+        "title": point.values.get("title", ""),
+        "lines": [line for line in message.split(notifications.LINE_BREAK) if line],
+    }
+
+
+def _notifications_action(
+    request: Request, context: AdminContext, form: dict[str, str]
+) -> Response:
+    """Make a new token for recording notifications, or stop recording them.
+
+    A new token replaces the old one, and is shown once: only its hash is saved.
+    """
+    if context.store is None:
+        return _grafana_error(request, context, "This process has no configuration file to change.")
+    if form.get("action") == "stop":
+        return _save(
+            request,
+            context,
+            context.document.model_copy(update={"notifications": None}),
+            "Stopped recording notifications.",
+            page="/grafana",
+        )
+    token = notifications.new_token()
+    entry = NotificationsEntry(token_hash=notifications.token_hash(token))
+    try:
+        context.store.replace(context.document.model_copy(update={"notifications": entry}))
+    except OSError as exc:
+        logger.exception("could not save the configuration")
+        return _grafana_error(request, context, f"Could not save the configuration: {exc.strerror}")
+    logger.info("configuration changed: made a new token for recording notifications")
+    return _render(request, context, "grafana.html", _grafana_view(context, token=token))
 
 
 async def _grafana_connection_action(

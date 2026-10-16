@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Notifications · Ecowitt Server{% endblock %}
+{% block head %}
+<style>
+  .filters { display: flex; gap: .75rem; flex-wrap: wrap; align-items: end; }
+  .filters label { display: block; font-size: .85rem; color: var(--muted); }
+  .sent { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: .6rem; }
+  .sent li { border: 1px solid var(--line); border-radius: .4rem; padding: .6rem .8rem; }
+  .sent .meta { font-size: .85rem; color: var(--muted); display: flex; gap: .75rem; flex-wrap: wrap; }
+  .sent .resolved .title { color: var(--good, inherit); }
+  .sent .title { font-weight: 600; margin: .2rem 0; }
+  .sent p { margin: .1rem 0; }
+</style>
+{% endblock %}
+{% block content %}
+<section>
+  <h2>Notifications</h2>
+  {% if not recording %}
+    <p class="muted">Grafana's notifications are recorded once a webhook posts them here: start
+      recording on the <a href="/grafana">Grafana page</a>.</p>
+  {% endif %}
+  <form method="get" action="/notifications" class="filters">
+    <div><label for="days">Within</label>
+      <select id="days" name="days">
+        {% for span in spans %}<option value="{{ span }}" {% if span == days %}selected{% endif %}>{{ 'the last day' if span == 1 else 'the last ' ~ span ~ ' days' }}</option>{% endfor %}
+      </select></div>
+    <div><label for="rule">Rule</label>
+      <select id="rule" name="rule">
+        <option value="">Every rule</option>
+        {% for r in rules %}<option value="{{ r }}" {% if r == rule %}selected{% endif %}>{{ r }}</option>{% endfor %}
+      </select></div>
+    <div><label for="status">Kind</label>
+      <select id="status" name="status">
+        <option value="">Sent and resolved</option>
+        <option value="firing" {% if status == 'firing' %}selected{% endif %}>Sent</option>
+        <option value="resolved" {% if status == 'resolved' %}selected{% endif %}>Resolved</option>
+      </select></div>
+    <button type="submit">Show</button>
+  </form>
+  {% if items %}
+    <ul class="sent">
+    {% for n in items %}
+      <li class="{{ n.status }}">
+        <div class="meta">
+          <span>{{ n.time }} <span title="{{ n.zone }}">({{ n.zone }})</span></span>
+          <span>{{ 'Resolved' if n.status == 'resolved' else 'Sent' }}</span>
+          {% if n.rule %}<span>{{ n.rule }}</span>{% endif %}
+          {% if n.station %}<span>{{ n.station }}</span>{% endif %}
+          {% if n.receiver %}<span>to {{ n.receiver }}</span>{% endif %}
+        </div>
+        {% if n.title %}<div class="title">{{ n.title }}</div>{% endif %}
+        {% for line in n.lines %}<p>{{ line }}</p>{% endfor %}
+      </li>
+    {% endfor %}
+    </ul>
+    {% if more %}<p class="muted">Only the newest {{ items|length }} are listed; choose a shorter span or a rule to see the rest.</p>{% endif %}
+  {% elif not error %}
+    <p class="muted">No notifications {{ 'in the last day' if days == 1 else 'in the last ' ~ days ~ ' days' }}{% if rule or status %} that match{% endif %}.</p>
+  {% endif %}
+</section>
+{% endblock %}

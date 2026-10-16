@@ -13,6 +13,7 @@ import functools
 import re
 import urllib.parse
 
+from ecowitt.collector.admin import notifications
 from ecowitt.collector.ingest.pipeline import process
 from ecowitt.collector.ingest.staleness import StalenessTracker
 from ecowitt.core import weathermodel
@@ -105,6 +106,18 @@ def schema(units: Units = Units()) -> dict[str, set[str]]:  # noqa: B008 -- froz
             "lead",
             *(field_name(base, kind, units) for base, kind in variables.values()),
         }
+    # Written by the admin listener from the notifications Grafana posts.
+    sample = {
+        "receiver": "r",
+        "status": "firing",
+        "title": "t",
+        "message": "m",
+        "alerts": [{"labels": {"room": "x"}}],
+        "groupLabels": {"alertname": "a"},
+        "commonLabels": {"station": "s"},
+    }
+    notified = notifications.row(sample, 0)
+    tables[notifications.TABLE] = {"time", *(tag for tag, _ in notified.tags), *notified.fields}
     return tables
 
 

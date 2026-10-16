@@ -226,7 +226,7 @@ exposed on its own listener:
 | Listener | Default publish | Serves |
 |---|---|---|
 | ingest | `0.0.0.0:2551` | the configured path, and nothing else |
-| admin | `127.0.0.1:2552` | status, setup and Grafana pages, read API, health |
+| admin | `127.0.0.1:2552` | status, setup, Grafana and notifications pages, read API, health, and the route Grafana records notifications through |
 
 The admin routes are not merely *refused* on the ingest listener — they are not mounted on it,
 so no mistake in a guard can expose them. Ask the ingest port for the status page and it
@@ -283,6 +283,7 @@ tables) and `name` (its display name).
 | `station` | the console's model, firmware, uptime, upload interval and clock skew |
 | `model` | per located station, a weather model's values every 15 minutes, tagged `source` and `model`; see [Weather model](#weather-model). Precipitation (`precip_15m_mm`) is the 15 minutes ending at the row's time |
 | `forecast`, `forecast_daily` | per station storing its weather model's [forecast](#forecast), its forecast for the next 7 days, hour by hour and by local day, fetched hourly. Each row's time is the hour or day forecast; its `lead` tag says how many hours (or days) ahead it was made, so the newest forecast for a time has the smallest lead, and forecasts made at each distance ahead are kept |
+| `notification` | each notification Grafana sent through a contact point that [records them](#recording-notifications): its contact point (`receiver`), `rule`, `status` (`firing` or `resolved`) and `station` as tags, and its `title`, `message` (lines joined by ` / `), `rooms` and the number of `alerts` it covered |
 | `station_info` | each station's settings: coordinates, altitude, time zone, stored units, sensor names and the weather model it uses. Written at startup and when the configuration changes them, never otherwise; read the newest row as a whole |
 | `soil`, `soil_ec`, `pm`, `air`, `lightning`, `leak`, `probe`, `leaf`, `depth` | only when those sensors report |
 | `unmapped` | any field this server does not recognise, under its original name |
@@ -414,6 +415,27 @@ Grafana's open-source edition lets a service account load alert rules only with 
 role: in Grafana, *Administration → Users and access → Service accounts*, add one with that role
 and a token for it. The token is kept in `config.yaml` beside the database's and never shown
 again.
+
+### Recording notifications
+
+The Grafana page can also record every notification Grafana sends. *Start recording* makes a
+token, shown once (only its hash is kept in `config.yaml`); then add a second **Webhook**
+integration to each contact point whose notifications to record, beside the one that delivers
+them:
+
+- *URL*: the admin listener as Grafana reaches it, then `/api/notifications` -- for a Grafana in
+  the same Docker network, `http://ecowitt:2552/api/notifications`;
+- *Authorization header*: scheme `Bearer`, with the token as its credentials;
+- *Title* and *Message*: the templates the delivering integration uses, so the record reads like
+  the message sent.
+
+The integration receives the same notifications as the one beside it, at the same times, so the
+record is what was sent. Each becomes a row of the `notification` table, listed newest first on
+the admin listener's *Notifications* page (filtered by span, rule and whether it was sent or
+resolved, in each station's time zone) and on the Grafana dashboard. The route answers only a
+request carrying the token: it skips the admin listener's host check and login, which a Grafana
+posting from another container could not pass. *Make a new token* replaces the token at once;
+*Stop recording* forgets it.
 
 ## Public dashboard
 

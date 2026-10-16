@@ -1,0 +1,28 @@
+info:
+  name: Error - notification without a token
+  type: http
+  seq: 9
+
+http:
+  method: POST
+  url: "{{admin_url}}/api/notifications"
+  body:
+    type: json
+    data: '{"receiver": "test", "status": "firing", "alerts": []}'
+  auth:
+    type: none
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "401"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: Grafana's webhook records a notification with the token the Grafana page makes; without one the route refuses, whatever the admin login.

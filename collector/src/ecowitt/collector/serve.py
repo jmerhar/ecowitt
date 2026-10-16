@@ -252,6 +252,8 @@ async def run(settings: Settings | None = None, handler: ReportHandler | None = 
             http=lookup_client,
             model=model,
             recompute=recompute,
+            sink=delivery,
+            make_reader=lambda: _reader(store),
         )
         store.subscribe(lambda _: model.wake())
         calibration.on_step = model.wake

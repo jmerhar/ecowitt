@@ -440,6 +440,27 @@ async def test_points_are_each_row_as_stored_oldest_first(
     assert '("temp_c" IS NOT NULL OR "humidity_pct" IS NOT NULL) ORDER BY time' in query["q"]
 
 
+async def test_points_of_every_station_carry_the_station_tag(
+    reader: Influx3Store, db: Database
+) -> None:
+    """Without a station, rows of every station and of none come back, each with its own."""
+    db.rows = [
+        {"time": "2026-10-10T00:00:00", "station": "home", "sensor": "outdoor", "value_0": 12.5},
+        {"time": "2026-10-10T00:01:00", "sensor": "outdoor", "value_0": 13.0},
+    ]
+
+    points = await reader.points(None, "outdoor", ["temp_c"], start=START, end=END)
+
+    assert [p.tags for p in points] == [
+        {"station": "home", "sensor": "outdoor"},
+        {"sensor": "outdoor"},
+    ]
+    query = db.queries[-1]
+    assert "station = $station" not in query["q"]
+    assert query["q"].startswith("SELECT time, station, sensor")
+    assert not query.get("params")
+
+
 async def test_points_of_fields_a_table_lacks_ask_nothing(
     reader: Influx3Store, db: Database
 ) -> None:

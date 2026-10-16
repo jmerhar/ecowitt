@@ -161,6 +161,14 @@ class GrafanaEntry(BaseModel):
         return self
 
 
+class NotificationsEntry(BaseModel):
+    """The token Grafana's webhook records notifications with. Only its hash is kept."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    token_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
 class ConfigDocument(BaseModel):
     """The whole file. Unknown keys are refused, so a misspelt one is not silently ignored."""
 
@@ -171,6 +179,7 @@ class ConfigDocument(BaseModel):
     stations: list[StationEntry] = Field(default_factory=list)
     admin: AdminLogin | None = None
     grafana: GrafanaEntry | None = None
+    notifications: NotificationsEntry | None = None
 
     @model_validator(mode="after")
     def _unique(self) -> Self:

@@ -6,6 +6,21 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 data in a way that needs acting on. Any release can also ask for the Grafana dashboard or alert
 rules to be imported again. Either is listed under *Upgrading*.
 
+## Unreleased
+
+### Added
+
+- The collector records the notifications Grafana sends: a second webhook beside a contact
+  point's own delivery posts each one, with a token the Grafana page makes, into a
+  `notification` table. A *Notifications* page on the admin listener lists them, filtered by
+  span, rule and whether they were sent or resolved, and the Grafana dashboard has a panel of
+  them.
+
+### Upgrading
+
+- Import the Grafana dashboard again for its notifications panel. To record notifications, start recording on the Grafana page and add the webhook
+  it describes to each contact point.
+
 ## 3.1.0 — 2026-10-17
 
 ### Added

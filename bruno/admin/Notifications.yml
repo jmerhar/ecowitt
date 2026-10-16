@@ -1,0 +1,27 @@
+info:
+  name: Notifications
+  type: http
+  seq: 8
+
+http:
+  method: GET
+  url: "{{admin_url}}/notifications?days=7"
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.headers["content-type"]
+      operator: contains
+      value: text/html
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: The notifications Grafana sent and a webhook recorded here, newest first; days, rule and status filter them.

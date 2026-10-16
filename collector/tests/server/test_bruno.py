@@ -43,16 +43,15 @@ def served(route: str, paths: set[str]) -> set[str]:
 def test_every_read_route_has_a_request_and_every_request_a_route(
     admin_client: TestClient,
 ) -> None:
-    routes = {
-        r.path
-        for r in admin_client.app.routes  # type: ignore[attr-defined]
-        if isinstance(r, APIRoute) and "GET" in r.methods
-    }
+    every = [r for r in admin_client.app.routes if isinstance(r, APIRoute)]  # type: ignore[attr-defined]
+    reads = {r.path for r in every if "GET" in r.methods}
     paths = requests()
 
-    assert {r for r in routes - set(LEFT_OUT) if not served(r, paths)} == set(), (
+    assert {r for r in reads - set(LEFT_OUT) if not served(r, paths)} == set(), (
         "add a request for each of these to bruno/admin"
     )
+    # A request may also show a route that is not a read refusing what it should.
+    routes = {r.path for r in every}
     assert {p for p in paths if not any(served(r, {p}) for r in routes)} == set(), (
         "requests for routes that are gone"
     )

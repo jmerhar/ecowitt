@@ -129,7 +129,7 @@ class MemoryReader:
 
     async def points(
         self,
-        station: str,
+        station: str | None,
         table: str,
         fields: Collection[str],
         *,
@@ -141,7 +141,9 @@ class MemoryReader:
         found = []
         for row in sorted(self.rows, key=lambda r: r.timestamp):
             tags = dict(row.tags)
-            if row.table != table or tags.pop("station", None) != station:
+            if row.table != table:
+                continue
+            if station is not None and tags.pop("station", None) != station:
                 continue
             if not start <= _at(row.timestamp) <= end:
                 continue

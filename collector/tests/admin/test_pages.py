@@ -159,6 +159,7 @@ class TestCrossSiteForms:
             ("/setup/recompute", {"station": "Home"}),
             ("/grafana/connection", {"url": "http://evil.example", "token": "t"}),
             ("/grafana/push", {}),
+            ("/grafana/notifications", {"action": "token"}),
         ],
     )
     def test_no_form_from_elsewhere_changes_anything(

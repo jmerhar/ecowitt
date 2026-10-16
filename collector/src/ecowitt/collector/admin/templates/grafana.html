@@ -65,6 +65,46 @@
 </section>
 
 <section>
+  <h2>Record notifications</h2>
+  <p>Grafana can post each notification it sends here too, kept in the <code>notification</code>
+    table and listed on the dashboard: add a second <strong>Webhook</strong> integration to each
+    contact point whose notifications to record, beside the one that delivers them, so it receives
+    the same notifications at the same times.</p>
+  {% if token %}
+    <p><strong>The new token, shown this once:</strong></p>
+    <pre class="command" id="notifications-token">{{ token }}</pre>
+    <div class="copy">
+      <button type="button" class="secondary" data-copy="notifications-token" data-status="token-status">Copy</button>
+      <span id="token-status" class="muted" role="status"></span>
+    </div>
+  {% endif %}
+  {% if recording or token %}
+    <p>In the webhook integration's settings:</p>
+    <ul>
+      <li><em>URL</em>: this listener's address as Grafana reaches it, then
+        <code>{{ notifications_path }}</code> -- for a Grafana in the same Docker network,
+        <code>http://ecowitt:2552{{ notifications_path }}</code>.</li>
+      <li><em>Authorization header</em>: scheme <code>Bearer</code>, and the token as its
+        credentials.</li>
+      <li><em>Title</em> and <em>Message</em>: the templates the delivering integration uses, so
+        the record reads like the message sent.</li>
+    </ul>
+    <form method="post" action="/grafana/notifications" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="secondary" type="submit" name="action" value="token">Make a new token</button>
+      <button class="danger" type="submit" name="action" value="stop">Stop recording</button>
+    </form>
+    <p class="muted">A new token replaces the old one at once; only a hash of it is kept, so a lost
+      one cannot be shown again.</p>
+  {% else %}
+    <form method="post" action="/grafana/notifications" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit" name="action" value="token">Start recording</button>
+    </form>
+  {% endif %}
+</section>
+
+<section>
   <h2>Dashboard</h2>
   <p>In Grafana, <em>Dashboards → New → Import</em>: paste this, or upload the file, and choose the
     InfluxDB data source that reads this server's database (with query language SQL).</p>

@@ -153,7 +153,7 @@ class Reader(Protocol):
 
     async def points(
         self,
-        station: str,
+        station: str | None,
         table: str,
         fields: Collection[str],
         *,
@@ -161,7 +161,9 @@ class Reader(Protocol):
         end: datetime,
     ) -> list[Point]:
         """Every row between `start` and `end` (inclusive), oldest first, as stored: for work
-        over the rows themselves, such as recomputing what is derived from them."""
+        over the rows themselves, such as recomputing what is derived from them. With `station`
+        None, every station's rows and those of none, each with its `station` tag where it has
+        one."""
 
     async def aclose(self) -> None:
         """Release connections."""

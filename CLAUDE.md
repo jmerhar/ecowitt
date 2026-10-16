@@ -57,7 +57,8 @@ collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init_
     staleness.py  how long each sensor's values have gone unchanged
 
   admin/          the admin listener
-    app.py        status, setup and Grafana pages, the read API, the login and form checks
+    app.py        status, setup, Grafana and notifications pages, the read API, the login and
+                  form checks, and the route Grafana's webhook records notifications through
     templates/    the pages, Jinja2 with autoescaping
     static/       scripts the pages load, as files so they can be tested (geolocate.js,
                   clipboard.js)
@@ -76,6 +77,7 @@ collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init_
                   with how far ahead (`lead`) each row was made
     timezones.py  a station's time zone from its coordinates (offline, tzfpy), and validation
     grafana.py    the Grafana page's files, and pushing them over Grafana's API
+    notifications.py  a Grafana notification as a `notification` row, and the webhook's token
 
   grafana/        the Grafana dashboard and alert rules as templates, every unit-dependent spot
                   a %{...} placeholder; render.py writes them for the stored units
@@ -192,6 +194,10 @@ CHANGELOG.md      every release's notes; new work goes under `## Unreleased`
   tell whether that publish is safe: in a container both listeners must bind every interface,
   since a loopback bind there is unreachable even through a published port. So
   `warn_if_admin_unauthenticated` keys on whether a login is set, the one thing it can see.
+- **`/api/notifications` is the one admin route outside the login and host check.** Grafana
+  posts to it from another container, under its own host name and without the Basic login, so
+  the webhook's bearer token (only its hash kept, failures rate-limited) is its whole gate; it is
+  not a form and does not use `_form`. `test_the_token_is_the_whole_gate` pins both sides.
 - **Every POST on the admin listener goes through `admin._form`**, which checks the CSRF token
   and that Origin (or Referer) names this host. Browsers attach a Basic login to every request
   automatically, so without both any site the operator visits could post forms here. A new

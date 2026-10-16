@@ -224,7 +224,7 @@ class Influx3Store(InfluxStore):
 
     async def points(
         self,
-        station: str,
+        station: str | None,
         table: str,
         fields: Collection[str],
         *,
@@ -236,17 +236,18 @@ class Influx3Store(InfluxStore):
         present = _present(fields, info.columns)
         if not present:
             return []
-        tags = [t for t in info.tags if t != "station"]
+        tags = [t for t in info.tags if t != "station" or station is None]
         columns = ", ".join(
             ["time", *tags, *(f'"{name}" AS value_{i}' for i, name in enumerate(present))]
         )
         any_field = " OR ".join(f'"{name}" IS NOT NULL' for name in present)
+        scope = "" if station is None else "station = $station AND "
         sql = (
-            f'SELECT {columns} FROM "{table}" WHERE station = $station '
-            f"AND time >= {_timestamp(start)} AND time <= {_timestamp(end)} "
+            f'SELECT {columns} FROM "{table}" WHERE {scope}'
+            f"time >= {_timestamp(start)} AND time <= {_timestamp(end)} "
             f"AND ({any_field}) ORDER BY time"
         )
-        rows = await self._rows(sql, {"station": station})
+        rows = await self._rows(sql, {} if station is None else {"station": station})
         return [
             Point(
                 time=_time(row["time"]),
