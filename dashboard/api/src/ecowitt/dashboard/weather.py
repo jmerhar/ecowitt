@@ -7,7 +7,6 @@ published tables rather than against this code.
 from __future__ import annotations
 
 import math
-import statistics
 from bisect import bisect_right
 from enum import Enum
 
@@ -184,9 +183,11 @@ def airing(humidity_pct: float, dewpoint_delta_c: float, after_pct: float | None
     return Airing.NO_NEED
 
 
-def house_airing(rooms: list[tuple[float, float, float | None]]) -> Airing:
+def house_airing(
+    rooms: list[tuple[float, float, float | None]], humidity_pct: float, after_pct: float | None
+) -> Airing:
     """Advice for the whole house, from each room's humidity, dew-point difference and humidity
-    once aired.
+    once aired, and the median room's humidity now and once aired.
 
     Air when any room would be dried by it. Keep the windows closed only when airing would leave
     the median room damp and damper than it is: when it would merely not help, or dampen dry
@@ -194,8 +195,7 @@ def house_airing(rooms: list[tuple[float, float, float | None]]) -> Airing:
     """
     if any(airing(*room) is Airing.OPEN for room in rooms):
         return Airing.OPEN
-    afters = [after for _, _, after in rooms if after is not None]
-    if afters and _dampens(statistics.median(h for h, _, _ in rooms), statistics.median(afters)):
+    if _dampens(humidity_pct, after_pct):
         return Airing.KEEP_CLOSED
     return Airing.NO_NEED
 

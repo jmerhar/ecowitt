@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
-import statistics
 import zoneinfo
 from collections.abc import Awaitable, Callable, Collection, Iterable, Mapping
 from dataclasses import dataclass, field
@@ -106,6 +105,8 @@ class _Latest:
     solar: Span | None = None
     rooms: list[Span] = field(default_factory=list)
     ventilation: list[Span] = field(default_factory=list)
+    #: The house's median room against the outdoor air, as the collector stores it.
+    house: Span | None = None
     battery: list[Span] = field(default_factory=list)
     temperature_today: Extremes | None = None
     wind_today: Extremes | None = None
@@ -281,7 +282,7 @@ class Dashboard:
         answer.pressure = _pressure(latest, values, stored, language)
         answer.sun = _sun(latest, values, stored, info, zone)
         air = _room_air(latest, values, stored, info, language)
-        answer.airing = _house(air, values)
+        answer.airing = _house(latest, air, values, stored)
         answer.rooms = _rooms(latest, values, stored, info, air, language)
         answer.sensors = _health(latest, info, language)
         answer.notices = _notices(latest, values, stored, answer, language)
@@ -459,7 +460,7 @@ class Dashboard:
         rate = f("rate", Kind.RAIN_RATE)
         rain_fields += [f(b, R) for b in ("monthly", "yearly")] + [rate]
         (
-            outdoor, derived, wind, rain, pressure, solar, indoor, channel, ventilation,
+            outdoor, derived, wind, rain, pressure, solar, indoor, channel, ventilation, house,
             battery, temperature_today, wind_today, sky, recent_wind, recent_rain,
             wind_10m, wind_10m_today, recent_wind_10m,
         ) = await asyncio.gather(
@@ -472,6 +473,7 @@ class Dashboard:
             span("indoor", f("temp", T), f("humidity", H)),
             span("channel", f("temp", T), f("humidity", H)),
             span("ventilation", f("dewpoint_delta", D), f("predicted_humidity", H)),
+            span("house", f("humidity", H), f("predicted_humidity", H), f("dewpoint_delta", D)),
             span("battery", "low"),
             self.reader.extremes(
                 station, "outdoor", [f("temp", T)], start=midnight, end=now, sensors=["outdoor"]
@@ -494,6 +496,7 @@ class Dashboard:
             solar=_first(solar),
             rooms=[s for s in indoor + channel if s.sensor and ROOM_SENSOR.fullmatch(s.sensor)],
             ventilation=ventilation,
+            house=_first(house),
             battery=battery,
             temperature_today=_first(temperature_today),
             wind_today=_first(wind_today),
@@ -801,13 +804,20 @@ def _room_air(
     return found
 
 
-def _house(air: list[_RoomAir], values: _Values) -> models.HouseAiring | None:
-    """The whole house's airing advice, from its rooms'."""
-    if not air:
+def _house(
+    latest: _Latest, air: list[_RoomAir], values: _Values, stored: Units
+) -> models.HouseAiring | None:
+    """The whole house's airing advice, from the collector's medians and each room's advice."""
+    if latest.house is None:
         return None
-    advice = weather.house_airing([(r.humidity, r.delta, r.after) for r in air])
-    afters = [r.after for r in air if r.after is not None]
-    H = Kind.HUMIDITY
+    H, D = Kind.HUMIDITY, Kind.TEMPERATURE_DELTA
+    row = latest.house.last
+    humidity = values.metric(H, row.get(field_name("humidity", H, stored)))
+    delta = values.metric(D, row.get(field_name("dewpoint_delta", D, stored)))
+    if humidity is None or delta is None:
+        return None
+    after = values.metric(H, row.get(field_name("predicted_humidity", H, stored)))
+    advice = weather.house_airing([(r.humidity, r.delta, r.after) for r in air], humidity, after)
     return models.HouseAiring(
         advice=advice.value,
         rooms=[
@@ -815,11 +825,9 @@ def _house(air: list[_RoomAir], values: _Values) -> models.HouseAiring | None:
             for r in air
             if weather.airing(r.humidity, r.delta, r.after) is weather.Airing.OPEN
         ],
-        humidity=values.from_metric(H, statistics.median(r.humidity for r in air)),
-        humidity_after=values.from_metric(H, statistics.median(afters)) if afters else None,
-        dew_point_difference=values.from_metric(
-            Kind.TEMPERATURE_DELTA, statistics.median(r.delta for r in air)
-        ),
+        humidity=values.from_metric(H, humidity),
+        humidity_after=None if after is None else values.from_metric(H, after),
+        dew_point_difference=values.from_metric(D, delta),
     )
 
 

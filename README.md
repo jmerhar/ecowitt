@@ -278,7 +278,7 @@ tables) and `name` (its display name).
 | `wind_10m` | the wind estimated at the standard 10 m (see [Wind at 10 m](#wind-at-10-m)): speed, gust, 10-minute average speed and the day's strongest gust, and `source`, `sensor` or `model` |
 | `derived` | per sensor: dew point, absolute humidity, mixing ratio, vapour pressure deficit, and how long its values have been unchanged |
 | `ventilation` | per indoor sensor: dew-point and temperature difference from outdoors, dew-point difference from the rooms' median (with three rooms or more), and the humidity the room would settle at after airing |
-| `house` | per station with an outdoor sensor and three rooms or more: the rooms' median humidity, how far apart their dew points are (`dewpoint_spread`), their median dew point and temperature against outdoors, and `aired`, true while the rooms share the outdoor air (see [Airing the house](#airing-the-house)) |
+| `house` | per station with an outdoor sensor and a room: the rooms' median humidity now and after airing, and their median dew point and temperature against outdoors, which the dashboard's airing advice reads; with three rooms or more, also how far apart their dew points are (`dewpoint_spread`) and `aired`, true while the rooms share the outdoor air (see [Airing the house](#airing-the-house)). The rooms are the indoor sensor and the channels |
 | `battery` | per sensor, in whichever form that sensor reports: a low flag, a voltage or a level |
 | `station` | the console's model, firmware, uptime, upload interval and clock skew |
 | `model` | per located station, a weather model's values every 15 minutes, tagged `source` and `model`; see [Weather model](#weather-model). Precipitation (`precip_15m_mm`) is the 15 minutes ending at the row's time |

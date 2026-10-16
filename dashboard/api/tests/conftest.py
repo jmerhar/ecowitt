@@ -105,6 +105,12 @@ def readings() -> list[Row]:
             **lounge,
         ),
         row("ventilation", LAST, {"dewpoint_delta_c": 2.9, "predicted_humidity_pct": 49.0}, **bath),
+        # The collector's medians of the two rooms.
+        row(
+            "house",
+            LAST,
+            {"humidity_pct": 65.0, "predicted_humidity_pct": 53.5, "dewpoint_delta_c": 1.15},
+        ),
         row("battery", LAST, {"low": True}, **bath),
         row("battery", LAST, {"low": False}, **lounge),
     ]

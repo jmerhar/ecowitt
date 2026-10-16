@@ -122,7 +122,8 @@ def test_ventilation_says_how_close_each_room_is_to_outdoors_and_to_the_house() 
 
 
 def test_too_few_rooms_have_no_house_to_compare_with() -> None:
-    """Two rooms can agree by chance, so neither the house nor a room's place in it is derived."""
+    """Two rooms can agree by chance: the house has its medians, but neither whether it is aired
+    nor a room's place in it is derived."""
     readings = [
         *climate("outdoor", 15.0, 80.0, "outdoor"),
         *climate("ch1", 21.0, 60.0),
@@ -130,10 +131,34 @@ def test_too_few_rooms_have_no_house_to_compare_with() -> None:
     ]
 
     derived = run(readings)
+    house_row = values(derived, "house", None)
 
     assert "house_dewpoint_delta" not in values(derived, "ventilation", "ch1")
     assert values(derived, "ventilation", "ch1")["temp_delta"] == pytest.approx(6.0)
-    assert not [r for r in derived if r.table == "house"]
+    assert house_row["humidity"] == pytest.approx(65.0)
+    assert house_row["temp_delta"] == pytest.approx(5.0)
+    assert "aired" not in house_row
+    assert "dewpoint_spread" not in house_row
+
+
+def test_the_air_quality_combo_is_compared_with_outdoors_but_is_not_a_room() -> None:
+    """It shares a room another sensor covers, so the house's medians leave it out; its own
+    ventilation row is measured against the rooms' median."""
+    readings = [
+        *climate("outdoor", 15.0, 80.0, "outdoor"),
+        *climate("ch1", 21.0, 60.0),
+        *climate("ch2", 19.0, 70.0),
+        *climate("ch3", 23.0, 50.0),
+        *climate("air", 30.0, 90.0, "air"),
+    ]
+    rooms = [psychro.dew_point(t, h) for t, h in [(21, 60), (19, 70), (23, 50)]]
+
+    derived = run(readings)
+
+    assert values(derived, "house", None)["rooms"] == 3.0
+    assert values(derived, "ventilation", "air")["house_dewpoint_delta"] == pytest.approx(
+        psychro.dew_point(30.0, 90.0) - sorted(rooms)[1]
+    )
 
 
 def at_dewpoint(sensor: str, temp: float, dewpoint: float) -> list[Reading]:
@@ -208,6 +233,9 @@ def test_the_house_is_its_rooms_alone() -> None:
         sorted(dewpoints)[1] - psychro.dew_point(10.0, 90.0)
     )
     assert got["temp_delta"] == pytest.approx(11.0)
+    outdoor_vapour = psychro.vapour_pressure(10.0, 90.0)
+    afters = sorted(psychro.humidity_at(outdoor_vapour, t) for t in (21.0, 20.0, 26.0))
+    assert got["predicted_humidity"] == pytest.approx(afters[1])
 
 
 def test_no_house_without_an_outdoor_sensor() -> None:

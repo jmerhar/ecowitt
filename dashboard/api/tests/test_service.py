@@ -424,11 +424,13 @@ async def test_the_house_is_told_which_rooms_to_air(board: Dashboard) -> None:
         65.0,
         54.0,
         1.1,
-    ), "medians of 55 and 75, 58 and 49, -0.6 and 2.9, rounded as shown"
+    ), "the stored medians, rounded as shown"
 
 
 async def test_humid_outside_air_keeps_the_windows_closed(reader: MemoryReader) -> None:
-    reader.rows = [r for r in reader.rows if r.table != "ventilation"]
+    reader.rows = [r for r in reader.rows if r.table not in {"ventilation", "house"}]
+    house = {"humidity_pct": 65.0, "predicted_humidity_pct": 72.0, "dewpoint_delta_c": -0.75}
+    reader.rows.append(row("house", LAST, house))
     for sensor, delta, after in (("indoor", -2.0, 70.0), ("ch1", 0.5, 74.0)):
         reader.rows.append(
             row(
@@ -449,15 +451,32 @@ async def test_humid_outside_air_keeps_the_windows_closed(reader: MemoryReader) 
 
 
 async def test_no_outdoor_comparison_means_no_house_advice(reader: MemoryReader) -> None:
-    reader.rows = [r for r in reader.rows if r.table != "ventilation"]
+    reader.rows = [r for r in reader.rows if r.table not in {"ventilation", "house"}]
     now = await Dashboard(reader, clock=lambda: NOW).now("example")
     assert now.airing is None
     assert all(room.airing is None for room in now.rooms)
 
 
+async def test_the_house_is_judged_by_the_stored_medians(reader: MemoryReader) -> None:
+    """The collector's row decides the house's advice, with no room of its own to air."""
+    reader.rows = [r for r in reader.rows if r.table not in {"ventilation", "house"}]
+    house = {"humidity_pct": 66.0, "predicted_humidity_pct": 74.0, "dewpoint_delta_c": -1.0}
+    reader.rows.append(row("house", LAST, house))
+    now = await Dashboard(reader, clock=lambda: NOW).now("example")
+    assert now.airing is not None
+    assert (now.airing.advice, now.airing.rooms, now.airing.humidity) == ("keep_closed", [], 66.0)
+
+
+async def test_a_house_without_a_dew_point_difference_has_no_advice(reader: MemoryReader) -> None:
+    reader.rows = [r for r in reader.rows if r.table != "house"]
+    reader.rows.append(row("house", LAST, {"humidity_pct": 65.0, "predicted_humidity_pct": 53.5}))
+    assert (await Dashboard(reader, clock=lambda: NOW).now("example")).airing is None
+
+
 async def test_a_room_without_a_prediction_still_counts(reader: MemoryReader) -> None:
-    reader.rows = [r for r in reader.rows if r.table != "ventilation"]
+    reader.rows = [r for r in reader.rows if r.table not in {"ventilation", "house"}]
     reader.rows.append(row("ventilation", LAST, {"dewpoint_delta_c": -1.0}, sensor="indoor"))
+    reader.rows.append(row("house", LAST, {"humidity_pct": 55.0, "dewpoint_delta_c": -1.0}))
     now = await Dashboard(reader, clock=lambda: NOW).now("example")
     assert now.airing is not None and now.airing.humidity_after is None
 
@@ -611,7 +630,7 @@ async def test_heat_is_judged_by_what_it_feels_like_and_air_by_its_humidity(
 
 
 async def test_a_calm_dry_day_has_no_weather_notices(reader: MemoryReader) -> None:
-    reader.rows = [r for r in reader.rows if r.table not in {"pressure", "ventilation"}]
+    reader.rows = [r for r in reader.rows if r.table not in {"pressure", "ventilation", "house"}]
     reader.rows.append(row("pressure", LAST, {"rel_hpa": 1012.0}))
     for i, r in enumerate(reader.rows):
         if r.table == "outdoor" and dict(r.tags).get("sensor") == "outdoor":
@@ -623,10 +642,11 @@ async def test_a_calm_dry_day_has_no_weather_notices(reader: MemoryReader) -> No
 
 
 async def test_closed_windows_are_a_warning(reader: MemoryReader) -> None:
-    reader.rows = [r for r in reader.rows if r.table != "ventilation"]
-    # Airing would take the lounge from 55% to 70%: damp, and damper.
+    reader.rows = [r for r in reader.rows if r.table not in {"ventilation", "house"}]
+    # Airing would take the house from 55% to 70%: damp, and damper.
     vent = {"dewpoint_delta_c": -2.0, "predicted_humidity_pct": 70.0}
     reader.rows.append(row("ventilation", LAST, vent, sensor="indoor"))
+    reader.rows.append(row("house", LAST, {"humidity_pct": 55.0, **vent}))
     notices = (await Dashboard(reader, clock=lambda: NOW).now("example")).notices
     assert notices["airing"].level == "warning"
 

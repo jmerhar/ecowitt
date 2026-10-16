@@ -10,9 +10,11 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ### Added
 
-- A `house` table says whether the house is being aired: `aired` is true while the rooms' dew
-  points have converged on each other and on the outdoor one, at close to the outdoor
-  temperature. It stores the measures that decide it and the rooms' median humidity.
+- A `house` table holds the rooms' median humidity now and after airing, and their median dew
+  point and temperature against outdoors, which the dashboard's airing advice reads. With three
+  rooms or more it also says whether the house is being aired: `aired` is true while the rooms'
+  dew points have converged on each other and on the outdoor one, at close to the outdoor
+  temperature. The rooms are the indoor sensor and the channels.
 - A *Close the open windows* alert, sent when the house reads as aired and the air coming in is
   getting damper: the outdoor dew point up 0.7 °C or more in an hour, or the rooms 4 points
   above their lowest in 2 hours, with the rooms at 65% or more. *Close the windows* cannot see
@@ -36,8 +38,9 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ### Upgrading
 
-- Import the Grafana alert rules again for *Close the open windows*. Its history starts when the
-  collector is upgraded: it reads the `house` table, which older versions do not write.
+- Import the Grafana alert rules again for *Close the open windows*. It reads the `house` table,
+  which older collectors do not write, and the dashboard's airing advice reads it too: upgrade
+  the collector with the dashboard.
 
 ## 3.0.0 — 2026-10-15
 

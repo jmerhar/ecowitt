@@ -164,20 +164,26 @@ def test_the_thresholds_match_the_alert_rules() -> None:
 
 
 @pytest.mark.parametrize(
-    ("rooms", "advice"),
+    ("rooms", "humidity", "after", "advice"),
     [
-        ([(70, 3.0, 55), (50, -2.0, 62), (50, -2.0, 62)], Airing.OPEN),
+        # Any room airing would dry, whatever the median room would do.
+        ([(70, 3.0, 55), (50, -2.0, 62), (50, -2.0, 62)], 50, 62, Airing.OPEN),
         # The median room, 60%, would settle at 66%.
-        ([(58, -1.0, 64), (60, -1.0, 66), (64, -0.5, 70)], Airing.KEEP_CLOSED),
+        ([(58, -1.0, 64), (60, -1.0, 66), (64, -0.5, 70)], 60, 66, Airing.KEEP_CLOSED),
         # 60% to 59%: no help, and no harm.
-        ([(58, 0.2, 57), (60, 0.2, 59), (62, 0.3, 61)], Airing.NO_NEED),
-        ([(50, 1.0, 48), (55, 3.0, 45)], Airing.NO_NEED),
-        ([(60, -1.0, None)], Airing.NO_NEED),
-        ([], Airing.NO_NEED),
+        ([(58, 0.2, 57), (60, 0.2, 59), (62, 0.3, 61)], 60, 59, Airing.NO_NEED),
+        ([(50, 1.0, 48), (55, 3.0, 45)], 52.5, 46.5, Airing.NO_NEED),
+        ([(60, -1.0, None)], 60, None, Airing.NO_NEED),
+        ([], 60, 70, Airing.KEEP_CLOSED),
     ],
 )
-def test_house_airing(rooms: list[tuple[float, float, float | None]], advice: Airing) -> None:
-    assert weather.house_airing(rooms) is advice
+def test_house_airing(
+    rooms: list[tuple[float, float, float | None]],
+    humidity: float,
+    after: float | None,
+    advice: Airing,
+) -> None:
+    assert weather.house_airing(rooms, humidity, after) is advice
 
 
 @pytest.mark.parametrize(

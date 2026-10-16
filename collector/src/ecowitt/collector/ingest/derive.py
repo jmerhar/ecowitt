@@ -55,8 +55,10 @@ def derive(
 
     outdoor = climate.get("outdoor")
     if outdoor is not None:
-        rooms = {sensor: values for sensor, values in climate.items() if sensor != "outdoor"}
-        derived += _ventilation(rooms, outdoor)
+        indoors = {sensor: values for sensor, values in climate.items() if sensor != "outdoor"}
+        in_rooms = {r.sensor for r in readings if r.table in ROOM_TABLES}
+        rooms = {sensor: values for sensor, values in indoors.items() if sensor in in_rooms}
+        derived += _ventilation(indoors, outdoor, _house_dewpoint(rooms))
         derived += _house(rooms, outdoor)
 
     if preferences.altitude_m is not None and "abs" in pressure:
@@ -155,6 +157,9 @@ def _moisture(
     return [_per_sensor("derived", sensor, field, kind, value) for field, kind, value in values]
 
 
+#: The tables whose sensors are the house's rooms, as the dashboard and Grafana count them. The
+#: air quality combo also reads humidity, but shares a room another sensor already covers.
+ROOM_TABLES = frozenset({"indoor", "channel"})
 #: The fewest rooms whose agreement says anything about the house: two can agree by chance.
 HOUSE_MIN_ROOMS = 3
 #: The house reads as aired when its rooms' dew points lie within this many °C of each other...
@@ -165,8 +170,15 @@ AIRED_DEWPOINT_C = 0.7
 AIRED_TEMP_C = 2.5
 
 
+def _house_dewpoint(rooms: dict[str, tuple[float, float]]) -> float | None:
+    """The rooms' median dew point, when there are enough rooms for it to describe the house."""
+    if len(rooms) < HOUSE_MIN_ROOMS:
+        return None
+    return statistics.median(psychro.dew_point(t, h) for t, h in rooms.values())
+
+
 def _ventilation(
-    rooms: dict[str, tuple[float, float]], outdoor: tuple[float, float]
+    sensors: dict[str, tuple[float, float]], outdoor: tuple[float, float], house: float | None
 ) -> list[Reading]:
     """What exchanging each room's air for the outdoor air would do, and how close it is now.
 
@@ -180,11 +192,10 @@ def _ventilation(
     outdoor_temp, outdoor_humidity = outdoor
     outdoor_dewpoint = psychro.dew_point(outdoor_temp, outdoor_humidity)
     outdoor_vapour = psychro.vapour_pressure(outdoor_temp, outdoor_humidity)
-    dewpoints = {sensor: psychro.dew_point(t, h) for sensor, (t, h) in rooms.items()}
-    house = statistics.median(dewpoints.values()) if len(rooms) >= HOUSE_MIN_ROOMS else None
+    dewpoints = {sensor: psychro.dew_point(t, h) for sensor, (t, h) in sensors.items()}
 
     readings = []
-    for sensor, (temp, _) in rooms.items():
+    for sensor, (temp, _) in sensors.items():
         values = [
             ("dewpoint_delta", Kind.TEMPERATURE_DELTA, dewpoints[sensor] - outdoor_dewpoint),
             ("predicted_humidity", Kind.HUMIDITY, psychro.humidity_at(outdoor_vapour, temp)),
@@ -199,7 +210,11 @@ def _ventilation(
 
 
 def _house(rooms: dict[str, tuple[float, float]], outdoor: tuple[float, float]) -> list[Reading]:
-    """Whether the house as a whole is being aired, and the measures that decide it.
+    """The house's median room against the outdoor air, and whether the house is being aired.
+
+    The medians -- humidity now and after airing, dew point and temperature against outdoors --
+    are what the dashboard and the alert rules judge the house by. Whether it is aired, and the
+    spread that decides it, need HOUSE_MIN_ROOMS rooms.
 
     A closed house keeps a moisture level per room -- a bathroom after a shower, a bedroom
     overnight -- and, with people living in it, sits above the outdoor dew point. Air flowing
@@ -209,27 +224,38 @@ def _house(rooms: dict[str, tuple[float, float]], outdoor: tuple[float, float]) 
     aired behind a closed door leaves the others as they were, so it does not count here; its
     own `ventilation` row shows it.
     """
-    if len(rooms) < HOUSE_MIN_ROOMS:
+    if not rooms:
         return []
+    outdoor_vapour = psychro.vapour_pressure(*outdoor)
     dewpoints = [psychro.dew_point(t, h) for t, h in rooms.values()]
-    spread = max(dewpoints) - min(dewpoints)
     dewpoint_delta = statistics.median(dewpoints) - psychro.dew_point(*outdoor)
     temp_delta = statistics.median(t for t, _ in rooms.values()) - outdoor[0]
-    aired = (
-        spread <= AIRED_SPREAD_C
-        and abs(dewpoint_delta) <= AIRED_DEWPOINT_C
-        and abs(temp_delta) <= AIRED_TEMP_C
-    )
-    return [
+    readings = [
         Reading("house", "rooms", Kind.COUNT, float(len(rooms))),
         Reading(
             "house", "humidity", Kind.HUMIDITY, statistics.median(h for _, h in rooms.values())
         ),
-        Reading("house", "dewpoint_spread", Kind.TEMPERATURE_DELTA, spread),
+        Reading(
+            "house",
+            "predicted_humidity",
+            Kind.HUMIDITY,
+            statistics.median(psychro.humidity_at(outdoor_vapour, t) for t, _ in rooms.values()),
+        ),
         Reading("house", "dewpoint_delta", Kind.TEMPERATURE_DELTA, dewpoint_delta),
         Reading("house", "temp_delta", Kind.TEMPERATURE_DELTA, temp_delta),
-        Reading("house", "aired", Kind.FLAG, aired),
     ]
+    if len(rooms) >= HOUSE_MIN_ROOMS:
+        spread = max(dewpoints) - min(dewpoints)
+        aired = (
+            spread <= AIRED_SPREAD_C
+            and abs(dewpoint_delta) <= AIRED_DEWPOINT_C
+            and abs(temp_delta) <= AIRED_TEMP_C
+        )
+        readings += [
+            Reading("house", "dewpoint_spread", Kind.TEMPERATURE_DELTA, spread),
+            Reading("house", "aired", Kind.FLAG, aired),
+        ]
+    return readings
 
 
 def _sea_level(

@@ -40,6 +40,10 @@ runtime:
       operator: isString
     - expression: res.body.timezone
       operator: isString
+    - expression: res.body.airing.advice
+      operator: isString
+    - expression: res.body.airing.humidity
+      operator: isNumber
 
 settings:
   encodeUrl: true
