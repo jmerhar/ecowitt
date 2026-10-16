@@ -575,7 +575,7 @@ decided by the compose file's publish addresses.
 
 Both images carry one version, listed with what changed in [`CHANGELOG.md`](CHANGELOG.md), which
 also says what, if anything, to do on upgrading. Each image is published as each release's version
-(`2.8.0`), its minor and major lines (`2.8`, `2`) and `latest`, as `edge` for every change to
+(`3.1.0`), its minor and major lines (`3.1`, `3`) and `latest`, as `edge` for every change to
 `main`, and by commit (`sha-…`). The shipped `docker-compose.yml` follows the major line, so `docker compose pull`
 brings every release that keeps its settings and the stored data working; a new major is a change
 to that file. The collector's status page and the dashboard's footer show the version running.
@@ -595,6 +595,7 @@ make dashboard-dev SERVER=host   # the dashboard from the working copy, with hos
 make grafana      # rewrite grafana/*.json from the templates after changing one
 make messages     # bring the dashboard API's translation catalogues up to date with its messages
 make check        # lint, every suite, coverage
+make release VERSION=3.2.0   # cut a release (see below)
 ```
 
 `make dashboard-dev` serves the page at `http://localhost:5173` with hot reload and the API
@@ -615,6 +616,20 @@ dashboard's against the API over the tests' example station, and CI does the sam
 The dashboard page's `package-lock.json` is written only by `make lockfile`, which installs in a
 Linux container (so it records the binaries CI and the image build need) and keeps every package
 on the public npm registry.
+
+### Releasing
+
+1. Each change adds its notes under `## Unreleased` in [`CHANGELOG.md`](CHANGELOG.md), with
+   anything an operator must do under *Upgrading*. Before a release, check the README,
+   `CLAUDE.md` and the changelog against the code.
+2. Choose the version: a major release changes the images' settings or the stored data in a way
+   that needs acting on; asking for the Grafana files to be imported again fits a minor one.
+3. `make release VERSION=X.Y.Z` on a clean `main`. It writes the version into every manifest,
+   dates the Unreleased section, commits `chore(release): X.Y.Z` and tags `vX.Y.Z` with that
+   section as the tag's message, signed when git has a signing key. It pushes nothing, and leaves
+   neither a commit nor a tag if any step fails.
+4. `git push origin main vX.Y.Z`. CI tests the tag, publishes both images as `X.Y.Z`, `X.Y`, `X`
+   and `latest`, and creates the GitHub release from the changelog section.
 
 ## Licence
 

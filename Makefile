@@ -1,4 +1,4 @@
-.PHONY: help install web-install lockfile app-icons grafana messages dev dashboard-dev up down logs shell build test test-js test-web test-legacy-browser test-bruno coverage lint check clean
+.PHONY: help install web-install lockfile app-icons grafana messages dev dashboard-dev up down logs shell build test test-js test-web test-legacy-browser test-bruno coverage lint check release clean
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*##|^##@' $(MAKEFILE_LIST) | \
@@ -77,6 +77,11 @@ lint: ## ShellCheck, ruff, the lockfile's registry, the versions, and the compos
 	bin/lint.sh
 
 check: lint coverage ## Everything (gate a commit on this; coverage runs every suite)
+
+##@ Releasing
+
+release: ## Cut release VERSION=X.Y.Z: version the manifests, date the changelog, commit and tag
+	bin/release.sh $(VERSION)
 
 ##@ Housekeeping
 

@@ -342,7 +342,7 @@ make lockfile     # regenerate dashboard/web/package-lock.json (the only way to)
 make grafana      # rewrite grafana/*.json after changing a template
 make messages     # update the API's .po catalogues after changing a message, then translate
 make check        # lint + every suite with coverage
-bin/release.sh 2.9.0   # date the changelog's Unreleased section, commit and tag; then push both
+make release VERSION=3.2.0   # date the changelog's Unreleased section, commit and tag; then push both
 UPDATE_GOLDEN=1 bin/test-python.sh collector tests/ingest/test_pipeline.py   # after an intended output change
 ```
 
