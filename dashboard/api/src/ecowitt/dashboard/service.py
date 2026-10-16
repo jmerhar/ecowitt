@@ -848,11 +848,12 @@ def _house(
         return None
     after = values.metric(H, row.get(field_name("predicted_humidity", H, stored)))
     aired_share, humidity_rise = _house_trend(latest.house_recent, end, stored)
+    windows_open = weather.windows_open(aired_share)
     advice = weather.house_airing(
         [(r.humidity, r.delta, r.after) for r in air],
         humidity,
         after,
-        windows_open=weather.windows_open(aired_share),
+        windows_open=windows_open,
         damper=weather.damper(
             _dewpoint_rise(latest.outdoor_dewpoint, end, values, stored), humidity_rise
         ),
@@ -867,6 +868,7 @@ def _house(
         humidity=values.from_metric(H, humidity),
         humidity_after=None if after is None else values.from_metric(H, after),
         dew_point_difference=values.from_metric(D, delta),
+        windows_open=windows_open,
     )
 
 

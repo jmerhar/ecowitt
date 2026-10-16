@@ -432,6 +432,32 @@ describe("AiringCard", () => {
   });
 });
 
+describe("AiringCard's open windows", () => {
+  it("shows an open window, with its word, only while the windows look open", () => {
+    const closed = render(AiringCard, { airing: now().airing!, symbols: SYMBOLS, onselect: vi.fn() });
+    expect(closed.container.querySelector(".windows")).toBeNull();
+    closed.unmount();
+    render(AiringCard, {
+      airing: { ...now().airing!, advice: "close", windows_open: true }, symbols: SYMBOLS, onselect: vi.fn(),
+    });
+    const mark = screen.getByTitle("The windows look open");
+    expect(mark).toHaveClass("side-icon");
+    expect(mark.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    expect(mark).toHaveTextContent("Open");
+  });
+
+  it("keeps the mark beside the verdict, under the title, with the notice in the verdict's column", () => {
+    const { container } = render(AiringCard, {
+      airing: { ...now().airing!, advice: "close", windows_open: true }, symbols: SYMBOLS, onselect: vi.fn(),
+      notice: { level: "warning", items: [], text: "Close the windows now." },
+    });
+    const row = container.querySelector(".headline")!;
+    expect(row.previousElementSibling!.tagName).toBe("H2");
+    expect(row.querySelector(".verdict .notice")).toHaveTextContent("Close the windows now.");
+    expect(row.lastElementChild).toHaveClass("windows");
+  });
+});
+
 describe("AiringCard's forecast", () => {
   it("says when drier air is expected, in the station's time", () => {
     vi.useFakeTimers();

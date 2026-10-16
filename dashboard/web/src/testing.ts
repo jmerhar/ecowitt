@@ -80,7 +80,7 @@ export function now(overrides: Partial<Now> = {}): Now {
     },
     airing: {
       advice: "open", rooms: ["Bathroom"], humidity: 70, humidity_after: 58, dew_point_difference: 0.3,
-      drier_from: null,
+      windows_open: false, drier_from: null,
     },
     rooms: [
       { sensor: "indoor", name: "Lounge", temperature: 21, humidity: 55, dew_point: 11.9,

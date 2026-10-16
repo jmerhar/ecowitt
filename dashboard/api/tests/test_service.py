@@ -534,6 +534,7 @@ async def test_open_windows_and_rooms_getting_damper_say_close(reader: MemoryRea
     windows_open(reader, humidity=(65.0, 70.0))
     now = await Dashboard(reader, clock=lambda: NOW).now("example")
     assert now.airing is not None and now.airing.advice == "close"
+    assert now.airing.windows_open
     assert now.notices["airing"].level == "warning"
 
 
@@ -589,12 +590,23 @@ async def test_windows_open_only_lately_do_not_count_yet(reader: MemoryReader) -
     windows_open(reader, humidity=(65.0, 70.0), not_aired=range(15, 30))
     now = await Dashboard(reader, clock=lambda: NOW).now("example")
     assert now.airing is not None and now.airing.advice == "no_need"
+    assert not now.airing.windows_open
 
 
 async def test_a_house_without_its_recent_rows_is_judged_as_closed(reader: MemoryReader) -> None:
     """The example's one house row has no aired flag: nothing says the windows are open."""
     now = await Dashboard(reader, clock=lambda: NOW).now("example")
     assert now.airing is not None and now.airing.advice == "open"
+    assert not now.airing.windows_open
+
+
+async def test_open_windows_still_show_while_a_room_would_be_dried(reader: MemoryReader) -> None:
+    """Good time to air, with the windows already open: the advice and the mark both stand."""
+    windows_open(reader, vent_delta=3.0)
+    reader.rows.append(row("indoor", LAST, {"temp_c": 21.0, "humidity_pct": 70.0}, sensor="indoor"))
+    now = await Dashboard(reader, clock=lambda: NOW).now("example")
+    assert now.airing is not None
+    assert (now.airing.advice, now.airing.windows_open) == ("open", True)
 
 
 async def test_a_room_without_a_prediction_still_counts(reader: MemoryReader) -> None:

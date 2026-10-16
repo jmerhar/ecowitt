@@ -44,6 +44,8 @@ runtime:
       operator: isString
     - expression: res.body.airing.humidity
       operator: isNumber
+    - expression: res.body.airing.windows_open
+      operator: isBoolean
 
 settings:
   encodeUrl: true

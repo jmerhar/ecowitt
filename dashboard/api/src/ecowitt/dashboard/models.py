@@ -234,6 +234,9 @@ class HouseAiring(BaseModel):
     humidity_after: float | None = None
     #: How far the median room's dew point is above the outdoor one.
     dew_point_difference: float
+    #: Whether the windows look open: the house has read as aired for most of the last 40
+    #: minutes. A room aired behind a closed door does not set it.
+    windows_open: bool = False
     #: When the forecast has the outdoor air turning dry enough to air a damp room, while the
     #: advice is not to open now; None otherwise.
     drier_from: datetime | None = None

@@ -49,8 +49,22 @@
 
 <button class="card airing {airing.advice} {notice?.level ?? ''}" onclick={() => onselect("rooms-humidity")}>
   <h2><DoorOpenIcon size={16} aria-hidden="true" /> {m.airing_title()}</h2>
-  {#if notice?.text}<p class="notice">{notice.text}</p>{/if}
-  <div class="big">{HEADLINES[airing.advice]()}</div>
+  <div class="headline">
+    <div class="verdict">
+      {#if notice?.text}<p class="notice">{notice.text}</p>{/if}
+      <div class="big">{HEADLINES[airing.advice]()}</div>
+    </div>
+    {#if airing.windows_open}
+      <div class="side-icon windows" title={m.airing_windows_open_hint()}>
+        <!-- A pair of casements, both panes swung open. -->
+        <svg viewBox="-4 -4 32 32" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="1.5" />
+          <path d="M3 3l4.5 2.6v12.8L3 21M21 3l-4.5 2.6v12.8L21 21M3 12h4.5M16.5 12H21" />
+        </svg>
+        <span>{m.airing_windows_open()}</span>
+      </div>
+    {/if}
+  </div>
   <div class="change" title={m.airing_change_hint()}>
     <div><span class="value">{now}</span><span class="label">{m.airing_indoors_now()}</span></div>
     {#if airing.humidity_after !== null}
@@ -81,6 +95,27 @@
 </button>
 
 <style>
+  .headline {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .verdict {
+    min-width: 0;
+  }
+  .windows {
+    color: var(--good);
+  }
+  .close .windows {
+    color: var(--warn);
+  }
+  .windows svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
   .open .big {
     color: var(--good);
   }

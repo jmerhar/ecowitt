@@ -45,7 +45,7 @@
       </div>
     {/if}
     {#if sky}
-      <div class="sky" title={m.sky_from_model({ time: clock(sky.time, timezone), hour: hourOf(sky.time, timezone) })}>
+      <div class="side-icon sky" title={m.sky_from_model({ time: clock(sky.time, timezone), hour: hourOf(sky.time, timezone) })}>
         <img src={skyIcon(sky.code, sky.is_day)} alt="" width="72" height="72" />
         <span>{sky.description}</span>
       </div>
@@ -87,14 +87,7 @@
     gap: 0.5rem;
   }
   .sky {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
     color: var(--muted);
-    font-size: 0.85rem;
-    text-align: center;
-    /* The icon's own margin, so it does not push the temperature down. */
-    margin-top: -0.5rem;
   }
   /* The temperature is sized to the card, not the window: three cards abreast leave each far
      less room than one card on a phone, and it must stay on one line. */

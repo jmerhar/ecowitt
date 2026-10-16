@@ -123,6 +123,24 @@ button.card:focus-visible {
 .wide {
   margin-top: 1rem;
 }
+/* The icon a card shows beside its headline -- the sky on Now, open windows on Airing -- with its
+   word beneath. It sits at the top of the row under the title in every card, whatever the row
+   holds, so cards side by side line their icons up. */
+.side-icon {
+  flex: none;
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 0.85rem;
+  text-align: center;
+  /* The icon's own margin, so it does not push the headline down. */
+  margin-top: -0.5rem;
+}
+.side-icon > :first-child {
+  width: 72px;
+  height: 72px;
+}
 .big {
   font-size: 1.6rem;
   font-weight: 600;

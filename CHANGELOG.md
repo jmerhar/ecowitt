@@ -25,7 +25,9 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 - While the windows look open, the dashboard's airing card says to close them once the air coming
   in is getting damper, as the *Close the windows* alert does, and otherwise that the house is
-  aired enough, instead of that airing would make little difference.
+  aired enough, instead of that airing would make little difference. A drawing of an open window
+  beside its headline, with "Open" beneath, says the windows look open; the API gives it as
+  `airing.windows_open`.
 - *Close the windows* is sent when the windows are open and the air coming in is getting damper:
   the house reads as aired for 30 of the last 40 minutes, and the outdoor dew point has risen
   0.7 °C or more in an hour or the rooms are 4 points above their lowest in 2 hours. It no longer

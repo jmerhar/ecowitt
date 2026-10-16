@@ -139,6 +139,8 @@
   "airing_aired": "Já arejou o suficiente",
   "airing_explain_close": "As janelas parecem abertas e o ar exterior tem cada vez mais água: as divisões também vão ficar mais húmidas.",
   "airing_explain_aired": "As janelas parecem abertas e o ar das divisões já foi trocado pelo exterior: arejar durante mais tempo não faz diferença.",
+  "airing_windows_open": "Abertas",
+  "airing_windows_open_hint": "As janelas parecem abertas",
   "airing_explain_dry": "As divisões estão suficientemente secas.",
   "airing_drier_from": "Ar mais seco previsto a partir de {time}: areje as divisões nessa altura.",
   "wind_title": "Vento",

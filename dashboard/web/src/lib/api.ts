@@ -155,6 +155,8 @@ export type HouseAiring = {
   humidity: number;
   humidity_after: number | null;
   dew_point_difference: number;
+  /** Whether the windows look open: the house has read as aired for most of the last 40 minutes. */
+  windows_open: boolean;
   /** When the forecast has the air turning dry enough to air a damp room, if it is not now. */
   drier_from: string | null;
 };
