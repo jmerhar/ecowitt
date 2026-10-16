@@ -175,13 +175,23 @@ def test_good_time_to_air_says_what_airing_would_do() -> None:
 
 
 def test_a_shower_and_a_damp_room_never_fire_together() -> None:
-    """Damp room leaves out a room with a shower for longer than Air the bathroom fires on it."""
+    """Air the bathroom only speaks for a room that has dropped below the level Damp room clears
+    at within the same six hours: such a room cannot be damp, and a damp room cannot qualify."""
     rules = {r["uid"]: r for r in RULES}
     shower = rules["ecowitt-shower"]["data"][0]["model"]["rawSql"]
-    damp = rules["ecowitt-damp"]["data"][0]["model"]["rawSql"]
+    damp = rules["ecowitt-damp"]
+    (condition,) = [d["model"] for d in damp["data"] if d["model"].get("type") == "threshold"]
+    clears = condition["conditions"][0]["unloadEvaluator"]["params"][0]
+    assert f"WHERE l.low < {clears:g}" in shower
+    assert "interval '6 hours'" in shower
+    assert "interval '6 hours'" in damp["data"][0]["model"]["rawSql"]
     assert "t >= now() - interval '90 minutes' AND t <= now() - interval '40 minutes'" in shower
-    assert "t >= now() - interval '4 hours'" in damp
-    assert "NOT EXISTS (SELECT 1 FROM showers" in damp
+
+
+def test_one_shower_sends_one_message() -> None:
+    """A bathroom hovering at 70% would otherwise fire again each time it crosses the line."""
+    rule = next(r for r in RULES if r["uid"] == "ecowitt-shower")
+    assert rule["keepFiringFor"] == "30m"
 
 
 @pytest.mark.parametrize("rule", BY_TITLE)

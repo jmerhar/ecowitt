@@ -13,7 +13,8 @@ rules to be imported again. Either is listed under *Upgrading*.
 - The rooms card warns when windows are likely to mist up overnight: the forecast night air cold
   enough for the inside of double-glazed glass to fall to a room's dew point.
 - An *Air the bathroom* alert, sent at any hour when a room is still damp 40 minutes after a
-  shower: its humidity rose 10 points within 10 minutes and has not come back down.
+  shower: its humidity rose 10 points within 10 minutes and has not come back down. One shower
+  sends one message, and a room damp enough for *Damp room* is left to that alert.
 - A `house` table holds the rooms' median humidity now and after airing, and their median dew
   point and temperature against outdoors, which the dashboard's airing advice reads. With three
   rooms or more it also says whether the house is being aired: `aired` is true while the rooms'
@@ -42,8 +43,8 @@ rules to be imported again. Either is listed under *Upgrading*.
   minutes, and not while the windows already look open. Its message gives the house's humidity
   now and after airing, as it stands when sent.
 - *Damp room* counts a room as dry again only once it drops below 65%, so a room hovering at 70%
-  no longer clears and fires again each day; sends no resolve message; leaves out a room that had
-  a shower in the last 4 hours; is `info`, so quiet hours hold it back; and says whether airing
+  no longer clears and fires again on a passing dip; sends no resolve message; is `info`, so quiet
+  hours hold it back; and says whether airing
   would dry the room or it needs heating or a dehumidifier.
 - While the windows look open, the dashboard's airing card says to close them once the air coming
   in is getting damper, as the *Close the windows* alert does, and otherwise that the house is
