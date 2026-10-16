@@ -8,10 +8,12 @@
   {% block head %}{% endblock %}
   <style>
     :root { --bg: #fbfaf7; --fg: #1d1f21; --muted: #6b6f75; --line: #e3e0d8; --card: #ffffff;
-            --accent: #2f6f5e; --warn-bg: #fff4dc; --warn-line: #e3b04b; --bad: #a33a2b; --good: #2f6f5e; }
+            --accent: #2f6f5e; --warn-bg: #fff4dc; --warn-line: #e3b04b; --bad: #a33a2b; --good: #2f6f5e;
+            color-scheme: light; }
     @media (prefers-color-scheme: dark) {
       :root { --bg: #16181a; --fg: #e6e4df; --muted: #9a9ea4; --line: #2c2f33; --card: #1e2124;
-              --accent: #7cc4ad; --warn-bg: #3a2f17; --warn-line: #b8892f; --bad: #e0806f; --good: #7cc4ad; }
+              --accent: #7cc4ad; --warn-bg: #3a2f17; --warn-line: #b8892f; --bad: #e0806f; --good: #7cc4ad;
+              color-scheme: dark; }
     }
     * { box-sizing: border-box; }
     body { margin: 0; background: var(--bg); color: var(--fg);
@@ -19,6 +21,7 @@
     header { display: flex; gap: 1.5rem; align-items: baseline; padding: 1rem 1.25rem;
              border-bottom: 1px solid var(--line); flex-wrap: wrap; }
     header strong { font-size: 1.05rem; }
+    a { color: var(--accent); }
     header a { color: var(--muted); text-decoration: none; }
     header a.here, header a:hover { color: var(--fg); }
     .badge { background: var(--accent); color: var(--bg); border-radius: 1rem; padding: 0 .45rem; font-size: .8rem; }
@@ -48,8 +51,10 @@
     label.inline { display: flex; gap: .5rem; align-items: center; margin: .3rem 0 .6rem; }
     label.inline input { width: auto; }
     label { display: block; font-size: .85rem; color: var(--muted); margin-top: .5rem; }
-    input, select { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line);
-                    border-radius: .3rem; padding: .3rem .5rem; width: 100%; max-width: 22rem; }
+    input, select, textarea { font: inherit; color: var(--fg); background: var(--bg);
+                              border: 1px solid var(--line); border-radius: .3rem; padding: .3rem .5rem;
+                              width: 100%; max-width: 22rem; }
+    textarea { max-width: none; }
     .row { display: flex; gap: 1rem; flex-wrap: wrap; }
     .sections { margin-top: 1.75rem; }
     /* A heading inside a form, with room above it to start a new group of fields. */

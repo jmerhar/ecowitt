@@ -21,6 +21,11 @@ rules to be imported again. Either is listed under *Upgrading*.
 - The Grafana dashboard's *Sensors* table marks a sensor unchanged for 3 hours orange and for 6
   hours red, as *Sensor not updating* judges it.
 
+### Fixed
+
+- The admin pages' text boxes and links follow the dark theme: the Grafana page's JSON showed
+  dark text on white, and its download links the browser's default blue.
+
 ### Upgrading
 
 - Import the Grafana dashboard again for its notifications panel and the *Sensors* table's
