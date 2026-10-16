@@ -319,6 +319,9 @@ for a while after the windows are closed, until the rooms' own moisture sets the
 - current outdoor conditions;
 - whether airing would dry or dampen each room: its dew point against the outdoor one, and
   the humidity it would settle at;
+- when the house read as [aired](#airing-the-house), the measures that decide it, the rooms'
+  median humidity now and after airing, and each room's temperature against outdoors and dew
+  point against the other rooms;
 - indoor humidity, temperature, dew point and absolute humidity, room by room;
 - outdoor temperature, humidity, wind, pressure, rain and sun, each with the
   [weather model](#weather-model)'s value dashed behind it;

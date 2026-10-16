@@ -15,6 +15,9 @@ rules to be imported again. Either is listed under *Upgrading*.
   rooms or more it also says whether the house is being aired: `aired` is true while the rooms'
   dew points have converged on each other and on the outdoor one, at close to the outdoor
   temperature. The rooms are the indoor sensor and the channels.
+- The Grafana dashboard's airing section shows when the house read as aired, the measures that
+  decide it, the rooms' median humidity now and after airing, and each room's temperature
+  against outdoors and dew point against the other rooms.
 - Each room's `ventilation` row adds its temperature difference from outdoors and its dew point's
   difference from the rooms' median, which show a room aired on its own.
 
@@ -40,9 +43,9 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ### Upgrading
 
-- Import the Grafana alert rules again for *Close the windows*. It reads the `house` table, which
-  older collectors do not write, and the dashboard's airing advice reads it too: upgrade the
-  collector with the dashboard.
+- Import the Grafana dashboard again for its airing panels, and the alert rules for *Close the
+  windows*. Both read the `house` table, which older collectors do not write, and so does the
+  dashboard's airing advice: upgrade the collector with the dashboard.
 
 ## 3.0.0 — 2026-10-15
 

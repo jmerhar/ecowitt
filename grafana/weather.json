@@ -1408,13 +1408,369 @@
       "description": "Room dew point minus outdoor dew point. Above the shaded band airing dries the room; below it, airing brings moisture in."
     },
     {
+      "id": 45,
+      "type": "state-timeline",
+      "title": "House aired",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 34,
+        "w": 24,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__dateBin(time) AS time, avg(CASE WHEN aired THEN 1.0 ELSE 0.0 END) AS \"Aired\"\nFROM house WHERE station = '${station}' AND $__timeFilter(time) GROUP BY 1 ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0.5
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": 0,
+                "to": 0.4999,
+                "result": {
+                  "text": "Not aired"
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.5,
+                "to": 1,
+                "result": {
+                  "text": "Aired"
+                }
+              }
+            }
+          ],
+          "custom": {
+            "fillOpacity": 70,
+            "lineWidth": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showValue": "never",
+        "mergeValues": true,
+        "rowHeight": 0.8,
+        "alignValue": "left",
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "description": "When the house reads as aired: its rooms' dew points within 1 °C of each other, their median within 0.7 °C of the outdoor one, and their median temperature within 2.5 °C of outdoors. Green where it read so for most of each interval."
+    },
+    {
+      "id": 46,
+      "type": "timeseries",
+      "title": "House against outside",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 38,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__dateBin(time) AS time, avg(dewpoint_spread_c) AS \"Rooms' dew points apart\",\n  avg(dewpoint_delta_c) AS \"Dew point above outside\",\n  avg(temp_delta_c) AS \"Temperature above outside\"\nFROM house WHERE station = '${station}' AND $__timeFilter(time) GROUP BY 1 ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": 300000,
+            "axisBorderShow": false,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "min",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "The measures that decide whether the house is aired, for the rooms' median: how far apart the rooms' dew points are, and how far their dew point and temperature are above outdoors'. All three near zero means the rooms share the outdoor air."
+    },
+    {
+      "id": 47,
+      "type": "timeseries",
+      "title": "Humidity now and after airing",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 38,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__dateBin(time) AS time, avg(humidity_pct) AS \"Now\", avg(predicted_humidity_pct) AS \"After airing\"\nFROM house WHERE station = '${station}' AND $__timeFilter(time) GROUP BY 1 ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": 300000,
+            "axisBorderShow": false,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "min",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "The rooms' median humidity, and what it would settle at once their air had been replaced by outdoor air and brought back to their temperature. With the house aired the two meet."
+    },
+    {
+      "id": 48,
+      "type": "timeseries",
+      "title": "Temperature above outside",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 47,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "WITH names AS (SELECT sensor, last_value(name ORDER BY time) AS room FROM derived WHERE station = '${station}' AND $__timeFilter(time) GROUP BY sensor)\nSELECT $__dateBin(r.time) AS time, n.room, avg(r.temp_delta_c) AS \"Delta\"\nFROM ventilation r JOIN names n ON n.sensor = r.sensor\nWHERE r.station = '${station}' AND $__timeFilter(r.time)\nGROUP BY 1, n.room ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": 300000,
+            "axisBorderShow": false,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "displayName": "${__field.labels.room}"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "min",
+            "max"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Room temperature minus outdoor temperature. A room aired on its own closes on zero while the others stay where they were."
+    },
+    {
+      "id": 49,
+      "type": "timeseries",
+      "title": "Dew point against the house",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 47,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "dataset": "iox",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "WITH names AS (SELECT sensor, last_value(name ORDER BY time) AS room FROM derived WHERE station = '${station}' AND $__timeFilter(time) GROUP BY sensor)\nSELECT $__dateBin(r.time) AS time, n.room, avg(r.house_dewpoint_delta_c) AS \"Delta\"\nFROM ventilation r JOIN names n ON n.sensor = r.sensor\nWHERE r.station = '${station}' AND $__timeFilter(r.time)\nGROUP BY 1, n.room ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": 300000,
+            "axisBorderShow": false,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "displayName": "${__field.labels.room}"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "min",
+            "max"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Room dew point minus the rooms' median. A room with moisture of its own -- a bathroom after a shower, a room aired on its own -- moves away from the others."
+    },
+    {
       "id": 18,
       "type": "row",
       "title": "Indoor",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 34,
+        "y": 56,
         "w": 24,
         "h": 1
       },
@@ -1430,7 +1786,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 35,
+        "y": 57,
         "w": 24,
         "h": 9
       },
@@ -1524,7 +1880,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 44,
+        "y": 66,
         "w": 24,
         "h": 9
       },
@@ -1588,7 +1944,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 53,
+        "y": 75,
         "w": 24,
         "h": 9
       },
@@ -1699,7 +2055,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 62,
+        "y": 84,
         "w": 24,
         "h": 9
       },
@@ -1761,7 +2117,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 71,
+        "y": 93,
         "w": 24,
         "h": 1
       },
@@ -1777,7 +2133,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 72,
+        "y": 94,
         "w": 12,
         "h": 8
       },
@@ -1960,7 +2316,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 72,
+        "y": 94,
         "w": 12,
         "h": 8
       },
@@ -2078,7 +2434,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 80,
+        "y": 102,
         "w": 12,
         "h": 8
       },
@@ -2241,7 +2597,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 80,
+        "y": 102,
         "w": 12,
         "h": 8
       },
@@ -2343,7 +2699,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 88,
+        "y": 110,
         "w": 12,
         "h": 8
       },
@@ -2458,7 +2814,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 88,
+        "y": 110,
         "w": 12,
         "h": 8
       },
@@ -2575,7 +2931,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 96,
+        "y": 118,
         "w": 24,
         "h": 8
       },
@@ -2730,7 +3086,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 104,
+        "y": 126,
         "w": 12,
         "h": 8
       },
@@ -2809,7 +3165,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 104,
+        "y": 126,
         "w": 12,
         "h": 8
       },
@@ -2888,7 +3244,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 112,
+        "y": 134,
         "w": 24,
         "h": 1
       },
@@ -2901,7 +3257,7 @@
       "description": "The weather model's forecast for the next 48 hours.",
       "gridPos": {
         "x": 0,
-        "y": 113,
+        "y": 135,
         "w": 12,
         "h": 8
       },
@@ -2990,7 +3346,7 @@
       "description": "Each hour's forecast total, ending at its time, and the chance of any rain in it.",
       "gridPos": {
         "x": 12,
-        "y": 113,
+        "y": 135,
         "w": 12,
         "h": 8
       },
@@ -3100,7 +3456,7 @@
       "description": "Forecast at 10 m, the height the station's own wind is estimated at.",
       "gridPos": {
         "x": 0,
-        "y": 121,
+        "y": 143,
         "w": 12,
         "h": 8
       },
@@ -3190,7 +3546,7 @@
       "description": "Outdoor relative humidity, and the share of the sky the model expects cloud over.",
       "gridPos": {
         "x": 12,
-        "y": 121,
+        "y": 143,
         "w": 12,
         "h": 8
       },
@@ -3285,7 +3641,7 @@
       "description": "The station's local days, from today, as the weather model forecasts them.",
       "gridPos": {
         "x": 0,
-        "y": 129,
+        "y": 151,
         "w": 24,
         "h": 9
       },
@@ -3567,7 +3923,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 138,
+        "y": 160,
         "w": 24,
         "h": 1
       },
@@ -3583,7 +3939,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 139,
+        "y": 161,
         "w": 4,
         "h": 7
       },
@@ -3655,7 +4011,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 139,
+        "y": 161,
         "w": 10,
         "h": 16
       },
@@ -3784,7 +4140,7 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 147,
+        "y": 169,
         "w": 10,
         "h": 8
       },
@@ -3862,7 +4218,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 146,
+        "y": 168,
         "w": 4,
         "h": 9
       },
@@ -3927,7 +4283,7 @@
       "description": "The station's settings as the collector last published them to the database: written when it starts and whenever the setup page changes them. The time zone decides where the station's day begins, and is taken from the coordinates unless one was entered.",
       "gridPos": {
         "x": 14,
-        "y": 139,
+        "y": 161,
         "w": 10,
         "h": 8
       },
