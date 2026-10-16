@@ -184,6 +184,16 @@ def test_a_shower_and_a_damp_room_never_fire_together() -> None:
     assert "NOT EXISTS (SELECT 1 FROM showers" in damp
 
 
+@pytest.mark.parametrize("rule", BY_TITLE)
+def test_no_template_compares_a_value_with_a_number(rule: dict[str, Any]) -> None:
+    """Go templates refuse to compare a value, a float, with a whole number such as a threshold
+    rendered as "2", and Grafana then sends the template unexpanded: a comparison belongs in a
+    math step, and the template tests that step's 1 or 0."""
+    for text in rule["annotations"].values():
+        for found in re.findall(r"\b(?:gt|lt|ge|le|eq|ne) \$values\.\w+\.Value (\S+)", text):
+            assert found == "1.0", (rule["title"], text)
+
+
 def test_a_damp_room_stays_damp_until_it_dries_well_below_the_line() -> None:
     """Rooms that hover at 70% would otherwise clear and fire again every day."""
     rule = next(r for r in RULES if r["uid"] == "ecowitt-damp")

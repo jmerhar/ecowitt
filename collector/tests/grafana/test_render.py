@@ -114,8 +114,8 @@ def test_numbers_follow_the_units() -> None:
     assert _threshold(alerts, "ecowitt-rain") == 0.394  # 10 mm/h
     assert _threshold(alerts, "ecowitt-pressure-fall") == 0.0886  # 3 hPa
     # A difference of 2 °C is 3.6 °F: no 32 added.
-    damp = _rule(alerts, "ecowitt-damp")["annotations"]["item"]
-    assert "gt $values.D.Value 3.6 " in damp
+    drier = next(s for s in _rule(alerts, "ecowitt-damp")["data"] if s["refId"] == "E")
+    assert drier["model"]["expression"] == "$D > 3.6"
     # 0.7 °C is 1.26 °F.
     close = next(
         s for s in _rule(alerts, "ecowitt-open-windows-damper")["data"] if s["refId"] == "E"

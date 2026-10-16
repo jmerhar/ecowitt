@@ -254,6 +254,19 @@
                   }
                 ]
               }
+            },
+            {
+              "refId": "E",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "E",
+                "type": "math",
+                "expression": "$D > 2"
+              }
             }
           ],
           "noDataState": "OK",
@@ -261,9 +274,9 @@
           "for": "0s",
           "keepFiringFor": "0s",
           "annotations": {
-            "summary": "{{ $labels.room }} has stayed at 70% humidity or more for 6 hours (lowest {{ humanize $values.A.Value }}%), where mould grows: {{ if gt $values.D.Value 2 }}the outside air is drier, so airing would dry it{{ else }}the outside air is no drier, so heat or dehumidify it{{ end }}.",
+            "summary": "{{ $labels.room }} has stayed at 70% humidity or more for 6 hours (lowest {{ humanize $values.A.Value }}%), where mould grows: {{ if eq $values.E.Value 1.0 }}the outside air is drier, so airing would dry it{{ else }}the outside air is no drier, so heat or dehumidify it{{ end }}.",
             "headline": "These rooms have stayed at 70% humidity or more for 6 hours, where mould grows.",
-            "item": "{{ $labels.room }} (lowest {{ humanize $values.A.Value }}%): {{ if gt $values.D.Value 2 }}the outside air is drier, so airing would dry it{{ else }}the outside air is no drier, so heat or dehumidify it{{ end }}",
+            "item": "{{ $labels.room }} (lowest {{ humanize $values.A.Value }}%): {{ if eq $values.E.Value 1.0 }}the outside air is drier, so airing would dry it{{ else }}the outside air is no drier, so heat or dehumidify it{{ end }}",
             "description": "A room whose humidity has not dropped below 70% in the last 6 hours; it counts as dry again once it drops below 65%. A room that had a shower in the last 4 hours is left to Air the bathroom."
           },
           "labels": {
