@@ -114,6 +114,7 @@ def test_rule_uids_are_unique() -> None:
     [
         "ecowitt-airing",
         "ecowitt-close-windows",
+        "ecowitt-open-windows-damper",
         "ecowitt-gusts",
         "ecowitt-rain",
         "ecowitt-pressure-fall",
@@ -175,7 +176,12 @@ def test_good_time_to_air_says_what_airing_would_do() -> None:
 
 def test_daily_rules_are_the_slow_house_conditions() -> None:
     daily = {r["title"] for r in RULES if r["labels"].get("notify") == "daily"}
-    assert daily == {"Damp room", "Good time to air", "Close the windows"}
+    assert daily == {
+        "Damp room",
+        "Good time to air",
+        "Close the windows",
+        "Close the open windows",
+    }
 
 
 @pytest.mark.parametrize("rule", BY_TITLE)

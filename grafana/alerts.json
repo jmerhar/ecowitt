@@ -176,6 +176,105 @@
           "isPaused": false
         },
         {
+          "uid": "ecowitt-open-windows-damper",
+          "title": "Close the open windows",
+          "condition": "E",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 2400,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "A",
+                "rawSql": "SELECT station, avg(CASE WHEN aired THEN 1.0 ELSE 0.0 END) AS value\nFROM house WHERE time >= now() - interval '40 minutes'\nGROUP BY station",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "B",
+                "rawSql": "SELECT station, avg(humidity_pct) AS value\nFROM house WHERE time >= now() - interval '10 minutes'\nGROUP BY station",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 4200,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "C",
+                "rawSql": "SELECT station,\n  avg(CASE WHEN time >= now() - interval '10 minutes' THEN dewpoint_c END)\n  - avg(CASE WHEN time < now() - interval '50 minutes' THEN dewpoint_c END) AS value\nFROM derived WHERE sensor = 'outdoor' AND time >= now() - interval '70 minutes'\nGROUP BY station",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "D",
+              "relativeTimeRange": {
+                "from": 7200,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "D",
+                "rawSql": "SELECT station,\n  avg(CASE WHEN time >= now() - interval '10 minutes' THEN humidity_pct END)\n  - min(humidity_pct) AS value\nFROM house WHERE time >= now() - interval '2 hours'\nGROUP BY station",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "E",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "E",
+                "type": "math",
+                "expression": "$A >= 0.75 && $B >= 65 && ($C >= 0.7 || $D >= 4)"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "for": "10m",
+          "keepFiringFor": "30m",
+          "annotations": {
+            "summary": "The windows look open and the air coming in is getting damper: the rooms are at {{ printf \"%.0f\" $values.B.Value }}% humidity and following it up. Close the windows.",
+            "description": "The house has read as aired (its rooms sharing the outdoor air) for most of 40 minutes, with the rooms at a median of 65% humidity or more, for 10 minutes, while the outdoor dew point has risen 0.7 °C or more in an hour or the rooms have climbed 4 points or more above their lowest in 2 hours. Airing longer only lets the house follow the outside air up."
+          },
+          "labels": {
+            "app": "ecowitt",
+            "severity": "info",
+            "resolve_message": "off",
+            "notify": "daily"
+          },
+          "isPaused": false
+        },
+        {
           "uid": "ecowitt-damp",
           "title": "Damp room",
           "condition": "C",

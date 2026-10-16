@@ -13,6 +13,10 @@ rules to be imported again. Either is listed under *Upgrading*.
 - A `house` table says whether the house is being aired: `aired` is true while the rooms' dew
   points have converged on each other and on the outdoor one, at close to the outdoor
   temperature. It stores the measures that decide it and the rooms' median humidity.
+- A *Close the open windows* alert, sent when the house reads as aired and the air coming in is
+  getting damper: the outdoor dew point up 0.7 °C or more in an hour, or the rooms 4 points
+  above their lowest in 2 hours, with the rooms at 65% or more. *Close the windows* cannot see
+  this, since with the windows open the rooms already read what airing predicts.
 - Each room's `ventilation` row adds its temperature difference from outdoors and its dew point's
   difference from the rooms' median, which show a room aired on its own.
 
@@ -29,6 +33,11 @@ rules to be imported again. Either is listed under *Upgrading*.
   drew against the border.
 - The *Sensors* card's heading and the *Settings* button show no disclosure triangle in Chrome
   before 89 and in Safari, which draw it apart from the list marker the page hides.
+
+### Upgrading
+
+- Import the Grafana alert rules again for *Close the open windows*. Its history starts when the
+  collector is upgraded: it reads the `house` table, which older versions do not write.
 
 ## 3.0.0 — 2026-10-15
 
