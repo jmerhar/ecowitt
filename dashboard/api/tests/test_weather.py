@@ -149,9 +149,12 @@ def test_the_thresholds_match_the_alert_rules() -> None:
     def threshold(title: str) -> float:
         return condition(title)["conditions"][0]["evaluator"]["params"][0]
 
-    assert condition("Good time to air")["expression"] == (
-        f"$A > {weather.AIRING_DEWPOINT_DELTA_C:g} && $B >= {weather.AIRING_HUMIDITY_PCT:g}"
+    air = {d["refId"]: d["model"] for d in rules["Good time to air"]["data"]}
+    assert air["E"]["expression"] == (
+        f"$A < {weather.WINDOWS_OPEN_SHARE:g} && $B >= {weather.AIRING_HUMIDITY_PCT:g}"
+        f" && $B - $D >= {weather.DAMPER_BY_PCT:g}"
     )
+    assert f"interval '{weather.WINDOWS_OPEN_WITHIN_MIN} minutes'" in air["A"]["rawSql"]
     close = {d["refId"]: d["model"] for d in rules["Close the windows"]["data"]}
     assert close["E"]["expression"] == (
         f"$A >= {weather.WINDOWS_OPEN_SHARE:g} && ($C >= {weather.DAMPER_DEWPOINT_RISE_C:g}"

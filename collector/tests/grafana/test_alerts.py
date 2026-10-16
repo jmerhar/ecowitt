@@ -162,15 +162,42 @@ def test_a_rule_with_an_alert_per_room_lists_them_under_one_headline(rule: dict[
 
 
 def test_good_time_to_air_says_what_airing_would_do() -> None:
-    """Each room's line gives the humidity airing would leave it at, in words anyone reads, not
-    the dew point that decides the rule."""
+    """One message for the house, giving the humidity airing would leave the rooms at, in words
+    anyone reads, not the dew point behind it; it waits while the windows already look open."""
     rule = next(r for r in RULES if r["uid"] == "ecowitt-airing")
     sql = {d["refId"]: d["model"].get("rawSql", "") for d in rule["data"]}
-    for name in ("summary", "item"):
-        text = rule["annotations"][name]
-        assert any("predicted_humidity_pct" in sql[ref] for ref in VALUE_REF.findall(text)), name
-    for name in ("summary", "headline", "item"):
-        assert "dew point" not in rule["annotations"][name].lower(), name
+    summary = rule["annotations"]["summary"]
+    assert any("predicted_humidity_pct" in sql[ref] for ref in VALUE_REF.findall(summary))
+    assert "dew point" not in summary.lower()
+    assert "headline" not in rule["annotations"], "the house is one alert, not one per room"
+    assert all("FROM house" in q for q in sql.values() if q)
+    assert "aired" in sql["A"]
+
+
+def test_a_shower_and_a_damp_room_never_fire_together() -> None:
+    """Damp room leaves out a room with a shower for longer than Air the bathroom fires on it."""
+    rules = {r["uid"]: r for r in RULES}
+    shower = rules["ecowitt-shower"]["data"][0]["model"]["rawSql"]
+    damp = rules["ecowitt-damp"]["data"][0]["model"]["rawSql"]
+    assert "t >= now() - interval '90 minutes' AND t <= now() - interval '40 minutes'" in shower
+    assert "t >= now() - interval '4 hours'" in damp
+    assert "NOT EXISTS (SELECT 1 FROM showers" in damp
+
+
+def test_a_damp_room_stays_damp_until_it_dries_well_below_the_line() -> None:
+    """Rooms that hover at 70% would otherwise clear and fire again every day."""
+    rule = next(r for r in RULES if r["uid"] == "ecowitt-damp")
+    (condition,) = [d["model"] for d in rule["data"] if d["model"].get("type") == "threshold"]
+    (step,) = condition["conditions"]
+    assert step["evaluator"] == {"type": "gt", "params": [69.5]}
+    assert step["unloadEvaluator"] == {"type": "lt", "params": [65]}
+
+
+def test_the_shower_alert_is_sent_at_any_hour_and_never_resolves() -> None:
+    """Quiet hours mute info alerts, and an evening shower's warning is no use the next morning."""
+    labels = next(r for r in RULES if r["uid"] == "ecowitt-shower")["labels"]
+    assert (labels["severity"], labels["resolve_message"]) == ("warning", "off")
+    assert "notify" not in labels
 
 
 def test_daily_rules_are_the_slow_house_conditions() -> None:
@@ -180,6 +207,8 @@ def test_daily_rules_are_the_slow_house_conditions() -> None:
         "Good time to air",
         "Close the windows",
     }
+    quiet = {r["title"] for r in RULES if r["labels"].get("resolve_message") == "off"}
+    assert quiet == {"Damp room", "Good time to air", "Close the windows", "Air the bathroom"}
 
 
 @pytest.mark.parametrize("rule", BY_TITLE)

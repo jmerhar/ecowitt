@@ -39,6 +39,8 @@ FUNCTIONS = {
     "interval",
     "date_part",
     "date_trunc",
+    # A shower is found in minute buckets.
+    "date_bin",
     "initcap",
     "coalesce",
     # The newest forecast for a time is the row numbered first by its lead.

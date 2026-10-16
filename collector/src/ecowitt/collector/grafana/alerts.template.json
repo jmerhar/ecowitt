@@ -10,18 +10,18 @@
         {
           "uid": "ecowitt-airing",
           "title": "Good time to air",
-          "condition": "C",
+          "condition": "E",
           "data": [
             {
               "refId": "A",
               "relativeTimeRange": {
-                "from": 600,
+                "from": 2400,
                 "to": 0
               },
               "datasourceUid": "weather",
               "model": {
                 "refId": "A",
-                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, %{temp_c}, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, %{temp_c}, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(name ORDER BY time) AS room,\n  last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(%{dewpoint_delta_c} ORDER BY time) AS delta\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station, rh.sensor, rh.room,\n  vent.delta AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor",
+                "rawSql": "SELECT station, coalesce(avg(CASE WHEN aired THEN 1.0 ELSE 0.0 END), 0.0) AS value\nFROM house WHERE time >= now() - interval '40 minutes'\nGROUP BY station",
                 "rawQuery": true,
                 "editorMode": "code",
                 "format": "table",
@@ -37,7 +37,7 @@
               "datasourceUid": "weather",
               "model": {
                 "refId": "B",
-                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, %{temp_c}, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, %{temp_c}, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nvent AS (SELECT DISTINCT station, sensor FROM ventilation WHERE time >= now() - interval '10 minutes')\nSELECT r.station, r.sensor, last_value(r.name ORDER BY r.time) AS room,\n  last_value(r.humidity_pct ORDER BY r.time) AS value\nFROM rooms r JOIN vent ON vent.station = r.station AND vent.sensor = r.sensor\nGROUP BY r.station, r.sensor",
+                "rawSql": "SELECT station, avg(humidity_pct) AS value\nFROM house WHERE time >= now() - interval '10 minutes'\nGROUP BY station",
                 "rawQuery": true,
                 "editorMode": "code",
                 "format": "table",
@@ -53,7 +53,7 @@
               "datasourceUid": "weather",
               "model": {
                 "refId": "D",
-                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, %{temp_c}, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, %{temp_c}, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes'),\nrh AS (SELECT station, sensor, last_value(name ORDER BY time) AS room,\n  last_value(humidity_pct ORDER BY time) AS rh FROM rooms GROUP BY station, sensor),\nvent AS (SELECT station, sensor, last_value(predicted_humidity_pct ORDER BY time) AS after\n  FROM ventilation WHERE time >= now() - interval '10 minutes' GROUP BY station, sensor)\nSELECT rh.station, rh.sensor, rh.room,\n  vent.after AS value\nFROM rh JOIN vent ON vent.station = rh.station AND vent.sensor = rh.sensor",
+                "rawSql": "SELECT station, last_value(predicted_humidity_pct ORDER BY time) AS value\nFROM house WHERE time >= now() - interval '10 minutes'\nGROUP BY station",
                 "rawQuery": true,
                 "editorMode": "code",
                 "format": "table",
@@ -61,28 +61,26 @@
               }
             },
             {
-              "refId": "C",
+              "refId": "E",
               "relativeTimeRange": {
                 "from": 0,
                 "to": 0
               },
               "datasourceUid": "__expr__",
               "model": {
-                "refId": "C",
+                "refId": "E",
                 "type": "math",
-                "expression": "$A > %{2 temperature_delta} && $B >= 65"
+                "expression": "$A < 0.75 && $B >= 65 && $B - $D >= 5"
               }
             }
           ],
           "noDataState": "OK",
           "execErrState": "Error",
-          "for": "15m",
+          "for": "30m",
           "keepFiringFor": "30m",
           "annotations": {
-            "summary": "{{ $labels.room }} is at {{ printf \"%.0f\" $values.B.Value }}% humidity, and the outside air is drier: airing it now would bring it down to {{ printf \"%.0f\" $values.D.Value }}%.",
-            "headline": "The outside air is drier than these rooms: airing them now would bring their humidity down.",
-            "item": "{{ $labels.room }}: {{ printf \"%.0f\" $values.B.Value }}% now, {{ printf \"%.0f\" $values.D.Value }}% after airing",
-            "description": "A room at 65% humidity or more, with the outdoor dew point at least %{2 temperature_delta} %{symbol temperature} below the room's, for 15 minutes."
+            "summary": "The outside air is drier than the house: airing now would bring the rooms from {{ printf \"%.0f\" $values.B.Value }}% to {{ printf \"%.0f\" $values.D.Value }}% humidity.",
+            "description": "The rooms at a median of 65% humidity or more, with airing set to bring them 5 points or more lower (less is within the sensors' error), while the windows do not already look open, for 30 minutes."
           },
           "labels": {
             "app": "ecowitt",
@@ -205,7 +203,23 @@
               "datasourceUid": "weather",
               "model": {
                 "refId": "A",
-                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, %{temp_c}, humidity_pct FROM indoor WHERE time >= now() - interval '6 hours' UNION ALL SELECT time, station, sensor, name, %{temp_c}, humidity_pct FROM channel WHERE time >= now() - interval '6 hours')\nSELECT station, sensor, last_value(name ORDER BY time) AS room,\n  min(humidity_pct) AS value\nFROM rooms\nGROUP BY station, sensor\nHAVING min(time) <= now() - interval '5 hours 50 minutes'",
+                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, humidity_pct FROM indoor WHERE time >= now() - interval '6 hours' UNION ALL SELECT time, station, sensor, name, humidity_pct FROM channel WHERE time >= now() - interval '6 hours'),\nminutes AS (SELECT station, sensor, date_bin(interval '1 minute', time) AS t, avg(humidity_pct) AS h\n  FROM rooms GROUP BY station, sensor, date_bin(interval '1 minute', time)),\nrises AS (SELECT station, sensor, t, h, min(h) OVER (PARTITION BY station, sensor ORDER BY t\n  ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS before FROM minutes),\nshowers AS (SELECT station, sensor, min(t) AS started, first_value(before ORDER BY t) AS before\n  FROM rises WHERE h - before >= 10 AND t >= now() - interval '4 hours' AND t <= now() - interval '0 minutes'\n  GROUP BY station, sensor)\nSELECT station, sensor, last_value(name ORDER BY time) AS room,\n  min(humidity_pct) AS value\nFROM rooms r\nWHERE NOT EXISTS (SELECT 1 FROM showers s WHERE s.station = r.station AND s.sensor = r.sensor)\nGROUP BY station, sensor\nHAVING min(time) <= now() - interval '5 hours 50 minutes'",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "D",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "D",
+                "rawSql": "SELECT station, sensor, last_value(name ORDER BY time) AS room,\n  last_value(%{dewpoint_delta_c} ORDER BY time) AS value\nFROM ventilation WHERE time >= now() - interval '10 minutes'\nGROUP BY station, sensor",
                 "rawQuery": true,
                 "editorMode": "code",
                 "format": "table",
@@ -230,6 +244,12 @@
                       "params": [
                         69.5
                       ]
+                    },
+                    "unloadEvaluator": {
+                      "type": "lt",
+                      "params": [
+                        65
+                      ]
                     }
                   }
                 ]
@@ -241,15 +261,84 @@
           "for": "0s",
           "keepFiringFor": "0s",
           "annotations": {
-            "summary": "{{ $labels.room }} has stayed at 70% humidity or more for 6 hours (lowest {{ humanize $values.A.Value }}%). Mould grows in air this damp.",
-            "headline": "These rooms have stayed at 70% humidity or more for 6 hours. Mould grows in air this damp.",
-            "item": "{{ $labels.room }} (lowest {{ humanize $values.A.Value }}%)",
-            "description": "A room whose humidity has not dropped below 70% in the last 6 hours."
+            "summary": "{{ $labels.room }} has stayed at 70% humidity or more for 6 hours (lowest {{ humanize $values.A.Value }}%), where mould grows: {{ if gt $values.D.Value %{2 temperature_delta} }}the outside air is drier, so airing would dry it{{ else }}the outside air is no drier, so heat or dehumidify it{{ end }}.",
+            "headline": "These rooms have stayed at 70% humidity or more for 6 hours, where mould grows.",
+            "item": "{{ $labels.room }} (lowest {{ humanize $values.A.Value }}%): {{ if gt $values.D.Value %{2 temperature_delta} }}the outside air is drier, so airing would dry it{{ else }}the outside air is no drier, so heat or dehumidify it{{ end }}",
+            "description": "A room whose humidity has not dropped below 70% in the last 6 hours; it counts as dry again once it drops below 65%. A room that had a shower in the last 4 hours is left to Air the bathroom."
+          },
+          "labels": {
+            "app": "ecowitt",
+            "severity": "info",
+            "resolve_message": "off",
+            "notify": "daily"
+          },
+          "isPaused": false
+        },
+        {
+          "uid": "ecowitt-shower",
+          "title": "Air the bathroom",
+          "condition": "E",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 6000,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "A",
+                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, humidity_pct FROM indoor WHERE time >= now() - interval '100 minutes' UNION ALL SELECT time, station, sensor, name, humidity_pct FROM channel WHERE time >= now() - interval '100 minutes'),\nminutes AS (SELECT station, sensor, date_bin(interval '1 minute', time) AS t, avg(humidity_pct) AS h\n  FROM rooms GROUP BY station, sensor, date_bin(interval '1 minute', time)),\nrises AS (SELECT station, sensor, t, h, min(h) OVER (PARTITION BY station, sensor ORDER BY t\n  ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS before FROM minutes),\nshowers AS (SELECT station, sensor, min(t) AS started, first_value(before ORDER BY t) AS before\n  FROM rises WHERE h - before >= 10 AND t >= now() - interval '90 minutes' AND t <= now() - interval '40 minutes'\n  GROUP BY station, sensor),\nlatest AS (SELECT station, sensor, last_value(name ORDER BY time) AS room,\n  last_value(humidity_pct ORDER BY time) AS h FROM rooms GROUP BY station, sensor)\nSELECT l.station, l.sensor, l.room, l.h AS value\nFROM latest l JOIN showers s ON s.station = l.station AND s.sensor = l.sensor",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 6000,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "C",
+                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, humidity_pct FROM indoor WHERE time >= now() - interval '100 minutes' UNION ALL SELECT time, station, sensor, name, humidity_pct FROM channel WHERE time >= now() - interval '100 minutes'),\nminutes AS (SELECT station, sensor, date_bin(interval '1 minute', time) AS t, avg(humidity_pct) AS h\n  FROM rooms GROUP BY station, sensor, date_bin(interval '1 minute', time)),\nrises AS (SELECT station, sensor, t, h, min(h) OVER (PARTITION BY station, sensor ORDER BY t\n  ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING) AS before FROM minutes),\nshowers AS (SELECT station, sensor, min(t) AS started, first_value(before ORDER BY t) AS before\n  FROM rises WHERE h - before >= 10 AND t >= now() - interval '90 minutes' AND t <= now() - interval '40 minutes'\n  GROUP BY station, sensor),\nlatest AS (SELECT station, sensor, last_value(name ORDER BY time) AS room,\n  last_value(humidity_pct ORDER BY time) AS h FROM rooms GROUP BY station, sensor)\nSELECT l.station, l.sensor, l.room, l.h - s.before AS value\nFROM latest l JOIN showers s ON s.station = l.station AND s.sensor = l.sensor",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "E",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "E",
+                "type": "math",
+                "expression": "$A >= 70 && $C >= 5"
+              }
+            }
+          ],
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "for": "0s",
+          "keepFiringFor": "0s",
+          "annotations": {
+            "summary": "{{ $labels.room }} is still at {{ printf \"%.0f\" $values.A.Value }}% humidity 40 minutes after a shower: open its window or turn on the extractor.",
+            "headline": "These rooms are still damp 40 minutes after a shower: open their windows or turn on the extractor.",
+            "item": "{{ $labels.room }}: {{ printf \"%.0f\" $values.A.Value }}%, {{ printf \"%.0f\" $values.C.Value }} points above before the shower",
+            "description": "A room whose humidity rose 10 points or more within 10 minutes -- a shower -- and 40 minutes later is still at 70% or more and 5 points or more above where it started. A room aired or extracted after a shower is back near its level by then."
           },
           "labels": {
             "app": "ecowitt",
             "severity": "warning",
-            "notify": "daily"
+            "resolve_message": "off"
           },
           "isPaused": false
         },

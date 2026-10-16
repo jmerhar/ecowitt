@@ -10,6 +10,8 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ### Added
 
+- An *Air the bathroom* alert, sent at any hour when a room is still damp 40 minutes after a
+  shower: its humidity rose 10 points within 10 minutes and has not come back down.
 - A `house` table holds the rooms' median humidity now and after airing, and their median dew
   point and temperature against outdoors, which the dashboard's airing advice reads. With three
   rooms or more it also says whether the house is being aired: `aired` is true while the rooms'
@@ -23,6 +25,14 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ### Changed
 
+- *Good time to air* is one message for the house rather than one per room: it fires when the
+  rooms' median humidity is 65% or more and airing would bring it 5 points or more lower, for 30
+  minutes, and not while the windows already look open. Its message gives the house's humidity
+  now and after airing, as it stands when sent.
+- *Damp room* counts a room as dry again only once it drops below 65%, so a room hovering at 70%
+  no longer clears and fires again each day; sends no resolve message; leaves out a room that had
+  a shower in the last 4 hours; is `info`, so quiet hours hold it back; and says whether airing
+  would dry the room or it needs heating or a dehumidifier.
 - While the windows look open, the dashboard's airing card says to close them once the air coming
   in is getting damper, as the *Close the windows* alert does, and otherwise that the house is
   aired enough, instead of that airing would make little difference. A drawing of an open window
@@ -49,7 +59,8 @@ rules to be imported again. Either is listed under *Upgrading*.
 ### Upgrading
 
 - Import the Grafana dashboard again for its airing panels, and the alert rules for *Close the
-  windows*. Both read the `house` table, which older collectors do not write, and so does the
+  windows*, *Good time to air*, *Damp room* and *Air the bathroom*. Route warnings that carry
+  `resolve_message=off` to a contact point without resolve messages. Both read the `house` table, which older collectors do not write, and so does the
   dashboard's airing advice: upgrade the collector with the dashboard.
 
 ## 3.0.0 — 2026-10-15

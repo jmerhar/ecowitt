@@ -359,9 +359,10 @@ in the default units; the [Grafana page](#the-grafana-page) converts them for ot
 
 | Rule | Fires when | Severity |
 |---|---|---|
-| Good time to air | a room is at 65% humidity or more and the outdoor dew point is more than 2 °C below the room's, for 15 minutes | info |
+| Good time to air | the rooms are at a median of 65% humidity or more and airing would bring them 5 points or more lower, while the windows do not already look [open](#airing-the-house), for 30 minutes; one message for the house | info |
 | Close the windows | the house has read as [aired](#airing-the-house) for 30 of the last 40 minutes, and the outdoor dew point has risen 0.7 °C or more in an hour or the rooms are 4 points or more above their lowest in 2 hours, for 10 minutes | info |
-| Damp room | a room has not dropped below 70% humidity in 6 hours | warning |
+| Damp room | a room has not dropped below 70% humidity in 6 hours; it counts as dry again only below 65%, and a room with a shower in the last 4 hours is left to *Air the bathroom*. The message says whether airing would dry it or it needs heating or a dehumidifier | info |
+| Air the bathroom | a room's humidity rose 10 points or more within 10 minutes (a shower), and 40 minutes later it is still at 70% or more and 5 points or more above where it started: its window was not opened | warning |
 | Sensor not updating | a room or outdoor sensor's readings have not changed, or not arrived, for 3 hours of the station's reports | warning |
 | Battery low | a sensor's low-battery flag has been set for an hour | warning |
 | Room too cold / too hot | a room is below 8 °C or above 32 °C for 15 minutes | warning |
@@ -375,9 +376,12 @@ in the default units; the [Grafana page](#the-grafana-page) converts them for ot
 - The file here reads the data source whose uid is `weather`: give yours that uid, or replace
   it before loading the file. The Grafana page writes in the one saved there.
 - Routing is yours to set up. Every rule carries the labels `app=ecowitt` and `severity`
-  (`warning` or `info`, the second suiting quiet hours); *Good time to air* also carries
-  `resolve_message=off`, for a contact point that sends no message when the window closes, and
-  so does *Close the windows*. *Damp room* and both airing rules carry `notify=daily`: they
+  (`warning` or `info`, the second suiting quiet hours); *Good time to air*, *Close the windows*,
+  *Damp room* and *Air the bathroom* also carry `resolve_message=off`, for a contact point that
+  sends no message when the condition clears. *Air the bathroom* is a warning so that quiet hours
+  do not hold back an evening shower's message until it no longer matters; route warnings with
+  `resolve_message=off` to the contact point without resolve messages too. *Damp room* and both
+  airing rules carry `notify=daily`: they
   describe the house over hours, so a message each time another room joins is noise -- route
   them with a long group interval and a 24-hour repeat interval, so a room that turns damp while
   others still are waits for a later message.
