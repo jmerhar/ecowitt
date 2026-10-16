@@ -25,6 +25,9 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ### Changed
 
+- A sensor counts as not updating after 6 hours of unchanged readings rather than 3, in the
+  *Sensor not updating* alert and on the dashboard: a still room at night can hold its readings
+  for over two hours, and a lost sensor holds them for good.
 - *Good time to air* is one message for the house rather than one per room: it fires when the
   rooms' median humidity is 65% or more and airing would bring it 5 points or more lower, for 30
   minutes, and not while the windows already look open. Its message gives the house's humidity

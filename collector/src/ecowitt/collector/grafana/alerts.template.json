@@ -379,7 +379,7 @@
                     "evaluator": {
                       "type": "gt",
                       "params": [
-                        10800
+                        21600
                       ]
                     }
                   }
@@ -393,9 +393,9 @@
           "keepFiringFor": "0s",
           "annotations": {
             "summary": "{{ $labels.room }} has reported the same readings for {{ humanizeDuration $values.A.Value }}: its battery or radio has probably failed.",
-            "headline": "These sensors have reported the same readings for 3 hours or more: a battery or radio has probably failed.",
+            "headline": "These sensors have reported the same readings for 6 hours or more: a battery or radio has probably failed.",
             "item": "{{ $labels.room }}, for {{ humanizeDuration $values.A.Value }}",
-            "description": "A room or outdoor sensor whose readings have not changed, or not arrived, for 3 hours of the station's reports. A console repeats a lost sensor's last values, so unchanged readings are how a lost one shows. Measured against the station's last report rather than the clock, so a station that stops uploading altogether does not flag every sensor; a sensor silent for more than 7 days drops out."
+            "description": "A room or outdoor sensor whose readings have not changed, or not arrived, for 6 hours of the station's reports. A console repeats a lost sensor's last values, so unchanged readings are how a lost one shows; a still room at night can hold its readings for two or three hours, a lost sensor for good. Measured against the station's last report rather than the clock, so a station that stops uploading altogether does not flag every sensor; a sensor silent for more than 7 days drops out."
           },
           "labels": {
             "app": "ecowitt",

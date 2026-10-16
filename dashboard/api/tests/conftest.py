@@ -64,7 +64,7 @@ def readings() -> list[Row]:
         row("outdoor", LAST, {"temp_c": 40.0}, sensor="bgt", name="bgt"),
         row("derived", LAST, {"dewpoint_c": 12.5, "unchanged_s": 0.0}, **out),
         row("derived", LAST, {"dewpoint_c": 11.9, "unchanged_s": 60.0}, **lounge),
-        row("derived", LAST, {"dewpoint_c": 15.4, "unchanged_s": 20000.0}, **bath),
+        row("derived", LAST, {"dewpoint_c": 15.4, "unchanged_s": 30000.0}, **bath),
         row("derived", LAST, {"unchanged_s": 0.0}, sensor="pressure", name="pressure"),
         row("wind", NOW - 4 * hour, {"speed_kmh": 30.0, "gust_kmh": 52.0, "dir_deg": 350.0}),
         row("wind", LAST - hour / 12, {"speed_kmh": 10.0, "gust_kmh": 20.0, "dir_deg": 10.0}),

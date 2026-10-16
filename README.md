@@ -363,7 +363,7 @@ in the default units; the [Grafana page](#the-grafana-page) converts them for ot
 | Close the windows | the house has read as [aired](#airing-the-house) for 30 of the last 40 minutes, and the outdoor dew point has risen 0.7 °C or more in an hour or the rooms are 4 points or more above their lowest in 2 hours, for 10 minutes | info |
 | Damp room | a room has not dropped below 70% humidity in 6 hours; it counts as dry again only below 65%, and a room with a shower in the last 4 hours is left to *Air the bathroom*. The message says whether airing would dry it or it needs heating or a dehumidifier | info |
 | Air the bathroom | a room's humidity rose 10 points or more within 10 minutes (a shower), and 40 minutes later it is still at 70% or more and 5 points or more above where it started: its window was not opened | warning |
-| Sensor not updating | a room or outdoor sensor's readings have not changed, or not arrived, for 3 hours of the station's reports | warning |
+| Sensor not updating | a room or outdoor sensor's readings have not changed, or not arrived, for 6 hours of the station's reports | warning |
 | Battery low | a sensor's low-battery flag has been set for an hour | warning |
 | Room too cold / too hot | a room is below 8 °C or above 32 °C for 15 minutes | warning |
 | Strong wind | a gust above 60 km/h at 10 m (see [Wind at 10 m](#wind-at-10-m)) in the last 10 minutes | info |
