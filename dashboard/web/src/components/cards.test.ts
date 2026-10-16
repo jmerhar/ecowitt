@@ -443,7 +443,7 @@ describe("AiringCard's open windows", () => {
     const mark = screen.getByTitle("The windows look open");
     expect(mark).toHaveClass("side-icon");
     expect(mark.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
-    expect(mark).toHaveTextContent("Open");
+    expect(mark).toHaveTextContent("Windows open");
   });
 
   it("keeps the mark beside the verdict, under the title, with the notice in the verdict's column", () => {

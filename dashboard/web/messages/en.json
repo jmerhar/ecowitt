@@ -134,7 +134,7 @@
   "airing_aired": "Aired enough",
   "airing_explain_close": "The windows look open and the air coming in is getting damper: the rooms will turn damper with it.",
   "airing_explain_aired": "The windows look open and the outside air has already replaced the rooms' air: airing longer makes no difference.",
-  "airing_windows_open": "Open",
+  "airing_windows_open": "Windows open",
   "airing_windows_open_hint": "The windows look open",
   "airing_explain_dry": "The rooms are dry enough.",
   "airing_drier_from": "Drier air expected from {time}: air the rooms then.",
