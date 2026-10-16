@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+from datetime import timedelta
 from typing import Any
 
 import pytest
 
 from ecowitt.dashboard import weather
+from ecowitt.dashboard.service import DEWPOINT_TREND, TREND_STEP
 from ecowitt.dashboard.weather import Airing, Tendency
 
 from .conftest import REPO
@@ -150,6 +152,16 @@ def test_the_thresholds_match_the_alert_rules() -> None:
     assert condition("Good time to air")["expression"] == (
         f"$A > {weather.AIRING_DEWPOINT_DELTA_C:g} && $B >= {weather.AIRING_HUMIDITY_PCT:g}"
     )
+    close = {d["refId"]: d["model"] for d in rules["Close the windows"]["data"]}
+    assert close["E"]["expression"] == (
+        f"$A >= {weather.WINDOWS_OPEN_SHARE:g} && ($C >= {weather.DAMPER_DEWPOINT_RISE_C:g}"
+        f" || $D >= {weather.DAMPER_HUMIDITY_RISE_PCT:g})"
+    )
+    assert f"interval '{weather.WINDOWS_OPEN_WITHIN_MIN} minutes'" in close["A"]["rawSql"]
+    assert f"interval '{weather.DAMPER_LOW_WITHIN_H} hours'" in close["D"]["rawSql"]
+    trend, step = DEWPOINT_TREND // timedelta(minutes=1), TREND_STEP // timedelta(minutes=1)
+    for minutes in (trend, trend - 2 * step, step):
+        assert f"interval '{minutes} minutes'" in close["C"]["rawSql"]
     assert threshold("Sensor not updating") == weather.STALE_AFTER_S
     silent = next(d for d in rules["Sensor not updating"]["data"] if d["refId"] == "A")
     # The sensors the dashboard judges too (service._judged): the outdoor one and the rooms.
@@ -177,6 +189,55 @@ def test_house_airing(
     advice: Airing,
 ) -> None:
     assert weather.house_airing(rooms, humidity, after) is advice
+
+
+DRYING = [(70, 3.0, 55), (66, 0.0, 66)]
+SHARING = [(66, 0.1, 66), (67, -0.2, 67)]
+
+
+@pytest.mark.parametrize(
+    ("rooms", "windows_open", "damper", "advice"),
+    [
+        # The windows look open and the air is turning damper: close them, even with a room
+        # that airing would still dry.
+        (DRYING, True, True, Airing.CLOSE),
+        (SHARING, True, True, Airing.CLOSE),
+        # Open, and not getting damper: a room still drying says keep airing...
+        (DRYING, True, False, Airing.OPEN),
+        # ...and rooms that already hold the outdoor air say the windows are open.
+        (SHARING, True, False, Airing.AIRED),
+        # Damper air means nothing with the windows closed.
+        (SHARING, False, True, Airing.NO_NEED),
+        (DRYING, False, True, Airing.OPEN),
+    ],
+)
+def test_house_airing_with_the_windows_open(
+    rooms: list[tuple[float, float, float | None]], windows_open: bool, damper: bool, advice: Airing
+) -> None:
+    got = weather.house_airing(rooms, 66, 66, windows_open=windows_open, damper=damper)
+    assert got is advice
+
+
+@pytest.mark.parametrize(
+    ("share", "expected"), [(None, False), (0.0, False), (0.74, False), (0.75, True), (1.0, True)]
+)
+def test_windows_open(share: float | None, expected: bool) -> None:
+    assert weather.windows_open(share) is expected
+
+
+@pytest.mark.parametrize(
+    ("dewpoint_rise", "humidity_rise", "expected"),
+    [
+        (None, None, False),
+        (0.69, 3.9, False),
+        (0.7, None, True),
+        (None, 4.0, True),
+        (-2.0, 4.0, True),
+        (1.0, -1.0, True),
+    ],
+)
+def test_damper(dewpoint_rise: float | None, humidity_rise: float | None, expected: bool) -> None:
+    assert weather.damper(dewpoint_rise, humidity_rise) is expected
 
 
 @pytest.mark.parametrize(

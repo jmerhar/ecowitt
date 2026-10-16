@@ -149,7 +149,8 @@ export type Notice = { level: "warning" | "good"; items: NoticeItem[]; text: str
 export type SummaryPart = { code: "sky" | "temperature" | "wind" | "rain" | "pressure"; text: string };
 
 export type HouseAiring = {
-  advice: "open" | "keep_closed" | "no_need";
+  /** close and aired while the windows look open: the air turning damper, or already shared. */
+  advice: "open" | "keep_closed" | "no_need" | "close" | "aired";
   rooms: string[];
   humidity: number;
   humidity_after: number | null;

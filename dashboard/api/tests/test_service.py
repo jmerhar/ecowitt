@@ -473,6 +473,130 @@ async def test_a_house_without_a_dew_point_difference_has_no_advice(reader: Memo
     assert (await Dashboard(reader, clock=lambda: NOW).now("example")).airing is None
 
 
+def windows_open(
+    reader: MemoryReader,
+    humidity: tuple[float, float] = (66.0, 66.0),
+    not_aired: range = range(0),
+    vent_delta: float = 0.1,
+    unit: str = "c",
+) -> None:
+    """Two hours of house rows a minute apart up to the latest report, aired but for the minutes
+    before it in `not_aired`, the rooms' humidity moving evenly from one end of `humidity` to the
+    other; every room's air already close to the outdoor air. Temperatures are stored in `unit`."""
+    reader.rows = [r for r in reader.rows if r.table not in {"house", "ventilation"}]
+    first, last = humidity
+    delta = f"dewpoint_delta_{unit}"
+    for i in range(121):
+        ago = 120 - i
+        fields: dict[str, object] = {
+            "aired": ago not in not_aired,
+            "humidity_pct": round(first + (last - first) * i / 120, 1),
+        }
+        if ago == 0:
+            fields |= {"predicted_humidity_pct": last, delta: vent_delta}
+        reader.rows.append(row("house", LAST - timedelta(minutes=ago), fields))
+    for sensor in ("indoor", "ch1"):
+        vent = {delta: vent_delta, "predicted_humidity_pct": last}
+        reader.rows.append(row("ventilation", LAST, vent, sensor=sensor))
+
+
+def outdoor_dew_points(
+    reader: MemoryReader,
+    earlier: float,
+    recent: float,
+    middle: float | None = None,
+    latest: float | None = None,
+    unit: str = "c",
+) -> None:
+    """The outdoor dew point at `earlier` from 70 to 50 minutes before the latest report,
+    `middle` (else `earlier`) until 10 minutes before it, then `recent`, and `latest` (else
+    `recent`) in the latest report itself; stored in `unit`."""
+    reader.rows = [
+        r
+        for r in reader.rows
+        if not (r.table == "derived" and dict(r.tags).get("sensor") == "outdoor")
+    ]
+    for ago in range(70):
+        if ago == 0 and latest is not None:
+            value = latest
+        elif ago < 10:
+            value = recent
+        elif ago < 50:
+            value = earlier if middle is None else middle
+        else:
+            value = earlier
+        fields = {f"dewpoint_{unit}": value}
+        at = LAST - timedelta(minutes=ago)
+        reader.rows.append(row("derived", at, fields, sensor="outdoor", name="out"))
+
+
+async def test_open_windows_and_rooms_getting_damper_say_close(reader: MemoryReader) -> None:
+    windows_open(reader, humidity=(65.0, 70.0))
+    now = await Dashboard(reader, clock=lambda: NOW).now("example")
+    assert now.airing is not None and now.airing.advice == "close"
+    assert now.notices["airing"].level == "warning"
+
+
+async def test_open_windows_and_a_rising_outdoor_dew_point_say_close(reader: MemoryReader) -> None:
+    """The last ten minutes against the hour before: the time between does not count."""
+    windows_open(reader)
+    outdoor_dew_points(reader, earlier=14.0, middle=13.0, recent=14.8)
+    now = await Dashboard(reader, clock=lambda: NOW).now("example")
+    assert now.airing is not None and now.airing.advice == "close"
+
+
+async def test_one_odd_report_is_not_a_rising_dew_point(reader: MemoryReader) -> None:
+    """The latest report counts as one of the last ten minutes' readings, not as a step of its
+    own: 14 °C for nine minutes and 16 °C once is 14.2 °C."""
+    windows_open(reader)
+    outdoor_dew_points(reader, earlier=14.0, recent=14.0, latest=16.0)
+    now = await Dashboard(reader, clock=lambda: NOW).now("example")
+    assert now.airing is not None and now.airing.advice == "aired"
+
+
+async def test_the_dew_point_rise_is_judged_in_celsius() -> None:
+    """A station storing °F: a 0.9 °F rise is 0.5 °C, short of the threshold."""
+    from ecowitt.core.units import Units
+
+    info = StationInfo("example", units=Units(temperature="f"))
+    reader = MemoryReader([row("station", LAST, {"interval_s": 60.0})], {"example": info})
+    windows_open(reader, unit="f")
+    outdoor_dew_points(reader, earlier=57.2, recent=58.1, unit="f")
+    now = await Dashboard(reader, clock=lambda: NOW).now("example")
+    assert now.airing is not None and now.airing.advice == "aired"
+
+
+async def test_open_windows_in_steady_air_read_as_aired(reader: MemoryReader) -> None:
+    windows_open(reader, humidity=(64.0, 66.0))
+    outdoor_dew_points(reader, earlier=14.0, recent=14.5)
+    now = await Dashboard(reader, clock=lambda: NOW).now("example")
+    assert now.airing is not None and now.airing.advice == "aired"
+    assert "airing" not in now.notices
+
+
+async def test_a_dew_point_without_an_hour_behind_it_is_no_trend(reader: MemoryReader) -> None:
+    windows_open(reader)
+    outdoor_dew_points(reader, earlier=10.0, recent=14.0)
+    since = (LAST - timedelta(minutes=45)).timestamp()
+    reader.rows = [r for r in reader.rows if r.table != "derived" or r.timestamp > since]
+    now = await Dashboard(reader, clock=lambda: NOW).now("example")
+    assert now.airing is not None and now.airing.advice == "aired"
+
+
+async def test_windows_open_only_lately_do_not_count_yet(reader: MemoryReader) -> None:
+    """Aired for most of two hours but only 25 of the last 40 minutes: the windows may have been
+    closed, so they do not count as open."""
+    windows_open(reader, humidity=(65.0, 70.0), not_aired=range(15, 30))
+    now = await Dashboard(reader, clock=lambda: NOW).now("example")
+    assert now.airing is not None and now.airing.advice == "no_need"
+
+
+async def test_a_house_without_its_recent_rows_is_judged_as_closed(reader: MemoryReader) -> None:
+    """The example's one house row has no aired flag: nothing says the windows are open."""
+    now = await Dashboard(reader, clock=lambda: NOW).now("example")
+    assert now.airing is not None and now.airing.advice == "open"
+
+
 async def test_a_room_without_a_prediction_still_counts(reader: MemoryReader) -> None:
     reader.rows = [r for r in reader.rows if r.table not in {"ventilation", "house"}]
     reader.rows.append(row("ventilation", LAST, {"dewpoint_delta_c": -1.0}, sensor="indoor"))

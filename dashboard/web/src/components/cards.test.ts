@@ -396,6 +396,8 @@ describe("AiringCard", () => {
     [{ advice: "no_need", rooms: [], humidity: 60, humidity_after: 59.5 }, "No need to air", "would make little difference"],
     [{ advice: "no_need", rooms: [], humidity: 57, humidity_after: 63 }, "No need to air", "they would stay under 65%."],
     [{ advice: "no_need", rooms: [], humidity: 62, humidity_after: 66 }, "No need to air", "would make little difference"],
+    [{ advice: "close", rooms: [], humidity: 70, humidity_after: 70 }, "Close the windows", "the air coming in is getting damper"],
+    [{ advice: "aired", rooms: [], humidity: 66, humidity_after: 66 }, "Aired enough", "airing longer makes no difference"],
   ] as const)("says what to do: %#", async (overrides, headline, words) => {
     const onselect = vi.fn();
     const { container } = render(AiringCard, {

@@ -171,6 +171,10 @@ class Airing(Enum):
     KEEP_CLOSED = "keep_closed"
     #: Neither: dry enough already, or too little difference to matter.
     NO_NEED = "no_need"
+    #: For the house only: its windows look open, and the air coming in is getting damper.
+    CLOSE = "close"
+    #: For the house only: its windows look open, and its rooms already hold the outdoor air.
+    AIRED = "aired"
 
 
 def airing(humidity_pct: float, dewpoint_delta_c: float, after_pct: float | None) -> Airing:
@@ -184,20 +188,59 @@ def airing(humidity_pct: float, dewpoint_delta_c: float, after_pct: float | None
 
 
 def house_airing(
-    rooms: list[tuple[float, float, float | None]], humidity_pct: float, after_pct: float | None
+    rooms: list[tuple[float, float, float | None]],
+    humidity_pct: float,
+    after_pct: float | None,
+    *,
+    windows_open: bool = False,
+    damper: bool = False,
 ) -> Airing:
     """Advice for the whole house, from each room's humidity, dew-point difference and humidity
-    once aired, and the median room's humidity now and once aired.
+    once aired, the median room's humidity now and once aired, whether the windows look open
+    (`windows_open`) and whether the air coming in is getting damper (`damper`).
 
-    Air when any room would be dried by it. Keep the windows closed only when airing would leave
-    the median room damp and damper than it is: when it would merely not help, or dampen dry
-    rooms a little, nothing is lost by opening them.
+    With the windows open, close them once the air turns damper: the rooms follow it up, and
+    by the time they read damp it is too late. Otherwise air when any room would be dried by it,
+    and say the windows look open when the rooms already hold the outdoor air, where airing
+    longer changes nothing. Keep the windows closed only when airing would leave the median room
+    damp and damper than it is: when it would merely not help, or dampen dry rooms a little,
+    nothing is lost by opening them.
     """
+    if windows_open and damper:
+        return Airing.CLOSE
     if any(airing(*room) is Airing.OPEN for room in rooms):
         return Airing.OPEN
+    if windows_open:
+        return Airing.AIRED
     if _dampens(humidity_pct, after_pct):
         return Airing.KEEP_CLOSED
     return Airing.NO_NEED
+
+
+#: The windows look open when the house has read as aired -- its rooms sharing the outdoor air,
+#: which the collector judges -- for at least this share of the last WINDOWS_OPEN_WITHIN.
+WINDOWS_OPEN_SHARE = 0.75
+WINDOWS_OPEN_WITHIN_MIN = 40
+#: The air coming in is getting damper when the outdoor dew point has risen at least this much
+#: in an hour...
+DAMPER_DEWPOINT_RISE_C = 0.7
+#: ...or the rooms are at least this many points above their lowest in DAMPER_LOW_WITHIN_H. The
+#: Close the windows alert rule in grafana/alerts.json uses the same numbers.
+DAMPER_HUMIDITY_RISE_PCT = 4.0
+DAMPER_LOW_WITHIN_H = 2
+
+
+def windows_open(aired_share: float | None) -> bool:
+    """Whether the windows look open, from the share of recent reports with the house aired."""
+    return aired_share is not None and aired_share >= WINDOWS_OPEN_SHARE
+
+
+def damper(dewpoint_rise_c: float | None, humidity_rise_pct: float | None) -> bool:
+    """Whether the air coming in is getting damper: the outdoor dew point's rise over an hour,
+    or the rooms' humidity above their recent lowest (None when unknown)."""
+    return (dewpoint_rise_c is not None and dewpoint_rise_c >= DAMPER_DEWPOINT_RISE_C) or (
+        humidity_rise_pct is not None and humidity_rise_pct >= DAMPER_HUMIDITY_RISE_PCT
+    )
 
 
 def _dampens(humidity_pct: float, after_pct: float | None) -> bool:

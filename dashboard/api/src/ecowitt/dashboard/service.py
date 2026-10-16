@@ -17,7 +17,7 @@ from importlib.metadata import version as package_version
 
 from ecowitt.core import weathermodel, windheight
 from ecowitt.core.stationinfo import StationInfo
-from ecowitt.core.store.query import Buckets, Extreme, Extremes, Reader, Span
+from ecowitt.core.store.query import Aggregate, Buckets, Extreme, Extremes, Point, Reader, Span
 from ecowitt.core.units import SYMBOLS, Kind, Units, convert, field_name
 from ecowitt.dashboard import forecast, messages, models, weather
 from ecowitt.dashboard.cache import TtlCache
@@ -77,6 +77,11 @@ CURRENT_WINDOW = timedelta(minutes=15)
 #: Strong wind and Heavy rain alert rules' window, so a gusty spell stays marked between gusts.
 GUSTS_WITHIN = timedelta(minutes=10)
 PRESSURE_TREND = timedelta(hours=3)
+#: The outdoor dew point's rise is the mean of the last TREND_STEP against the mean of the first
+#: two steps of DEWPOINT_TREND before the latest report: the Close the windows alert rule's
+#: windows.
+DEWPOINT_TREND = timedelta(minutes=70)
+TREND_STEP = timedelta(minutes=10)
 #: A trend needs readings from nearly the whole of its three hours.
 PRESSURE_TREND_COVERAGE = timedelta(hours=2, minutes=50)
 #: A station is online while its latest report is younger than this many upload intervals...
@@ -107,6 +112,11 @@ class _Latest:
     ventilation: list[Span] = field(default_factory=list)
     #: The house's median room against the outdoor air, as the collector stores it.
     house: Span | None = None
+    #: The house's rows over the last weather.DAMPER_LOW_WITHIN_H hours: whether it was aired,
+    #: and its rooms' humidity.
+    house_recent: list[Point] = field(default_factory=list)
+    #: The outdoor dew point's means over DEWPOINT_TREND, in TREND_STEP buckets.
+    outdoor_dewpoint: list[Buckets] = field(default_factory=list)
     battery: list[Span] = field(default_factory=list)
     temperature_today: Extremes | None = None
     wind_today: Extremes | None = None
@@ -282,7 +292,7 @@ class Dashboard:
         answer.pressure = _pressure(latest, values, stored, language)
         answer.sun = _sun(latest, values, stored, info, zone)
         air = _room_air(latest, values, stored, info, language)
-        answer.airing = _house(latest, air, values, stored)
+        answer.airing = _house(latest, latest.report.last_time, air, values, stored)
         answer.rooms = _rooms(latest, values, stored, info, air, language)
         answer.sensors = _health(latest, info, language)
         answer.notices = _notices(latest, values, stored, answer, language)
@@ -461,8 +471,8 @@ class Dashboard:
         rain_fields += [f(b, R) for b in ("monthly", "yearly")] + [rate]
         (
             outdoor, derived, wind, rain, pressure, solar, indoor, channel, ventilation, house,
-            battery, temperature_today, wind_today, sky, recent_wind, recent_rain,
-            wind_10m, wind_10m_today, recent_wind_10m,
+            house_recent, outdoor_dewpoint, battery, temperature_today, wind_today, sky,
+            recent_wind, recent_rain, wind_10m, wind_10m_today, recent_wind_10m,
         ) = await asyncio.gather(
             span("outdoor", f("temp", T), f("humidity", H), sensors=["outdoor"]),
             span("derived", f("dewpoint", T), "unchanged_s"),
@@ -474,6 +484,24 @@ class Dashboard:
             span("channel", f("temp", T), f("humidity", H)),
             span("ventilation", f("dewpoint_delta", D), f("predicted_humidity", H)),
             span("house", f("humidity", H), f("predicted_humidity", H), f("dewpoint_delta", D)),
+            self.reader.points(
+                station,
+                "house",
+                ["aired", f("humidity", H)],
+                start=end - timedelta(hours=weather.DAMPER_LOW_WITHIN_H),
+                end=end,
+            ),
+            # Buckets end a second after each step, so the last holds the latest report.
+            self.reader.buckets(
+                station,
+                "derived",
+                [(f("dewpoint", T), Aggregate.MEAN)],
+                start=end - DEWPOINT_TREND + timedelta(seconds=1),
+                end=end,
+                step=TREND_STEP,
+                origin=end + timedelta(seconds=1),
+                sensors=["outdoor"],
+            ),
             span("battery", "low"),
             self.reader.extremes(
                 station, "outdoor", [f("temp", T)], start=midnight, end=now, sensors=["outdoor"]
@@ -497,6 +525,8 @@ class Dashboard:
             rooms=[s for s in indoor + channel if s.sensor and ROOM_SENSOR.fullmatch(s.sensor)],
             ventilation=ventilation,
             house=_first(house),
+            house_recent=house_recent,
+            outdoor_dewpoint=outdoor_dewpoint,
             battery=battery,
             temperature_today=_first(temperature_today),
             wind_today=_first(wind_today),
@@ -805,7 +835,7 @@ def _room_air(
 
 
 def _house(
-    latest: _Latest, air: list[_RoomAir], values: _Values, stored: Units
+    latest: _Latest, end: datetime, air: list[_RoomAir], values: _Values, stored: Units
 ) -> models.HouseAiring | None:
     """The whole house's airing advice, from the collector's medians and each room's advice."""
     if latest.house is None:
@@ -817,7 +847,16 @@ def _house(
     if humidity is None or delta is None:
         return None
     after = values.metric(H, row.get(field_name("predicted_humidity", H, stored)))
-    advice = weather.house_airing([(r.humidity, r.delta, r.after) for r in air], humidity, after)
+    aired_share, humidity_rise = _house_trend(latest.house_recent, end, stored)
+    advice = weather.house_airing(
+        [(r.humidity, r.delta, r.after) for r in air],
+        humidity,
+        after,
+        windows_open=weather.windows_open(aired_share),
+        damper=weather.damper(
+            _dewpoint_rise(latest.outdoor_dewpoint, end, values, stored), humidity_rise
+        ),
+    )
     return models.HouseAiring(
         advice=advice.value,
         rooms=[
@@ -829,6 +868,42 @@ def _house(
         humidity_after=None if after is None else values.from_metric(H, after),
         dew_point_difference=values.from_metric(D, delta),
     )
+
+
+def _house_trend(
+    rows: list[Point], end: datetime, stored: Units
+) -> tuple[float | None, float | None]:
+    """The share of the house's reports in the last weather.WINDOWS_OPEN_WITHIN_MIN minutes that
+    found it aired, and how far its rooms' humidity over the last TREND_STEP stands above their
+    lowest in the rows read; None for either without rows to judge by."""
+    since = end - timedelta(minutes=weather.WINDOWS_OPEN_WITHIN_MIN)
+    aired = [p.values["aired"] for p in rows if p.time >= since and "aired" in p.values]
+    share = sum(1 for a in aired if a is True) / len(aired) if aired else None
+    name = field_name("humidity", Kind.HUMIDITY, stored)
+    humidity = [(p.time, float(v)) for p in rows if (v := p.values.get(name)) is not None]
+    recent = [h for t, h in humidity if t >= end - TREND_STEP]
+    if not recent:
+        return share, None
+    return share, sum(recent) / len(recent) - min(h for _, h in humidity)
+
+
+def _dewpoint_rise(
+    trend: list[Buckets], end: datetime, values: _Values, stored: Units
+) -> float | None:
+    """How far the outdoor dew point has risen over the last DEWPOINT_TREND, in °C, or None
+    without both ends to compare."""
+    if not trend:
+        return None
+    group = trend[0]
+    means = group.values.get((field_name("dewpoint", Kind.TEMPERATURE, stored), Aggregate.MEAN), [])
+    pairs = [(t, v) for t, v in zip(group.times, means, strict=True) if v is not None]
+    recent = [v for t, v in pairs if t >= end - TREND_STEP]
+    earlier = [v for t, v in pairs if t < end - DEWPOINT_TREND + 2 * TREND_STEP]
+    if not recent or not earlier:
+        return None
+    now = values.metric(Kind.TEMPERATURE, sum(recent) / len(recent))
+    then = values.metric(Kind.TEMPERATURE, sum(earlier) / len(earlier))
+    return None if now is None or then is None else now - then
 
 
 def _rooms(
@@ -955,7 +1030,7 @@ def _notices(
             warn("sun", models.NoticeCode.UV_VERY_HIGH)
     if now.airing is not None and now.airing.advice == "open":
         found["airing"] = models.Notice(level="good")
-    elif now.airing is not None and now.airing.advice == "keep_closed":
+    elif now.airing is not None and now.airing.advice in {"keep_closed", "close"}:
         warn("airing")
     flagged: dict[str, list[str]] = {}
     for room in now.rooms:

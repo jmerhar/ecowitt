@@ -311,6 +311,12 @@ leaves the others as they were and does not set it; its `ventilation` row, closi
 outdoor air and leaving the house's median, is what shows it. The house can still read as aired
 for a while after the windows are closed, until the rooms' own moisture sets them apart again.
 
+The windows count as open when the house has read as aired for 30 of the last 40 minutes. The
+dashboard's airing card then says to close them once the air coming in is getting damper -- the
+outdoor dew point up 0.7 °C or more in an hour, or the rooms 4 points above their lowest in 2
+hours, as the *Close the windows* alert asks -- and otherwise that the house is aired enough,
+unless a room would still be dried by it.
+
 ## Grafana dashboard
 
 [`grafana/weather.json`](grafana/weather.json) is a dashboard for InfluxDB 3:
@@ -421,7 +427,8 @@ whether airing it would help, and any sensor that needs attention — then chart
 something to act on is edged in colour and says what: cold (5 °C or below) or heat, very humid or
 very dry air, strong gusts, heavy rain, pressure falling fast, very high UV, a room that is cold,
 hot, damp or dry, a good time to air the house or one to keep its windows closed (when airing
-would leave the rooms at 65% or more and damper than they are), a sensor that needs attention —
+would leave the rooms at 65% or more and damper than they are), open windows to close because the
+air coming in is getting damper, a sensor that needs attention —
 the thresholds of the [Grafana alerts](#grafana-alerts) where there is one. Visitors choose their own units; times are in the station's time zone.
 
 The page is light or dark as the device is. *Theme* in its *Settings* menu fixes either, or

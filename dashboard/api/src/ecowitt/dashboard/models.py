@@ -224,7 +224,8 @@ class Notice(BaseModel):
 class HouseAiring(BaseModel):
     """Whether opening the windows would dry the house."""
 
-    #: open, keep_closed or no_need.
+    #: open, keep_closed or no_need; or, while the windows look open, close (the air coming in is
+    #: getting damper) or aired (the rooms already hold the outdoor air).
     advice: str
     #: The rooms airing would dry, when the advice is to open.
     rooms: list[str] = Field(default_factory=list)

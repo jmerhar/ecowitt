@@ -1,7 +1,8 @@
 <script lang="ts">
   /**
-   * Whether to open the windows: the house's verdict, up top where it is seen, and what airing
-   * would do to the rooms' humidity in two numbers large enough to read across the room.
+   * Whether to open the windows, or to close them while they look open: the house's verdict, up
+   * top where it is seen, and what airing would do to the rooms' humidity in two numbers large
+   * enough to read across the room.
    */
   import DoorOpenIcon from "@lucide/svelte/icons/door-open";
   import type { Notice, HouseAiring } from "../lib/api";
@@ -18,7 +19,13 @@
   };
   let { airing, symbols, onselect, notice, timezone = "UTC" }: Props = $props();
 
-  const HEADLINES = { open: m.airing_open, keep_closed: m.airing_keep_closed, no_need: m.airing_no_need };
+  const HEADLINES = {
+    open: m.airing_open,
+    keep_closed: m.airing_keep_closed,
+    no_need: m.airing_no_need,
+    close: m.airing_close,
+    aired: m.airing_aired,
+  };
 
   const now = $derived(quantity(airing.humidity, "pct", symbols));
   const after = $derived(quantity(airing.humidity_after, "pct", symbols));
@@ -54,6 +61,10 @@
   <p>
     {#if airing.advice === "open"}
       {m.airing_explain_open({ rooms: list(airing.rooms) })}
+    {:else if airing.advice === "close"}
+      {m.airing_explain_close()}
+    {:else if airing.advice === "aired"}
+      {m.airing_explain_aired()}
     {:else if airing.advice === "keep_closed"}
       {m.airing_explain_keep_closed({ damp: DAMP_PCT })}
     {:else if change === "up"}
@@ -73,7 +84,8 @@
   .open .big {
     color: var(--good);
   }
-  .keep_closed .big {
+  .keep_closed .big,
+  .close .big {
     color: var(--warn);
   }
   p {
