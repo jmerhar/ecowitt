@@ -23,6 +23,8 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ### Fixed
 
+- The airing card offers drier air to open the windows for only between 08:00 and 22:00 at the
+  station, rather than in the small hours, when the air is often driest and nobody opens one.
 - The admin pages' text boxes and links follow the dark theme: the Grafana page's JSON showed
   dark text on white, and its download links the browser's default blue.
 

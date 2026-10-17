@@ -307,6 +307,22 @@ async def test_the_hour_under_way_is_not_drier_air_coming() -> None:
     assert airing.drier_from == NOW + 2 * HOUR
 
 
+async def test_a_drier_spell_is_offered_only_when_someone_will_open_a_window() -> None:
+    """At 23:00 in Lisbon, air dry enough from 00:00 to 09:00: the spell is offered from 08:00,
+    not in the small hours; one over by 08:00 is not offered at all."""
+    late = NOW + 8 * HOUR
+    steady = dict.fromkeys(range(25), 12.0)
+    airing = await airing_with(
+        damp_rooms((70.0, 1.0)), steady | dict.fromkeys(range(9, 18), 10.0), clock=late
+    )
+    assert airing.drier_from == NOW + 17 * HOUR
+
+    airing = await airing_with(
+        damp_rooms((70.0, 1.0)), steady | dict.fromkeys(range(9, 16), 10.0), clock=late
+    )
+    assert airing.drier_from is None
+
+
 async def test_no_drier_spell_without_the_models_present_dew_point() -> None:
     rows = [hour(NOW + h * HOUR, h + 1, dewpoint_c=5.0) for h in range(1, 25)]
     found = await Dashboard(

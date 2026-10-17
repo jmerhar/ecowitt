@@ -326,7 +326,7 @@ class Dashboard:
         if answer.airing is not None and answer.airing.advice != "open":
             damp = [r for r in air if r.humidity >= weather.AIRING_HUMIDITY_PCT]
             answer.airing.drier_from = forecast.drier_from(
-                coming, values, info, self.clock(), [r.delta for r in damp]
+                coming, values, info, self.clock(), [r.delta for r in damp], zone
             )
         answer.sky = _sky(latest, stored, language)
         answer.summary_parts = _summary(answer, values.target, language)

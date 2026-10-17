@@ -36,6 +36,9 @@ RAIN_WITHIN = timedelta(hours=6)
 FROST_C = 2.0
 #: How far ahead a drier spell for airing is looked for.
 AIRING_WITHIN = timedelta(hours=12)
+#: The hours of the station's day a drier spell is offered in, from the first up to the last:
+#: the air is often driest before dawn, when nobody will get up to open a window.
+AIRING_HOURS = (8, 22)
 #: The hourly values Open-Meteo gives for the hour ending at a row's time.
 OVER_THE_HOUR = ("precip_1h", "precip_probability", "gust")
 
@@ -280,10 +283,16 @@ def mist_from(
 
 
 def drier_from(
-    stored: Stored, values: Values, info: StationInfo, now: datetime, room_deltas: list[float]
+    stored: Stored,
+    values: Values,
+    info: StationInfo,
+    now: datetime,
+    room_deltas: list[float],
+    zone: tzinfo,
 ) -> datetime | None:
-    """The first hour within AIRING_WITHIN when the outdoor air is forecast dry enough to air one
-    of the damp rooms, whose dew points stand `room_deltas` (°C) above the outdoor one now.
+    """The first hour within AIRING_WITHIN, and within AIRING_HOURS of the station's day (in
+    `zone`), when the outdoor air is forecast dry enough to air one of the damp rooms, whose dew
+    points stand `room_deltas` (°C) above the outdoor one now.
 
     The model's dew point is compared with its own for the hour under way rather than with the
     station's, so that a model reading steadily drier or damper than the station does not
@@ -301,7 +310,10 @@ def drier_from(
     if model_now is None:
         return None
     needed = weather.AIRING_DEWPOINT_DELTA_C - max(room_deltas)
+    first, last = AIRING_HOURS
     for p in _within(stored.hours, now, AIRING_WITHIN, under_way=False):
+        if not first <= p.time.astimezone(zone).hour < last:
+            continue
         outdoor = values.metric(Kind.TEMPERATURE, p.values.get(name))
         if outdoor is not None and model_now - outdoor > needed:
             return p.time
