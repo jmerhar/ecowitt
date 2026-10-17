@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import re
 import secrets
 from typing import Any
 
@@ -62,7 +63,7 @@ def row(payload: Any, timestamp: int) -> Row:
     group = _labels(payload.get("groupLabels"))
     common = _labels(payload.get("commonLabels"))
     tags = {
-        "receiver": _text(payload.get("receiver")),
+        "receiver": _unquoted(_text(payload.get("receiver"))),
         "status": _text(payload.get("status")),
         "rule": group.get("alertname") or common.get("alertname", ""),
     }
@@ -79,6 +80,12 @@ def row(payload: Any, timestamp: int) -> Row:
     if rooms:
         fields["rooms"] = ", ".join(rooms)
     return Row(TABLE, tuple(sorted((k, v) for k, v in tags.items() if v)), timestamp, fields)
+
+
+def _unquoted(name: str) -> str:
+    """A contact point's name as Grafana names it in a payload, without the backslashes it
+    escapes regular-expression characters with: `Ecowitt house \\(no resolve message\\)`."""
+    return re.sub(r"\\(.)", r"\1", name)
 
 
 def _labels(value: Any) -> dict[str, str]:

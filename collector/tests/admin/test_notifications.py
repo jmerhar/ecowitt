@@ -75,6 +75,15 @@ class TestRow:
         }
         assert found.fields == {"alerts": 1.0, "title": "", "message": ""}
 
+    def test_the_contact_points_name_loses_grafanas_escaping(self) -> None:
+        """Grafana names a contact point in its payload with regular-expression characters
+        escaped."""
+        payload = DAMP | {"receiver": r"Ecowitt house \(no resolve message\)"}
+
+        assert dict(notifications.row(payload, 0).tags)["receiver"] == (
+            "Ecowitt house (no resolve message)"
+        )
+
     def test_values_that_are_not_text_are_left_out(self) -> None:
         payload = {"receiver": 3, "status": None, "groupLabels": {"alertname": 7}, "alerts": []}
 
