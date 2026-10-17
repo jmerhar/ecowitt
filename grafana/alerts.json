@@ -369,7 +369,23 @@
               "datasourceUid": "weather",
               "model": {
                 "refId": "A",
-                "rawSql": "WITH latest AS (SELECT station, max(time) AS seen FROM station\n  WHERE time >= now() - interval '7 days' GROUP BY station)\nSELECT d.station, d.sensor, last_value(d.name ORDER BY d.time) AS room,\n  date_part('epoch', max(l.seen) - max(d.time))\n    + last_value(d.unchanged_s ORDER BY d.time) AS value\nFROM derived d JOIN latest l ON l.station = d.station\nWHERE d.time >= now() - interval '7 days' AND d.unchanged_s IS NOT NULL\n  AND (d.sensor IN ('indoor', 'outdoor') OR d.sensor LIKE 'ch%')\nGROUP BY d.station, d.sensor",
+                "rawSql": "WITH latest AS (SELECT station, max(time) AS seen FROM station\n  WHERE time >= now() - interval '7 days' GROUP BY station)\nSELECT d.station, d.sensor, last_value(d.name ORDER BY d.time) AS room,\n  greatest(date_part('epoch', max(l.seen) - max(d.time))\n    + last_value(d.unchanged_s ORDER BY d.time),\n    date_part('epoch', max(l.seen) - max(CASE WHEN d.dewpoint_c IS NOT NULL THEN d.time END))) AS value\nFROM derived d JOIN latest l ON l.station = d.station\nWHERE d.time >= now() - interval '7 days' AND d.unchanged_s IS NOT NULL\n  AND (d.sensor IN ('indoor', 'outdoor') OR d.sensor LIKE 'ch%')\nGROUP BY d.station, d.sensor",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 604800,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "B",
+                "rawSql": "WITH latest AS (SELECT station, max(time) AS seen FROM station\n  WHERE time >= now() - interval '7 days' GROUP BY station)\nSELECT d.station, d.sensor, last_value(d.name ORDER BY d.time) AS room,\n  date_part('epoch', max(l.seen) - max(CASE WHEN d.dewpoint_c IS NOT NULL THEN d.time END)) AS value\nFROM derived d JOIN latest l ON l.station = d.station\nWHERE d.time >= now() - interval '7 days' AND d.unchanged_s IS NOT NULL\n  AND (d.sensor IN ('indoor', 'outdoor') OR d.sensor LIKE 'ch%')\nGROUP BY d.station, d.sensor",
                 "rawQuery": true,
                 "editorMode": "code",
                 "format": "table",
@@ -385,18 +401,8 @@
               "datasourceUid": "__expr__",
               "model": {
                 "refId": "C",
-                "type": "threshold",
-                "expression": "A",
-                "conditions": [
-                  {
-                    "evaluator": {
-                      "type": "gt",
-                      "params": [
-                        21600
-                      ]
-                    }
-                  }
-                ]
+                "type": "math",
+                "expression": "$A > 21600 || $B > 900"
               }
             }
           ],
@@ -405,10 +411,10 @@
           "for": "0s",
           "keepFiringFor": "0s",
           "annotations": {
-            "summary": "{{ $labels.room }} has reported the same readings for {{ humanizeDuration $values.A.Value }}: its battery or radio has probably failed.",
-            "headline": "These sensors have reported the same readings for 6 hours or more: a battery or radio has probably failed.",
+            "summary": "{{ $labels.room }} has not updated for {{ humanizeDuration $values.A.Value }}: its battery or radio has probably failed.",
+            "headline": "These sensors have stopped updating: a battery or radio has probably failed.",
             "item": "{{ $labels.room }}, for {{ humanizeDuration $values.A.Value }}",
-            "description": "A room or outdoor sensor whose readings have not changed, or not arrived, for 6 hours of the station's reports. A console repeats a lost sensor's last values, so unchanged readings are how a lost one shows; a still room at night can hold its readings for two or three hours, a lost sensor for good. Measured against the station's last report rather than the clock, so a station that stops uploading altogether does not flag every sensor; a sensor silent for more than 7 days drops out."
+            "description": "A room or outdoor sensor whose temperature and humidity have been missing from the station's reports for 15 minutes, or whose readings have not changed for 6 hours. A console that loses a sensor either stops sending its readings or repeats its last ones; a still room at night can hold its readings for two or three hours, a lost sensor for good. Measured against the station's last report rather than the clock, so a station that stops uploading altogether does not flag every sensor; a sensor silent for more than 7 days drops out."
           },
           "labels": {
             "app": "ecowitt",

@@ -23,6 +23,9 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ### Fixed
 
+- A sensor whose readings stop arriving -- the console drops them rather than repeating them --
+  shows as not updating on the dashboard within 15 minutes, and *Sensor not updating* fires for
+  it after 15 minutes, rather than after 6 hours of unchanged readings.
 - The airing card offers drier air to open the windows for only between 08:00 and 22:00 at the
   station, rather than in the small hours, when the air is often driest and nobody opens one.
 - The admin pages' text boxes and links follow the dark theme: the Grafana page's JSON showed

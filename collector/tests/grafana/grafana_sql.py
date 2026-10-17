@@ -44,6 +44,7 @@ FUNCTIONS = {
     "date_bin",
     "initcap",
     "coalesce",
+    "greatest",
     # The newest forecast for a time is the row numbered first by its lead.
     "row_number",
     # A direction's mean is taken around the circle: the angle of the summed unit vectors.
