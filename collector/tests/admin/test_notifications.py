@@ -303,6 +303,16 @@ class TestNotificationsPage:
         assert "<p>second line</p>" in page
         assert reader.asked == [(None, "notification", timedelta(days=7))] and reader.closed
 
+    def test_a_station_located_but_with_no_zone_set_takes_its_coordinates_zone(
+        self, rig: Rig
+    ) -> None:
+        recording(
+            rig, stations=[StationEntry(name="Home", passkey="K", latitude=38.8, longitude=-9.4)]
+        )
+        reading(rig, StandInReader([sent(10, "Damp room", station="Home")]))
+
+        assert "(Europe/Lisbon)" in rig.client.get("/notifications").text
+
     def test_the_rule_kind_and_span_filter_it(self, rig: Rig) -> None:
         recording(rig)
         found = [sent(10, "Damp room"), sent(20, "Damp room", "resolved"), sent(30, "Heavy rain")]

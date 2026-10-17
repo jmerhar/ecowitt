@@ -740,10 +740,11 @@ async def _notifications_view(context: AdminContext, query: dict[str, str]) -> d
 
 
 def _notification(context: AdminContext, point: Any) -> dict[str, object]:
-    """One notification as the page lists it, its time in its station's time zone."""
+    """One notification as the page lists it, its time in its station's time zone: the one set,
+    or the one its coordinates fall in."""
     station = point.tags.get("station", "")
-    entry = context.document.station(station) if station else None
-    zone = ZoneInfo(entry.timezone) if entry and entry.timezone else UTC
+    found = context.store.stations.get(station) if context.store and station else None
+    zone = ZoneInfo(found.timezone) if found and found.timezone else UTC
     message = str(point.values.get("message", ""))
     return {
         "time": f"{point.time.astimezone(zone):%-d %b %Y %H:%M}",
