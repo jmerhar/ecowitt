@@ -100,6 +100,28 @@ async def test_sensor_health(board: Dashboard) -> None:
     assert sensors["outdoor"].name == "Garden"
 
 
+async def test_a_sensor_whose_readings_stop_arriving_is_flagged_at_once(
+    reader: MemoryReader,
+) -> None:
+    """The console stops sending the outdoor array's temperature and humidity: its rows keep
+    coming with what the console still sends, and its readings have been unchanged for 28
+    minutes, far short of the hours that flag a frozen sensor."""
+    reader.rows = [
+        r
+        for r in reader.rows
+        if not (r.table == "outdoor" and r.timestamp > (NOW - timedelta(minutes=20)).timestamp())
+    ]
+    reader.rows.append(row("outdoor", LAST, {"vpd_hpa": 1.5}, sensor="outdoor", name="Garden"))
+    reader.rows.append(
+        row("derived", LAST, {"unchanged_s": 1680.0}, sensor="outdoor", name="Garden")
+    )
+    sensors = {
+        s.sensor: s for s in (await Dashboard(reader, clock=lambda: NOW).now("example")).sensors
+    }
+    assert sensors["outdoor"].updating is False
+    assert sensors["indoor"].updating is True
+
+
 async def test_a_dry_night_does_not_flag_the_rain_gauge_or_light_sensor(
     reader: MemoryReader,
 ) -> None:

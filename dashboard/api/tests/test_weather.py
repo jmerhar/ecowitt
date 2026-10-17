@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 
 from ecowitt.dashboard import weather
-from ecowitt.dashboard.service import DEWPOINT_TREND, TREND_STEP
+from ecowitt.dashboard.service import CURRENT_WINDOW, DEWPOINT_TREND, TREND_STEP
 from ecowitt.dashboard.weather import Airing, Tendency
 
 from .conftest import REPO
@@ -146,9 +146,6 @@ def test_the_thresholds_match_the_alert_rules() -> None:
         (step,) = [d for d in rules[title]["data"] if d["refId"] == "C"]
         return step["model"]
 
-    def threshold(title: str) -> float:
-        return condition(title)["conditions"][0]["evaluator"]["params"][0]
-
     air = {d["refId"]: d["model"] for d in rules["Good time to air"]["data"]}
     assert air["E"]["expression"] == (
         f"$A < {weather.WINDOWS_OPEN_SHARE:g} && $B >= {weather.AIRING_HUMIDITY_PCT:g}"
@@ -165,7 +162,11 @@ def test_the_thresholds_match_the_alert_rules() -> None:
     trend, step = DEWPOINT_TREND // timedelta(minutes=1), TREND_STEP // timedelta(minutes=1)
     for minutes in (trend, trend - 2 * step, step):
         assert f"interval '{minutes} minutes'" in close["C"]["rawSql"]
-    assert threshold("Sensor not updating") == weather.STALE_AFTER_S
+    silent_after = next(d for d in rules["Sensor not updating"]["data"] if d["refId"] == "C")[
+        "model"
+    ]["expression"]
+    window = int(CURRENT_WINDOW.total_seconds())
+    assert silent_after == f"$A > {weather.STALE_AFTER_S} || $B > {window}"
     silent = next(d for d in rules["Sensor not updating"]["data"] if d["refId"] == "A")
     # The sensors the dashboard judges too (service._judged): the outdoor one and the rooms.
     assert "d.sensor IN ('indoor', 'outdoor') OR d.sensor LIKE 'ch%'" in silent["model"]["rawSql"]

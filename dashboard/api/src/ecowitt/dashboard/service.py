@@ -1029,8 +1029,21 @@ def _lowest(
 
 
 def _health(latest: _Latest, info: StationInfo, language: Language) -> list[models.SensorHealth]:
-    """Every sensor that reports staleness or a battery, in natural order."""
+    """Every sensor that reports staleness or a battery, in natural order.
+
+    A judged sensor is not updating once its values have gone unchanged for
+    weather.STALE_AFTER_S, or at once when the station's reports of the last CURRENT_WINDOW
+    carry no temperature from it: a console that loses a sensor may stop sending its readings
+    rather than repeat them.
+    """
     unchanged = {s.sensor: s for s in latest.derived if s.sensor and "unchanged_s" in s.last}
+    stored = info.units
+    temp = field_name("temp", Kind.TEMPERATURE, stored)
+    heard = {
+        s.sensor
+        for s in [*latest.rooms, *([latest.outdoor] if latest.outdoor else [])]
+        if s.sensor and temp in s.last
+    }
     batteries = {s.sensor: s for s in latest.battery if s.sensor and "low" in s.last}
     found = []
     for sensor in sorted(unchanged.keys() | batteries.keys(), key=_natural):
@@ -1044,7 +1057,8 @@ def _health(latest: _Latest, info: StationInfo, language: Language) -> list[mode
                 name=_name(info, span.tags, span.name, language) or sensor,
                 battery_low=None if low is None else bool(low),
                 unchanged_s=seconds,
-                updating=not _judged(sensor) or seconds is None or seconds < weather.STALE_AFTER_S,
+                updating=not _judged(sensor)
+                or (sensor in heard and (seconds is None or seconds < weather.STALE_AFTER_S)),
             )
         )
     return found
