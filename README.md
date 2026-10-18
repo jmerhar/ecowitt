@@ -470,13 +470,13 @@ For a station storing its model's [forecast](#forecast), the page shows it — t
 the days ahead — and the cards say what is coming within the day: rain likely within six hours,
 frost or heat, strong gusts, windows likely to mist up (a room's lowest dew point of the last three
 hours, so not a shower's steam, above the inside of double-glazed glass on the night forecast), and
-drier air to open the windows for (between 08:00 and 22:00 at the station). Forecast temperatures are judged moved by how far the station has
-read from its model over the last 24 hours: a model running a degree warm would otherwise miss a
-frost. For a station with a [weather model](#weather-model), it also shows the sky the model gives —
-clear, overcast, rain, fog — with an icon from [Meteocons](https://meteocons.com), and the charts
-can draw the model's values dashed beside the station's (*Model*, beside the range). The page
-credits Open-Meteo, as its data's licence asks, and lists the licences of what it bundles at
-`/licenses.md`.
+drier air to open the windows for (between 08:00 and 22:00 at the station). Forecast temperatures
+are judged moved by how far the station has read from its model over the last 24 hours: a model
+running a degree warm would otherwise miss a frost. For a station with a [weather
+model](#weather-model), it also shows the sky the model gives — clear, overcast, rain, fog — with an
+icon from [Meteocons](https://meteocons.com), and the charts can draw the model's values dashed
+beside the station's (*Model*, beside the range). The page credits Open-Meteo, as its data's licence
+asks, and lists the licences of what it bundles at `/licenses.md`.
 
 Served over HTTPS, the page can be added to a phone's or tablet's home screen (*Add to Home
 screen* or *Install app* in Chrome, *Share → Add to Home Screen* on an iPhone or iPad), where it

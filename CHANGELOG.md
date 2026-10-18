@@ -38,8 +38,9 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ### Upgrading
 
-- Import the Grafana dashboard again for its notifications panel and the *Sensors* table's
-  thresholds. To record notifications, start recording on the Grafana page and add the webhook
+- Import the Grafana dashboard again for its notifications panel, the *Sensors* table's
+  thresholds and the airing panels' descriptions, and the alert rules for *Sensor not updating*.
+  To record notifications, start recording on the Grafana page and add the webhook
   it describes to each contact point.
 
 ## 3.1.0 — 2026-10-17
