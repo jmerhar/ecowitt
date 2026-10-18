@@ -335,8 +335,8 @@ unless a room would still be dried by it.
   [weather model](#weather-model)'s value dashed behind it;
 - the outdoor temperature and wind direction minus the model's, with the band within which a
   difference is usual shaded;
-- for a station storing it, the model's [forecast](#forecast): temperature and dew point, rain and its chance, wind, humidity and cloud
-  cover for the next 48 hours, whatever time range is chosen, and a table of the next 7 days
+- for a station storing it, the model's [forecast](#forecast): temperature and dew point, rain and
+  its chance, wind, humidity and cloud cover for the next 48 hours, whatever time range is chosen, and a table of the next 7 days
   with each day's mean humidity;
 - battery flags, rooms and outdoor sensors that have stopped changing, the console's pressure
   calibration, and the station's settings as last published (time zone, coordinates, altitude,
@@ -356,8 +356,9 @@ the file here, written for the default ones (°C, hPa, km/h, mm). It expects a d
 ## Grafana alerts
 
 [`grafana/alerts.json`](grafana/alerts.json) holds alert rules in Grafana's provisioning format,
-one alert per room or station (*Good time to air* and *Close the windows* are one per station). The thresholds below are
-in the default units; the [Grafana page](#the-grafana-page) converts them for others:
+one alert per room or station (*Good time to air* and *Close the windows* are one per station).
+The thresholds below are in the default units; the [Grafana page](#the-grafana-page) converts them
+for others:
 
 | Rule | Fires when | Severity |
 |---|---|---|
