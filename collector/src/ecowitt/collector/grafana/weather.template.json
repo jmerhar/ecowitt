@@ -1494,7 +1494,7 @@
           "mode": "single"
         }
       },
-      "description": "When the house reads as aired: its rooms' dew points within %{1 temperature_delta} %{symbol temperature} of each other, their median within %{0.7 temperature_delta} %{symbol temperature} of the outdoor one, and their median temperature within %{2.5 temperature_delta} %{symbol temperature} of outdoors. Green where it read so for most of each interval."
+      "description": "When the house reads as aired: at least two thirds of its rooms with a dew point within %{0.7 temperature_delta} %{symbol temperature} of the outdoor one, their median within as much of it, and their median temperature within %{2.5 temperature_delta} %{symbol temperature} of outdoors. Green where it read so for most of each interval."
     },
     {
       "id": 46,
@@ -1559,7 +1559,7 @@
           "sort": "desc"
         }
       },
-      "description": "The measures that decide whether the house is aired, for the rooms' median: how far apart the rooms' dew points are, and how far their dew point and temperature are above outdoors'. All three near zero means the rooms share the outdoor air."
+      "description": "The rooms' median dew point and temperature above outdoors', two of the measures that decide whether the house is aired, and how far apart the rooms' dew points are. Near zero means the rooms share the outdoor air; a room in use keeps the spread above zero with the windows open."
     },
     {
       "id": 47,

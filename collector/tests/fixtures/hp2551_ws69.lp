@@ -30,7 +30,7 @@ derived,name=pressure,sensor=pressure,station=example unchanged_s=0.0 1791554971
 derived,name=rain,sensor=rain,station=example unchanged_s=0.0 1791554971
 derived,name=solar,sensor=solar,station=example unchanged_s=0.0 1791554971
 derived,name=wind,sensor=wind,station=example unchanged_s=0.0 1791554971
-house,station=example aired=false,dewpoint_delta_c=0.6809,dewpoint_spread_c=3.4214,humidity_pct=46.0,predicted_humidity_pct=42.6267,rooms=9.0,temp_delta_c=0.8889 1791554971
+house,station=example aired=false,dewpoint_delta_c=0.6809,dewpoint_spread_c=3.4214,humidity_pct=46.0,outdoor_share_pct=55.5556,predicted_humidity_pct=42.6267,rooms=9.0,temp_delta_c=0.8889 1791554971
 indoor,name=Lounge,sensor=indoor,station=example humidity_pct=43.0,temp_c=23.8889 1791554971
 outdoor,name=outdoor,sensor=outdoor,station=example humidity_pct=45.0,temp_c=21.6111,vpd_hpa=14.189 1791554971
 pressure,station=example abs_hpa=1008.602,rel_error_hpa=-30.4363,rel_hpa=1008.602,sea_hpa=1038.1779,sea_temp_source="outdoor" 1791554971

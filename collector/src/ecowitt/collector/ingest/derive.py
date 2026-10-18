@@ -162,9 +162,11 @@ def _moisture(
 ROOM_TABLES = frozenset({"indoor", "channel"})
 #: The fewest rooms whose agreement says anything about the house: two can agree by chance.
 HOUSE_MIN_ROOMS = 3
-#: The house reads as aired when its rooms' dew points lie within this many °C of each other...
-AIRED_SPREAD_C = 1.0
-#: ...their median within this of the outdoor dew point...
+#: The house reads as aired when at least this share of its rooms have a dew point within
+#: AIRED_DEWPOINT_C of the outdoor one -- not all: a kitchen in use or an occupied bedroom keeps
+#: some moisture of its own with the windows open...
+AIRED_SHARE = 2 / 3
+#: ...the rooms' median dew point is within this of the outdoor dew point too...
 AIRED_DEWPOINT_C = 0.7
 #: ...and their median temperature within this of the outdoor temperature.
 AIRED_TEMP_C = 2.5
@@ -213,22 +215,24 @@ def _house(rooms: dict[str, tuple[float, float]], outdoor: tuple[float, float]) 
     """The house's median room against the outdoor air, and whether the house is being aired.
 
     The medians -- humidity now and after airing, dew point and temperature against outdoors --
-    are what the dashboard and the alert rules judge the house by. Whether it is aired, and the
-    spread that decides it, need HOUSE_MIN_ROOMS rooms.
+    are what the dashboard and the alert rules judge the house by. Whether it is aired, the share
+    of rooms sharing the outdoor air that decides it, and how far apart the rooms' dew points lie
+    need HOUSE_MIN_ROOMS rooms.
 
     A closed house keeps a moisture level per room -- a bathroom after a shower, a bedroom
     overnight -- and, with people living in it, sits above the outdoor dew point. Air flowing
-    through open windows makes the rooms one body of air with the outdoors: their dew points
-    converge on each other and on the outdoor one. The temperature condition keeps out a still
-    night, when a closed, warmer house can meet the outdoor dew point by chance. A single room
-    aired behind a closed door leaves the others as they were, so it does not count here; its
-    own `ventilation` row shows it.
+    through open windows makes most rooms one body of air with the outdoors: their dew points
+    converge on the outdoor one, while a room in use may keep a little moisture of its own. The
+    temperature condition keeps out a still night, when a closed, warmer house can meet the
+    outdoor dew point by chance. A single room aired behind a closed door leaves the others as
+    they were, so it does not count here; its own `ventilation` row shows it.
     """
     if not rooms:
         return []
     outdoor_vapour = psychro.vapour_pressure(*outdoor)
     dewpoints = [psychro.dew_point(t, h) for t, h in rooms.values()]
-    dewpoint_delta = statistics.median(dewpoints) - psychro.dew_point(*outdoor)
+    outdoor_dewpoint = psychro.dew_point(*outdoor)
+    dewpoint_delta = statistics.median(dewpoints) - outdoor_dewpoint
     temp_delta = statistics.median(t for t, _ in rooms.values()) - outdoor[0]
     readings = [
         Reading("house", "rooms", Kind.COUNT, float(len(rooms))),
@@ -246,13 +250,16 @@ def _house(rooms: dict[str, tuple[float, float]], outdoor: tuple[float, float]) 
     ]
     if len(rooms) >= HOUSE_MIN_ROOMS:
         spread = max(dewpoints) - min(dewpoints)
+        near = sum(1 for d in dewpoints if abs(d - outdoor_dewpoint) <= AIRED_DEWPOINT_C)
+        share = near / len(dewpoints)
         aired = (
-            spread <= AIRED_SPREAD_C
+            share >= AIRED_SHARE
             and abs(dewpoint_delta) <= AIRED_DEWPOINT_C
             and abs(temp_delta) <= AIRED_TEMP_C
         )
         readings += [
             Reading("house", "dewpoint_spread", Kind.TEMPERATURE_DELTA, spread),
+            Reading("house", "outdoor_share", Kind.PERCENT, 100.0 * share),
             Reading("house", "aired", Kind.FLAG, aired),
         ]
     return readings

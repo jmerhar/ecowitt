@@ -23,6 +23,11 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ### Fixed
 
+- The house reads as aired when at least two thirds of its rooms share the outdoor air (a dew
+  point within 0.7 °C of the outdoor one), rather than when every room's dew point lies within
+  1 °C of every other's: a kitchen in use or an occupied bedroom stays a degree damper with the
+  windows open, and kept a house aired all morning from reading as such. `house` stores the share
+  as `outdoor_share_pct`.
 - A sensor whose readings stop arriving -- the console drops them rather than repeating them --
   shows as not updating on the dashboard within 15 minutes, and *Sensor not updating* fires for
   it after 15 minutes, rather than after 6 hours of unchanged readings.

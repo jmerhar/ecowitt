@@ -185,16 +185,31 @@ def test_rooms_that_share_the_outdoor_air_read_as_aired() -> None:
     assert got["aired"] is True
     assert got["rooms"] == 3.0
     assert got["dewpoint_spread"] == pytest.approx(0.0, abs=1e-9)
+    assert got["outdoor_share"] == pytest.approx(100.0)
     assert got["dewpoint_delta"] == pytest.approx(0.0, abs=1e-9)
     assert got["temp_delta"] == pytest.approx(2.0)
+
+
+def test_a_room_in_use_does_not_keep_the_house_from_reading_as_aired() -> None:
+    """With the windows open, a kitchen in use stays a degree damper: two rooms in three sharing
+    the outdoor air are enough, whatever the third."""
+    readings = [*OUTDOOR]
+    for i, dewpoint in enumerate([0.0, 0.0, 0.0, 0.0, 1.5, -1.0], start=1):
+        readings += at_dewpoint(f"ch{i}", 21.0, OUTDOOR_DEWPOINT + dewpoint)
+
+    got = house(readings)
+
+    assert got["aired"] is True
+    assert got["outdoor_share"] == pytest.approx(100 * 4 / 6)
+    assert got["dewpoint_spread"] == pytest.approx(2.5)
 
 
 @pytest.mark.parametrize(
     ("rooms", "why"),
     [
         (
-            [(21.0, OUTDOOR_DEWPOINT)] * 3 + [(21.0, OUTDOOR_DEWPOINT + 1.5)],
-            "one room keeps moisture of its own",
+            [(21.0, OUTDOOR_DEWPOINT)] * 3 + [(21.0, OUTDOOR_DEWPOINT + 1.5)] * 2,
+            "two rooms in five keep moisture of their own",
         ),
         ([(21.0, OUTDOOR_DEWPOINT + 1.0)] * 4, "the rooms are damper than outdoors"),
         ([(21.0, OUTDOOR_DEWPOINT - 1.0)] * 4, "the rooms are drier than outdoors"),

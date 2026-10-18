@@ -278,7 +278,7 @@ tables) and `name` (its display name).
 | `wind_10m` | the wind estimated at the standard 10 m (see [Wind at 10 m](#wind-at-10-m)): speed, gust, 10-minute average speed and the day's strongest gust, and `source`, `sensor` or `model` |
 | `derived` | per sensor: dew point, absolute humidity, mixing ratio, vapour pressure deficit, and how long its values have been unchanged |
 | `ventilation` | per indoor sensor: dew-point and temperature difference from outdoors, dew-point difference from the rooms' median (with three rooms or more), and the humidity the room would settle at after airing |
-| `house` | per station with an outdoor sensor and a room: the rooms' median humidity now and after airing, and their median dew point and temperature against outdoors, which the dashboard's airing advice reads; with three rooms or more, also how far apart their dew points are (`dewpoint_spread`) and `aired`, true while the rooms share the outdoor air (see [Airing the house](#airing-the-house)). The rooms are the indoor sensor and the channels |
+| `house` | per station with an outdoor sensor and a room: the rooms' median humidity now and after airing, and their median dew point and temperature against outdoors, which the dashboard's airing advice reads; with three rooms or more, also how far apart their dew points are (`dewpoint_spread`), the share of them within 0.7 °C of the outdoor dew point (`outdoor_share_pct`) and `aired`, true while the rooms share the outdoor air (see [Airing the house](#airing-the-house)). The rooms are the indoor sensor and the channels |
 | `battery` | per sensor, in whichever form that sensor reports: a low flag, a voltage or a level |
 | `station` | the console's model, firmware, uptime, upload interval and clock skew |
 | `model` | per located station, a weather model's values every 15 minutes, tagged `source` and `model`; see [Weather model](#weather-model). Precipitation (`precip_15m_mm`) is the 15 minutes ending at the row's time |
@@ -298,11 +298,12 @@ Create it before first use if you want anything other than keeping everything.
 ## Airing the house
 
 A closed house keeps a moisture level per room and, with people living in it, sits above the
-outdoor dew point. With its windows open, air flowing through makes the rooms one body of air
+outdoor dew point. With its windows open, air flowing through makes most rooms one body of air
 with the outdoors, and `house.aired` reads true while all of these hold:
 
-- the rooms' dew points lie within 1 °C of each other;
-- their median is within 0.7 °C of the outdoor dew point;
+- at least two thirds of the rooms have a dew point within 0.7 °C of the outdoor one -- not all,
+  since a kitchen in use or an occupied bedroom keeps a little moisture of its own;
+- the rooms' median dew point is within 0.7 °C of the outdoor one;
 - their median temperature is within 2.5 °C of the outdoor temperature, which keeps out a still
   night when a closed house can meet the outdoor dew point by chance.
 
