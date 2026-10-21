@@ -20,7 +20,6 @@ rules to be imported again. Either is listed under *Upgrading*.
 - *Good time to air* says the humidity it gives is the rooms' median.
 - Alert messages give gusts in whole units and rain and a damp room's lowest humidity to the
   decimals the dashboard shows, rather than every digit the estimate has (a gust of 63.78 km/h).
-
 - The 10 m gust estimate adds how far the measured gust rose above the measured speed to the
   scaled speed, rather than scaling the whole gust: near the ground gusts rise above the mean by
   about as much at 10 m as lower down. A sheltered 2 m anemometer's gusts came out 1.3 to 1.9
