@@ -375,7 +375,7 @@ for others:
 | Sensor not updating | a room or outdoor sensor's temperature and humidity have been missing from the station's reports for 15 minutes, or its readings have not changed for 6 hours | warning |
 | Battery low | a sensor's low-battery flag has been set for an hour | warning |
 | Room too cold / too hot | a room is below 8 °C or above 32 °C for 15 minutes | warning |
-| Strong wind | a gust above 60 km/h at 10 m (see [Wind at 10 m](#wind-at-10-m)) in the last 10 minutes | info |
+| Strong wind | gusts above 70 km/h at 10 m (see [Wind at 10 m](#wind-at-10-m)), where IPMA starts a yellow wind warning, in at least 3 separate minutes of the last 10 | info |
 | Heavy rain | a rain rate above 10 mm/h in the last 10 minutes | info |
 | Pressure falling fast | sea-level pressure more than 3 hPa lower than 3 hours ago | info |
 

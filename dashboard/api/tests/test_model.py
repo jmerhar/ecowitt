@@ -204,8 +204,8 @@ async def test_every_word_of_now_is_in_the_language_asked_for() -> None:
         row(
             "outdoor", later, {"temp_c": 4.5, "humidity_pct": 99.0}, sensor="outdoor", name="Garden"
         ),
-        row("wind", later, {"speed_kmh": 40.0, "gust_kmh": 61.5, "dir_deg": 270.0}),
-        row("wind_10m", later, {"speed_kmh": 40.0, "gust_kmh": 61.5, "source": "sensor"}),
+        row("wind", later, {"speed_kmh": 40.0, "gust_kmh": 71.5, "dir_deg": 270.0}),
+        row("wind_10m", later, {"speed_kmh": 40.0, "gust_kmh": 71.5, "source": "sensor"}),
         row("indoor", later, {"temp_c": 21.0, "humidity_pct": 70.0}, **indoor),
         row(
             "ventilation",

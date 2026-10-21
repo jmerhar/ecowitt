@@ -56,8 +56,8 @@ async def test_without_an_estimate_the_measured_wind_leads() -> None:
 
 
 async def test_strong_gusts_are_judged_at_10_m() -> None:
-    """25 km/h measured is 61 km/h at 10 m, over the 60 km/h line."""
-    notices = (await board([ten(LAST, 30.0, 61.0)]).now("example")).notices
+    """25 km/h measured is 71 km/h at 10 m, over the 70 km/h line."""
+    notices = (await board([ten(LAST, 30.0, 71.0)]).now("example")).notices
 
     assert notices["wind"].text == "Strong gusts."
 

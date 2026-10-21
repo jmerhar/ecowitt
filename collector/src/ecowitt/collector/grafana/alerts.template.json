@@ -664,6 +664,22 @@
               }
             },
             {
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "B",
+                "rawSql": "WITH minutes AS (SELECT station, date_bin(interval '1 minute', time) AS minute,\n  max(%{gust_kmh}) AS gust FROM wind_10m\n  WHERE time >= now() - interval '10 minutes' GROUP BY station, minute)\nSELECT station, array_element(array_agg(gust ORDER BY gust DESC), 3) AS value\nFROM minutes GROUP BY station",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
               "refId": "C",
               "relativeTimeRange": {
                 "from": 0,
@@ -673,13 +689,13 @@
               "model": {
                 "refId": "C",
                 "type": "threshold",
-                "expression": "A",
+                "expression": "B",
                 "conditions": [
                   {
                     "evaluator": {
                       "type": "gt",
                       "params": [
-                        "%{60 speed}"
+                        "%{70 speed}"
                       ]
                     }
                   }
@@ -692,10 +708,10 @@
           "for": "0s",
           "keepFiringFor": "30m",
           "annotations": {
-            "summary": "Gusts of {{ printf \"%.0f\" $values.A.Value }} %{symbol speed} at 10 m at {{ $labels.station }}.",
-            "description": "A gust above %{60 speed} %{symbol speed} at 10 m (the estimate the wind_10m table holds) in the last 10 minutes.",
+            "summary": "Repeated gusts of up to {{ printf \"%.0f\" $values.A.Value }} %{symbol speed} at 10 m at {{ $labels.station }}.",
+            "description": "Gusts above %{70 speed} %{symbol speed} at 10 m (the estimate the wind_10m table holds) in at least 3 separate minutes of the last 10: the gust at which IPMA starts a yellow wind warning, repeated, so that one stray gust sends nothing.",
             "resolved_title": "Wind easing",
-            "resolved": "The wind has eased at {{ $labels.station }}: no gust above %{60 speed} %{symbol speed} for over half an hour."
+            "resolved": "The wind has eased at {{ $labels.station }}: gusts above %{70 speed} %{symbol speed} have not repeated for over half an hour."
           },
           "labels": {
             "app": "ecowitt",

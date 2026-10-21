@@ -26,12 +26,15 @@ rules to be imported again. Either is listed under *Upgrading*.
   about as much at 10 m as lower down. A sheltered 2 m anemometer's gusts came out 1.3 to 1.9
   times a weather model's, and fired *Strong wind* on a moderate breeze. `wind_10m` no longer
   stores the day's strongest gust, which the dashboard takes from the highest of the gusts.
+- *Strong wind* fires on gusts above 70 km/h at 10 m, where IPMA starts a yellow wind warning,
+  in at least 3 separate minutes of the last 10, rather than on one gust above 60 km/h; the
+  dashboard's strong-gust notices use 70 km/h too.
 
 ### Added
 
 - Rules that send a resolve message carry its title and sentence, `resolved_title` and
-  `resolved`: *Wind easing*, "The wind has eased at Home: no gust above 60 km/h for over half
-  an hour", rather than the rule's name.
+  `resolved`: *Wind easing*, "The wind has eased at Home: gusts above 70 km/h have not
+  repeated for over half an hour", rather than the rule's name.
 
 ### Upgrading
 

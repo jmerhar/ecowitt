@@ -46,8 +46,8 @@ DAMPER_BY_PCT = 5.0
 
 # What deserves a visitor's attention. Each threshold with an alert rule in grafana/alerts.json is
 # that rule's, and a test holds them together.
-#: Strong wind: a gust above this, in km/h.
-STRONG_GUST_KMH = 60.0
+#: Strong wind: a gust above this, in km/h, at 10 m: where IPMA starts a yellow wind warning.
+STRONG_GUST_KMH = 70.0
 #: Heavy rain: a rate above this, in mm/h.
 HEAVY_RAIN_MM_H = 10.0
 #: Pressure falling fast: more than this many hPa in three hours.

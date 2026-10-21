@@ -53,6 +53,9 @@ FUNCTIONS = {
     "atan2",
     "radians",
     "degrees",
+    # Strong wind reads the third strongest minute's gust.
+    "array_agg",
+    "array_element",
 }
 IDENTIFIER = re.compile(r"\b[a-z][a-z0-9_]*\b")
 #: Quoted strings and Grafana's macros and variables, which hold no column names.

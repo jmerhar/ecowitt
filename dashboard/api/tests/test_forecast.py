@@ -386,7 +386,7 @@ async def test_each_hour_shows_the_rain_and_gusts_of_the_hour_from_it() -> None:
 async def test_a_gust_already_blowing_is_not_announced_again() -> None:
     blowing = [r for r in readings() if r.table != "wind_10m"] + [
         row("wind_10m", NOW - timedelta(minutes=1),
-            {"speed_kmh": 40.0, "gust_kmh": 70.0, "source": "sensor"}),
+            {"speed_kmh": 40.0, "gust_kmh": 71.0, "source": "sensor"}),
     ]  # fmt: skip
     rows = coming(**{"5": {"gust_kmh": 80.0}})
     found = await Dashboard(

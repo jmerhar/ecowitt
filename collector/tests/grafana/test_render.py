@@ -110,7 +110,7 @@ def test_numbers_follow_the_units() -> None:
 
     assert _threshold(alerts, "ecowitt-cold") == 46.4  # 8 °C
     assert _threshold(alerts, "ecowitt-hot") == 89.6  # 32 °C
-    assert _threshold(alerts, "ecowitt-gusts") == 37.3  # 60 km/h
+    assert _threshold(alerts, "ecowitt-gusts") == 43.5  # 70 km/h
     assert _threshold(alerts, "ecowitt-rain") == 0.394  # 10 mm/h
     assert _threshold(alerts, "ecowitt-pressure-fall") == 0.0886  # 3 hPa
     # A difference of 0.7 °C is 1.26 °F: no 32 added.

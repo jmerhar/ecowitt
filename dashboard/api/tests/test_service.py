@@ -744,8 +744,8 @@ async def test_weather_worth_a_warning_is_flagged(reader: MemoryReader) -> None:
     reader.rows += [
         row("station", later, {"interval_s": 60.0}),
         row("outdoor", later, {"temp_c": 5.0, "humidity_pct": 99.0}, sensor="outdoor"),
-        row("wind", later, {"speed_kmh": 40.0, "gust_kmh": 61.0, "dir_deg": 0.0}),
-        row("wind_10m", later, {"speed_kmh": 40.0, "gust_kmh": 61.0, "source": "sensor"}),
+        row("wind", later, {"speed_kmh": 40.0, "gust_kmh": 71.0, "dir_deg": 0.0}),
+        row("wind_10m", later, {"speed_kmh": 40.0, "gust_kmh": 71.0, "source": "sensor"}),
         row("rain", later, {"rate_mm_h": 10.5}, gauge="bucket"),
         # 1015 hPa at the start of the three hours, 1011.5 at their end: 3.5 hPa down.
         row("pressure", later - timedelta(hours=3), {"sea_hpa": 1015.0}),
@@ -794,8 +794,8 @@ async def test_a_gust_or_downpour_counts_for_ten_minutes(
     a gusty spell marked only on the reports that caught a gust."""
     earlier = LAST - timedelta(minutes=minutes)
     reader.rows += [
-        row("wind", earlier, {"speed_kmh": 40.0, "gust_kmh": 61.0, "dir_deg": 0.0}),
-        row("wind_10m", earlier, {"speed_kmh": 40.0, "gust_kmh": 61.0, "source": "sensor"}),
+        row("wind", earlier, {"speed_kmh": 40.0, "gust_kmh": 71.0, "dir_deg": 0.0}),
+        row("wind_10m", earlier, {"speed_kmh": 40.0, "gust_kmh": 71.0, "source": "sensor"}),
         row("rain", earlier, {"rate_mm_h": 10.5}, gauge="piezo"),
     ]
     notices = (await Dashboard(reader, clock=lambda: NOW).now("example")).notices
@@ -803,12 +803,12 @@ async def test_a_gust_or_downpour_counts_for_ten_minutes(
 
 
 async def test_gusts_are_judged_in_metric_whatever_is_stored(reader: MemoryReader) -> None:
-    """38 mph is 61 km/h, over the 60 km/h line; 0.42 in/h is 10.7 mm/h, over 10 mm/h."""
+    """44 mph is 70.8 km/h, over the 70 km/h line; 0.42 in/h is 10.7 mm/h, over 10 mm/h."""
     reader.infos["example"] = dataclasses.replace(
         reader.infos["example"], units=Units(wind="mph", rain="in")
     )
     reader.rows += [
-        row("wind", LAST, {"gust_mph": 38.0}),
+        row("wind", LAST, {"gust_mph": 44.0}),
         row("rain", LAST, {"rate_in_h": 0.42}, gauge="bucket"),
     ]
     notices = (await Dashboard(reader, clock=lambda: NOW).now("example")).notices

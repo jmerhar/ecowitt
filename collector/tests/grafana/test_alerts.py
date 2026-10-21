@@ -276,3 +276,16 @@ def test_values_are_printed_no_finer_than_the_sensors_read(rule: dict[str, Any])
             if printed.startswith(("{{ if ", "{{ else if ")):
                 continue
             assert re.match(r'\{\{ (printf "%\.\d+f%*"|humanizeDuration) ', printed), printed
+
+
+def test_strong_wind_needs_gusts_in_three_separate_minutes() -> None:
+    """One stray gust sends nothing: the threshold is held to the third strongest minute's gust in
+    the last 10 minutes, while the message gives the strongest."""
+    rule = next(r for r in RULES if r["uid"] == "ecowitt-gusts")
+    steps = {d["refId"]: d["model"] for d in rule["data"]}
+    assert steps["C"]["expression"] == "B"
+    assert "date_bin(interval '1 minute', time)" in steps["B"]["rawSql"]
+    assert "array_element(array_agg(gust ORDER BY gust DESC), 3)" in steps["B"]["rawSql"]
+    assert all("interval '10 minutes'" in steps[ref]["rawSql"] for ref in "AB")
+    assert "max(gust_kmh)" in steps["A"]["rawSql"]
+    assert "$values.A.Value" in rule["annotations"]["summary"]
