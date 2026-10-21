@@ -38,15 +38,16 @@ def estimate(
 
 
 def test_the_sensors_wind_scaled_by_the_factor() -> None:
+    """The speeds are doubled; the gust rose 3 m/s above the speed, and does so at 10 m too. The
+    day's strongest gust has no estimate: the highest of the gusts' estimates is that."""
     found = estimate(wind(3.0, 6.0, speed_avg10m=2.5, max_daily_gust=9.0))
 
-    assert found == {
-        "speed": 6.0,
-        "gust": 12.0,
-        "speed_avg10m": 5.0,
-        "max_daily_gust": 18.0,
-        "source": "sensor",
-    }
+    assert found == {"speed": 6.0, "gust": 9.0, "speed_avg10m": 5.0, "source": "sensor"}
+
+
+def test_a_gust_reported_below_the_speed_is_the_speed() -> None:
+    """Measured over different spans, a gust can read below the speed; it is never less wind."""
+    assert estimate(wind(3.0, 2.5))["gust"] == 6.0
 
 
 def test_with_no_correction_the_estimate_is_the_measurement() -> None:
@@ -58,14 +59,7 @@ def test_stalled_cups_take_the_models_wind() -> None:
 
     found = estimate(wind(0.4, 1.0, speed_avg10m=0.2, max_daily_gust=8.0), model=model)
 
-    # The day's strongest gust stays the sensor's: a maximum the model cannot stand in for.
-    assert found == {
-        "speed": 4.2,
-        "gust": 9.1,
-        "speed_avg10m": 4.2,
-        "max_daily_gust": 16.0,
-        "source": "model",
-    }
+    assert found == {"speed": 4.2, "gust": 9.1, "speed_avg10m": 4.2, "source": "model"}
 
 
 def test_turning_cups_keep_the_sensor_however_light() -> None:
@@ -76,7 +70,7 @@ def test_without_a_model_gust_the_sensors_gust_stays() -> None:
     found = estimate(wind(0.0, 0.5), model=ModelWind(NOW, 4.2, None))
 
     # And a report without a 10-minute average gets none from the model.
-    assert found == {"speed": 4.2, "gust": 1.0, "source": "model"}
+    assert found == {"speed": 4.2, "gust": 0.5, "source": "model"}
 
 
 @pytest.mark.parametrize(
@@ -96,4 +90,4 @@ def test_no_wind_speed_no_estimate() -> None:
 def test_with_the_fallback_off_stalled_cups_stay_the_sensors() -> None:
     found = estimate(wind(0.4, 1.0), model=ModelWind(NOW, 4.2, 9.1), fallback=False)
 
-    assert found == {"speed": 0.8, "gust": 2.0, "source": "sensor"}
+    assert found == {"speed": 0.8, "gust": 1.4, "source": "sensor"}

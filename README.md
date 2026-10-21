@@ -198,6 +198,12 @@ by the neutral logarithmic wind profile, ln(10 / z0) / ln(h / z0), with roughnes
 0.1 m in the open, 0.3 m among gardens and 0.5 m where buildings and trees are close: ×1.54,
 ×1.85 and ×2.16 at 2 m. *No correction*, the default, stores the measured wind unchanged.
 
+A gust is not scaled whole. The turbulence that makes gusts changes little with height near the
+ground while the mean wind grows, so a gust rises above the mean by about as much at 10 m as at
+the sensor: the estimate is the scaled speed plus how far the measured gust rose above the
+measured speed. Scaling the whole gust would scale the turbulence of a low, sheltered mounting
+too, and put the gusts well above a weather model's.
+
 The estimate holds in daylight and in a breeze. On still nights the air near the ground
 decouples from the wind above and cups below about 1 m/s stop turning; while they do, and the
 station has a [weather model](#weather-model), the estimate is the model's 10 m wind, and the
@@ -275,7 +281,7 @@ tables) and `name` (its display name).
 | `indoor`, `outdoor`, `channel` | temperature and humidity, as reported |
 | `pressure` | absolute and relative pressure as reported; sea-level pressure and the console's calibration error, derived |
 | `wind`, `rain`, `solar` | as reported; `rain` is tagged `gauge=bucket` or `gauge=piezo` |
-| `wind_10m` | the wind estimated at the standard 10 m (see [Wind at 10 m](#wind-at-10-m)): speed, gust, 10-minute average speed and the day's strongest gust, and `source`, `sensor` or `model` |
+| `wind_10m` | the wind estimated at the standard 10 m (see [Wind at 10 m](#wind-at-10-m)): speed, gust and 10-minute average speed, and `source`, `sensor` or `model` |
 | `derived` | per sensor: dew point, absolute humidity, mixing ratio, vapour pressure deficit, and how long its values have been unchanged |
 | `ventilation` | per indoor sensor: dew-point and temperature difference from outdoors, dew-point difference from the rooms' median (with three rooms or more), and the humidity the room would settle at after airing |
 | `house` | per station with an outdoor sensor and a room: the rooms' median humidity now and after airing, and their median dew point and temperature against outdoors, which the dashboard's airing advice reads; with three rooms or more, also how far apart their dew points are (`dewpoint_spread`), the share of them within 0.7 °C of the outdoor dew point (`outdoor_share_pct`) and `aired`, true while the rooms share the outdoor air (see [Airing the house](#airing-the-house)). The rooms are the indoor sensor and the channels |

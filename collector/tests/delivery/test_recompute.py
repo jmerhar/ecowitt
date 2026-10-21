@@ -110,14 +110,14 @@ async def test_the_whole_history_is_recomputed_day_by_day() -> None:
     job, sink = await run(reader)
 
     assert ten(sink.rows) == {
-        FIRST: {"gust_kmh": 40.0, "source": "sensor", "speed_kmh": 20.0},
+        FIRST: {"gust_kmh": 30.0, "source": "sensor", "speed_kmh": 20.0},
         # Stalled cups take the station's model's wind, a quarter-hour before.
         FIRST + timedelta(days=1, hours=3): {
             "gust_kmh": 30.0,
             "source": "model",
             "speed_kmh": 18.0,
         },
-        FIRST + timedelta(days=2): {"gust_kmh": 18.0, "source": "sensor", "speed_kmh": 14.4},
+        FIRST + timedelta(days=2): {"gust_kmh": 16.2, "source": "sensor", "speed_kmh": 14.4},
     }
     assert all(r.table == "wind_10m" and dict(r.tags) == {"station": "Home"} for r in sink.rows)
     p = job.progress

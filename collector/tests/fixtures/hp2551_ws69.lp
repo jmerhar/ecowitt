@@ -47,4 +47,4 @@ ventilation,name=Nursery,sensor=ch7,station=example dewpoint_delta_c=3.1917,hous
 ventilation,name=Spare\ room,sensor=ch3,station=example dewpoint_delta_c=0.1993,house_dewpoint_delta_c=-0.4816,predicted_humidity_pct=47.3605,temp_delta_c=-0.8333 1791554971
 ventilation,name=Study,sensor=ch2,station=example dewpoint_delta_c=0.2305,house_dewpoint_delta_c=-0.4504,predicted_humidity_pct=41.3537,temp_delta_c=1.3889 1791554971
 wind,station=example dir_avg10m_deg=137.0,dir_deg=125.0,gust_kmh=20.1651,max_daily_gust_kmh=27.7129,speed_kmh=8.6422 1791554971
-wind_10m,station=example gust_kmh=20.1651,max_daily_gust_kmh=27.7129,source="sensor",speed_kmh=8.6422 1791554971
+wind_10m,station=example gust_kmh=20.1651,source="sensor",speed_kmh=8.6422 1791554971

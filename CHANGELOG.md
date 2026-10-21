@@ -21,6 +21,12 @@ rules to be imported again. Either is listed under *Upgrading*.
 - Alert messages give gusts in whole units and rain and a damp room's lowest humidity to the
   decimals the dashboard shows, rather than every digit the estimate has (a gust of 63.78 km/h).
 
+- The 10 m gust estimate adds how far the measured gust rose above the measured speed to the
+  scaled speed, rather than scaling the whole gust: near the ground gusts rise above the mean by
+  about as much at 10 m as lower down. A sheltered 2 m anemometer's gusts came out 1.3 to 1.9
+  times a weather model's, and fired *Strong wind* on a moderate breeze. `wind_10m` no longer
+  stores the day's strongest gust, which the dashboard takes from the highest of the gusts.
+
 ### Added
 
 - Rules that send a resolve message carry its title and sentence, `resolved_title` and
@@ -29,6 +35,8 @@ rules to be imported again. Either is listed under *Upgrading*.
 
 ### Upgrading
 
+- To bring stored gusts in line, *Recompute the 10 m wind* on the setup page. Rows written
+  before keep their `max_daily_gust_kmh` field, which nothing reads.
 - Import the alert rules again. A notification template that builds its own messages can use
   `resolved_title` and `resolved` for resolved alerts.
 

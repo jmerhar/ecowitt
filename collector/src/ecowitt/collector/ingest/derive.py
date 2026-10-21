@@ -70,8 +70,10 @@ def derive(
     return derived
 
 
-#: The wind fields estimated at 10 m, each under the same name in `wind_10m`.
-WIND_FIELDS = ("speed", "gust", "speed_avg10m", "max_daily_gust")
+#: The wind fields estimated at 10 m, each under the same name in `wind_10m`. The day's strongest
+#: gust is not among them: estimating a gust needs the wind it rose from (see wind_10m), which the
+#: report does not give for that moment, and the day's strongest is the highest of the estimates.
+WIND_FIELDS = ("speed", "gust", "speed_avg10m")
 
 
 def wind_10m(
@@ -82,10 +84,13 @@ def wind_10m(
 ) -> list[Reading]:
     """The report's wind estimated at 10 m, and where the estimate came from.
 
-    From the sensor, scaled by the height factor; but while the cups have stalled and the weather
-    model has a recent value, from the model, since scaling a stalled reading only scales zero.
-    The day's strongest gust is always the sensor's, scaled: it is a maximum, not a present value
-    the model could stand in for.
+    From the sensor: the speeds scaled by the height factor, and the gust by how far it rose above
+    the speed, added to the scaled speed. Near the ground the turbulence that makes gusts barely
+    changes with height while the mean wind grows, so a gust rises above the mean by about as much
+    at 10 m as at the sensor; scaling the whole gust would scale the turbulence too, which a
+    sheltered, low anemometer has plenty of. While the cups have stalled and the weather model
+    has a recent value, the estimate is the model's, since scaling a stalled reading only scales
+    zero.
     """
     wind = {
         r.field: float(r.value)
@@ -95,6 +100,8 @@ def wind_10m(
     if "speed" not in wind:
         return []
     values = {field: value * wind_factor for field, value in wind.items()}
+    if "gust" in wind:
+        values["gust"] = values["speed"] + max(0.0, wind["gust"] - wind["speed"])
     source = "sensor"
     usable = model is not None and abs(timestamp - model.timestamp) <= windheight.MODEL_WITHIN_S
     if wind["speed"] < windheight.STALL_MS and usable:
