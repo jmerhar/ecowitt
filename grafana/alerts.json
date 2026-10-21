@@ -79,7 +79,7 @@
           "for": "30m",
           "keepFiringFor": "30m",
           "annotations": {
-            "summary": "The outside air is drier than the house: airing now would bring the rooms from {{ printf \"%.0f\" $values.B.Value }}% to {{ printf \"%.0f\" $values.D.Value }}% humidity.",
+            "summary": "The outside air is drier than the house: airing now would bring the rooms from a median of {{ printf \"%.0f\" $values.B.Value }}% to {{ printf \"%.0f\" $values.D.Value }}% humidity.",
             "description": "The rooms at a median of 65% humidity or more, with airing set to bring them 5 points or more lower (less is within the sensors' error), while the windows do not already look open, for 30 minutes."
           },
           "labels": {
@@ -219,7 +219,23 @@
               "datasourceUid": "weather",
               "model": {
                 "refId": "D",
-                "rawSql": "SELECT station, sensor, last_value(name ORDER BY time) AS room,\n  last_value(dewpoint_delta_c ORDER BY time) AS value\nFROM ventilation WHERE time >= now() - interval '10 minutes'\nGROUP BY station, sensor",
+                "rawSql": "SELECT station, sensor, last_value(name ORDER BY time) AS room,\n  last_value(predicted_humidity_pct ORDER BY time) AS value\nFROM ventilation WHERE time >= now() - interval '10 minutes'\nGROUP BY station, sensor",
+                "rawQuery": true,
+                "editorMode": "code",
+                "format": "table",
+                "dataset": "iox"
+              }
+            },
+            {
+              "refId": "H",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "weather",
+              "model": {
+                "refId": "H",
+                "rawSql": "WITH rooms AS (SELECT time, station, sensor, name, humidity_pct FROM indoor WHERE time >= now() - interval '10 minutes' UNION ALL SELECT time, station, sensor, name, humidity_pct FROM channel WHERE time >= now() - interval '10 minutes')\nSELECT station, sensor, last_value(name ORDER BY time) AS room,\n  last_value(humidity_pct ORDER BY time) AS value\nFROM rooms\nGROUP BY station, sensor",
                 "rawQuery": true,
                 "editorMode": "code",
                 "format": "table",
@@ -265,7 +281,20 @@
               "model": {
                 "refId": "E",
                 "type": "math",
-                "expression": "$D > 2"
+                "expression": "$H - $D >= 5"
+              }
+            },
+            {
+              "refId": "F",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "F",
+                "type": "math",
+                "expression": "$H - $D >= 5 && $D < 65"
               }
             }
           ],
@@ -274,10 +303,10 @@
           "for": "0s",
           "keepFiringFor": "0s",
           "annotations": {
-            "summary": "{{ $labels.room }} has stayed at 70% humidity or more for 6 hours (lowest {{ humanize $values.A.Value }}%), where mould grows: {{ if eq $values.E.Value 1.0 }}the outside air is drier, so airing would dry it{{ else }}the outside air is no drier, so heat or dehumidify it{{ end }}.",
+            "summary": "{{ $labels.room }} has stayed at 70% humidity or more for 6 hours (lowest {{ humanize $values.A.Value }}%), where mould grows: {{ if eq $values.F.Value 1.0 }}airing would bring it down to {{ printf \"%.0f%%\" $values.D.Value }}{{ else if eq $values.E.Value 1.0 }}airing would only bring it down to {{ printf \"%.0f\" $values.D.Value }}%, so heat or dehumidify it as well{{ else }}airing would not dry it, so heat or dehumidify it{{ end }}.",
             "headline": "These rooms have stayed at 70% humidity or more for 6 hours, where mould grows.",
-            "item": "{{ $labels.room }} (lowest {{ humanize $values.A.Value }}%): {{ if eq $values.E.Value 1.0 }}the outside air is drier, so airing would dry it{{ else }}the outside air is no drier, so heat or dehumidify it{{ end }}",
-            "description": "A room whose humidity has not dropped below 70% in the last 6 hours; it counts as dry again once it drops below 65%."
+            "item": "{{ $labels.room }} (lowest {{ humanize $values.A.Value }}%): {{ if eq $values.F.Value 1.0 }}airing would bring it down to {{ printf \"%.0f%%\" $values.D.Value }}{{ else if eq $values.E.Value 1.0 }}airing would only bring it down to {{ printf \"%.0f\" $values.D.Value }}%, so heat or dehumidify it as well{{ else }}airing would not dry it, so heat or dehumidify it{{ end }}",
+            "description": "A room whose humidity has not dropped below 70% in the last 6 hours; it counts as dry again once it drops below 65%. Airing is advised when it would bring the room 5 points or more lower (less is within the sensors' error), and heating or a dehumidifier as well when it would leave the room at 65% or more."
           },
           "labels": {
             "app": "ecowitt",

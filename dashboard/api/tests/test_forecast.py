@@ -195,9 +195,10 @@ async def test_the_forecasts_frost_replaces_the_present_readings_hint() -> None:
 
 
 async def test_a_drier_spell_ahead_is_given_while_the_advice_is_not_to_open() -> None:
-    """The rooms' dew points are 1 °C above outdoors: the model's air must dry by over 1 °C."""
+    """The bathroom, at 75%, would settle at 72%: to bring it to 70%, the model's air must come
+    to hold 70/72 of the water it holds now, which a dew point of 10.9 °C rather than 12 does."""
     dry_later = coming(**{str(h): {"dewpoint_c": 10.9} for h in range(4, 25)})
-    airing = {"dewpoint_delta_c": 1.0, "predicted_humidity_pct": 70.0}
+    airing = {"dewpoint_delta_c": 1.0, "predicted_humidity_pct": 72.0}
     vent = [r for r in readings() if r.table != "ventilation"] + [
         row("ventilation", NOW - timedelta(minutes=1), airing, sensor=s, name=n)
         for s, n in (("indoor", "Living"), ("ch1", "ch1"))
@@ -218,7 +219,7 @@ async def test_an_hour_without_a_weather_code_has_no_description() -> None:
 
 
 async def test_no_drier_spell_without_an_outdoor_dew_point() -> None:
-    airing = {"dewpoint_delta_c": 1.0, "predicted_humidity_pct": 70.0}
+    airing = {"dewpoint_delta_c": 1.0, "predicted_humidity_pct": 72.0}
     rows = [
         r
         for r in readings()
@@ -249,8 +250,8 @@ async def test_the_route_serves_it(client: TestClient, reader: MemoryReader) -> 
     assert response.json()["hours"][0]["temperature"] == 62.6
 
 
-def damp_rooms(living: tuple[float, float], bath: tuple[float, float] = (50.0, 0.0)) -> list:
-    """The readings with each room's humidity, and its dew point above outdoors', replaced."""
+def damp_rooms(living: tuple[float, float], bath: tuple[float, float] = (50.0, 50.0)) -> list:
+    """The readings with each room's humidity, now and once aired, replaced."""
     rooms = {"indoor": living, "ch1": bath}
     kept = [r for r in readings() if r.table not in {"ventilation", "indoor", "channel"}]
     return kept + [
@@ -260,8 +261,8 @@ def damp_rooms(living: tuple[float, float], bath: tuple[float, float] = (50.0, 0
             sensor="ch1", name="ch1", channel="1"),
     ] + [
         row("ventilation", NOW - timedelta(minutes=1),
-            {"dewpoint_delta_c": delta, "predicted_humidity_pct": 70.0}, sensor=s, name=s)
-        for s, (_, delta) in rooms.items()
+            {"dewpoint_delta_c": 0.0, "predicted_humidity_pct": after}, sensor=s, name=s)
+        for s, (_, after) in rooms.items()
     ]  # fmt: skip
 
 
@@ -277,24 +278,35 @@ async def airing_with(rows: list, dew: dict[int, float], clock=NOW) -> object:  
 
 async def test_a_model_reading_drier_than_the_station_announces_nothing_by_itself() -> None:
     """The model's dew point 3 °C under the station's, throughout: no change is coming."""
-    airing = await airing_with(damp_rooms((70.0, 1.0)), dict.fromkeys(range(25), 9.5))
+    airing = await airing_with(damp_rooms((70.0, 68.0)), dict.fromkeys(range(25), 9.5))
 
     assert airing.advice != "open" and airing.drier_from is None
 
 
 async def test_the_dampest_rooms_need_decides_and_dry_rooms_are_left_out() -> None:
-    """One damp room 1.5 °C above outdoors needs the air to dry by 0.5 °C; one 0 °C above by 2.
-    A dry room 1.9 °C above would need 0.1 °C, but it does not need airing."""
+    """Of two rooms at 70%, one would settle at 68% and needs the air to hold 65/68 of its water
+    (a dew point of 11.3 °C from 12), the other at 74% and needs 65/74 (10.1 °C). A dry room at
+    55% that would settle at 52% needs less than either, but it does not need airing."""
     dew = {0: 12.0, **dict.fromkeys(range(3, 25), 11.2)}
-    damp = await airing_with(damp_rooms((70.0, 0.0), (70.0, 1.5)), dew)
-    dry = await airing_with(damp_rooms((70.0, 0.0), (55.0, 1.9)), dew)
+    damp = await airing_with(damp_rooms((70.0, 74.0), (70.0, 68.0)), dew)
+    dry = await airing_with(damp_rooms((70.0, 74.0), (55.0, 52.0)), dew)
 
     assert damp.drier_from == NOW + 3 * HOUR
     assert dry.drier_from is None
 
 
+async def test_a_damp_room_without_its_humidity_after_airing_is_left_out() -> None:
+    rows = [r for r in damp_rooms((70.0, 68.0)) if r.table != "ventilation"] + [
+        row("ventilation", NOW - timedelta(minutes=1), {"dewpoint_delta_c": 1.0}, sensor=s, name=s)
+        for s in ("indoor", "ch1")
+    ]
+    airing = await airing_with(rows, dict.fromkeys(range(1, 25), 5.0))
+
+    assert airing.advice != "open" and airing.drier_from is None
+
+
 async def test_no_drier_spell_while_the_advice_is_to_open_already() -> None:
-    airing = await airing_with(damp_rooms((70.0, 3.0)), dict.fromkeys(range(1, 25), 5.0))
+    airing = await airing_with(damp_rooms((70.0, 60.0)), dict.fromkeys(range(1, 25), 5.0))
 
     assert (airing.advice, airing.drier_from) == ("open", None)
 
@@ -302,7 +314,7 @@ async def test_no_drier_spell_while_the_advice_is_to_open_already() -> None:
 async def test_the_hour_under_way_is_not_drier_air_coming() -> None:
     """At 14:40 the 14:00 row is past: the first hour that can be coming is 15:00."""
     later = NOW + timedelta(minutes=40)
-    airing = await airing_with(damp_rooms((70.0, 1.0)), {0: 12.0, 1: 12.0, 2: 10.0}, clock=later)
+    airing = await airing_with(damp_rooms((70.0, 68.0)), {0: 12.0, 1: 12.0, 2: 10.0}, clock=later)
 
     assert airing.drier_from == NOW + 2 * HOUR
 
@@ -313,12 +325,12 @@ async def test_a_drier_spell_is_offered_only_when_someone_will_open_a_window() -
     late = NOW + 8 * HOUR
     steady = dict.fromkeys(range(25), 12.0)
     airing = await airing_with(
-        damp_rooms((70.0, 1.0)), steady | dict.fromkeys(range(9, 18), 10.0), clock=late
+        damp_rooms((70.0, 68.0)), steady | dict.fromkeys(range(9, 18), 10.0), clock=late
     )
     assert airing.drier_from == NOW + 17 * HOUR
 
     airing = await airing_with(
-        damp_rooms((70.0, 1.0)), steady | dict.fromkeys(range(9, 16), 10.0), clock=late
+        damp_rooms((70.0, 68.0)), steady | dict.fromkeys(range(9, 16), 10.0), clock=late
     )
     assert airing.drier_from is None
 
@@ -326,7 +338,7 @@ async def test_a_drier_spell_is_offered_only_when_someone_will_open_a_window() -
 async def test_no_drier_spell_without_the_models_present_dew_point() -> None:
     rows = [hour(NOW + h * HOUR, h + 1, dewpoint_c=5.0) for h in range(1, 25)]
     found = await Dashboard(
-        MemoryReader([*damp_rooms((70.0, 1.0)), *rows], {"example": MODELLED}), clock=lambda: NOW
+        MemoryReader([*damp_rooms((70.0, 68.0)), *rows], {"example": MODELLED}), clock=lambda: NOW
     ).now("example")
 
     assert found.airing is not None and found.airing.drier_from is None

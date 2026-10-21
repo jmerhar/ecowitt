@@ -112,27 +112,30 @@ def test_tendency(change: float, tendency: Tendency) -> None:
 
 
 @pytest.mark.parametrize(
-    ("humidity", "delta", "after", "advice"),
+    ("humidity", "after", "advice"),
     [
-        (70, 2.1, 58, Airing.OPEN),
-        (65, 2.1, 55, Airing.OPEN),
-        (64.9, 5, 40, Airing.NO_NEED),
-        (90, 2.0, 80, Airing.NO_NEED),
+        (70, 58, Airing.OPEN),
+        (65, 60, Airing.OPEN),
+        (64.9, 40, Airing.NO_NEED),
+        # A cold room, which outdoor air warmed to its temperature would dry by only a little:
+        # still drier, by more than the sensors' error.
+        (75, 68.5, Airing.OPEN),
+        (75, 70.1, Airing.NO_NEED),
         # Airing would not help a damp room, but would not hurt it either.
-        (90, 0.5, 89, Airing.NO_NEED),
-        (60, 0.2, 59, Airing.NO_NEED),
+        (90, 89, Airing.NO_NEED),
+        (60, 59, Airing.NO_NEED),
         # It would leave a room damp and damper than it is, by more than the sensors' error.
-        (70, -1.0, 75, Airing.KEEP_CLOSED),
-        (60, -1.0, 65, Airing.KEEP_CLOSED),
-        (60.5, -1.0, 65, Airing.NO_NEED),
-        (69, -0.2, 70.2, Airing.NO_NEED),
+        (70, 75, Airing.KEEP_CLOSED),
+        (60, 65, Airing.KEEP_CLOSED),
+        (60.5, 65, Airing.NO_NEED),
+        (69, 70.2, Airing.NO_NEED),
         # Damper, but not damp: nothing to warn of.
-        (50, -2, 62, Airing.NO_NEED),
-        (70, -0.5, None, Airing.NO_NEED),
+        (50, 62, Airing.NO_NEED),
+        (70, None, Airing.NO_NEED),
     ],
 )
-def test_airing(humidity: float, delta: float, after: float | None, advice: Airing) -> None:
-    assert weather.airing(humidity, delta, after) is advice
+def test_airing(humidity: float, after: float | None, advice: Airing) -> None:
+    assert weather.airing(humidity, after) is advice
 
 
 def test_the_thresholds_match_the_alert_rules() -> None:
@@ -152,6 +155,15 @@ def test_the_thresholds_match_the_alert_rules() -> None:
         f" && $B - $D >= {weather.DAMPER_BY_PCT:g}"
     )
     assert f"interval '{weather.WINDOWS_OPEN_WITHIN_MIN} minutes'" in air["A"]["rawSql"]
+    # Damp room advises airing by the same measure, room by room, and heating as well while
+    # airing would leave the room at or above the level it counts as dry again below.
+    damp = {d["refId"]: d["model"] for d in rules["Damp room"]["data"]}
+    drier = f"$H - $D >= {weather.DAMPER_BY_PCT:g}"
+    clears = damp["C"]["conditions"][0]["unloadEvaluator"]["params"][0]
+    assert damp["E"]["expression"] == drier
+    assert damp["F"]["expression"] == f"{drier} && $D < {clears:g}"
+    assert "predicted_humidity_pct" in damp["D"]["rawSql"]
+    assert "humidity_pct" in damp["H"]["rawSql"] and "FROM ventilation" not in damp["H"]["rawSql"]
     close = {d["refId"]: d["model"] for d in rules["Close the windows"]["data"]}
     assert close["E"]["expression"] == (
         f"$A >= {weather.WINDOWS_OPEN_SHARE:g} && ($C >= {weather.DAMPER_DEWPOINT_RISE_C:g}"
@@ -176,18 +188,18 @@ def test_the_thresholds_match_the_alert_rules() -> None:
     ("rooms", "humidity", "after", "advice"),
     [
         # Any room airing would dry, whatever the median room would do.
-        ([(70, 3.0, 55), (50, -2.0, 62), (50, -2.0, 62)], 50, 62, Airing.OPEN),
+        ([(70, 55), (50, 62), (50, 62)], 50, 62, Airing.OPEN),
         # The median room, 60%, would settle at 66%.
-        ([(58, -1.0, 64), (60, -1.0, 66), (64, -0.5, 70)], 60, 66, Airing.KEEP_CLOSED),
+        ([(58, 64), (60, 66), (64, 70)], 60, 66, Airing.KEEP_CLOSED),
         # 60% to 59%: no help, and no harm.
-        ([(58, 0.2, 57), (60, 0.2, 59), (62, 0.3, 61)], 60, 59, Airing.NO_NEED),
-        ([(50, 1.0, 48), (55, 3.0, 45)], 52.5, 46.5, Airing.NO_NEED),
-        ([(60, -1.0, None)], 60, None, Airing.NO_NEED),
+        ([(58, 57), (60, 59), (62, 61)], 60, 59, Airing.NO_NEED),
+        ([(50, 48), (55, 45)], 52.5, 46.5, Airing.NO_NEED),
+        ([(60, None)], 60, None, Airing.NO_NEED),
         ([], 60, 70, Airing.KEEP_CLOSED),
     ],
 )
 def test_house_airing(
-    rooms: list[tuple[float, float, float | None]],
+    rooms: list[tuple[float, float | None]],
     humidity: float,
     after: float | None,
     advice: Airing,
@@ -195,8 +207,8 @@ def test_house_airing(
     assert weather.house_airing(rooms, humidity, after) is advice
 
 
-DRYING = [(70, 3.0, 55), (66, 0.0, 66)]
-SHARING = [(66, 0.1, 66), (67, -0.2, 67)]
+DRYING = [(70, 55), (66, 66)]
+SHARING = [(66, 66), (67, 67)]
 
 
 @pytest.mark.parametrize(
@@ -216,7 +228,7 @@ SHARING = [(66, 0.1, 66), (67, -0.2, 67)]
     ],
 )
 def test_house_airing_with_the_windows_open(
-    rooms: list[tuple[float, float, float | None]], windows_open: bool, damper: bool, advice: Airing
+    rooms: list[tuple[float, float | None]], windows_open: bool, damper: bool, advice: Airing
 ) -> None:
     got = weather.house_airing(rooms, 66, 66, windows_open=windows_open, damper=damper)
     assert got is advice

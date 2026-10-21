@@ -6,6 +6,23 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 data in a way that needs acting on. Any release can also ask for the Grafana dashboard or alert
 rules to be imported again. Either is listed under *Upgrading*.
 
+## Unreleased
+
+### Fixed
+
+- *Damp room* and the dashboard judge whether airing would dry a room as *Good time to air*
+  judges the house: it would bring the room 5 points or more lower. Both used a dew point 2 °C
+  above the outdoor one instead, which a cold room misses while airing would still dry it, so
+  *Damp room* could call the outside air no drier in the same minute *Good time to air* said it
+  was. Its message now gives the humidity airing would bring each room to, and says to heat or
+  dehumidify a room that airing would leave at 65% or more. The dashboard's hint of drier air
+  ahead asks for the same.
+- *Good time to air* says the humidity it gives is the rooms' median.
+
+### Upgrading
+
+- Import the alert rules again for *Damp room* and *Good time to air*.
+
 ## 3.2.0 — 2026-10-18
 
 ### Added

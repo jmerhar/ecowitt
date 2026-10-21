@@ -324,9 +324,13 @@ class Dashboard:
             rooms=_room_dew_points(latest, values, stored),
         )
         if answer.airing is not None and answer.airing.advice != "open":
-            damp = [r for r in air if r.humidity >= weather.AIRING_HUMIDITY_PCT]
+            damp = [
+                (r.humidity, r.after)
+                for r in air
+                if r.humidity >= weather.AIRING_HUMIDITY_PCT and r.after is not None
+            ]
             answer.airing.drier_from = forecast.drier_from(
-                coming, values, info, self.clock(), [r.delta for r in damp], zone
+                coming, values, info, self.clock(), damp, zone
             )
         answer.sky = _sky(latest, stored, language)
         answer.summary_parts = _summary(answer, values.target, language)
@@ -915,7 +919,7 @@ def _house(
     aired_share, humidity_rise = _house_trend(latest.house_recent, end, stored)
     windows_open = weather.windows_open(aired_share)
     advice = weather.house_airing(
-        [(r.humidity, r.delta, r.after) for r in air],
+        [(r.humidity, r.after) for r in air],
         humidity,
         after,
         windows_open=windows_open,
@@ -925,11 +929,7 @@ def _house(
     )
     return models.HouseAiring(
         advice=advice.value,
-        rooms=[
-            r.name
-            for r in air
-            if weather.airing(r.humidity, r.delta, r.after) is weather.Airing.OPEN
-        ],
+        rooms=[r.name for r in air if weather.airing(r.humidity, r.after) is weather.Airing.OPEN],
         humidity=values.from_metric(H, humidity),
         humidity_after=None if after is None else values.from_metric(H, after),
         dew_point_difference=values.from_metric(D, delta),
@@ -993,7 +993,7 @@ def _rooms(
         advice = None
         if room is not None:
             advice = models.AiringAdvice(
-                advice=weather.airing(room.humidity, room.delta, room.after).value,
+                advice=weather.airing(room.humidity, room.after).value,
                 humidity_after=None if room.after is None else values.from_metric(H, room.after),
                 dew_point_difference=values.from_metric(Kind.TEMPERATURE_DELTA, room.delta),
             )

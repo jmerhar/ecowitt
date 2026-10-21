@@ -504,7 +504,8 @@ def windows_open(
 ) -> None:
     """Two hours of house rows a minute apart up to the latest report, aired but for the minutes
     before it in `not_aired`, the rooms' humidity moving evenly from one end of `humidity` to the
-    other; every room's air already close to the outdoor air. Temperatures are stored in `unit`."""
+    other; every room's air already close to the outdoor air, so airing would leave each room's
+    humidity where it is. Temperatures are stored in `unit`."""
     reader.rows = [r for r in reader.rows if r.table not in {"house", "ventilation"}]
     first, last = humidity
     delta = f"dewpoint_delta_{unit}"
@@ -517,9 +518,14 @@ def windows_open(
         if ago == 0:
             fields |= {"predicted_humidity_pct": last, delta: vent_delta}
         reader.rows.append(row("house", LAST - timedelta(minutes=ago), fields))
-    for sensor in ("indoor", "ch1"):
-        vent = {delta: vent_delta, "predicted_humidity_pct": last}
-        reader.rows.append(row("ventilation", LAST, vent, sensor=sensor))
+    rooms = [
+        r
+        for r in reader.rows
+        if r.table in {"indoor", "channel"} and r.timestamp == int(LAST.timestamp())
+    ]
+    for room in rooms:
+        vent = {delta: vent_delta, "predicted_humidity_pct": room.fields["humidity_pct"]}
+        reader.rows.append(row("ventilation", LAST, vent, sensor=dict(room.tags)["sensor"]))
 
 
 def outdoor_dew_points(

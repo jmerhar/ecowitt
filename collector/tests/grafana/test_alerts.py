@@ -174,6 +174,20 @@ def test_good_time_to_air_says_what_airing_would_do() -> None:
     assert "aired" in sql["A"]
 
 
+def test_damp_room_says_what_airing_would_do_to_each_room() -> None:
+    """Each room's advice gives the humidity airing would bring it to, judged by the room's own
+    humidity rather than by dew points: the measure Good time to air judges the house by, so the
+    two never disagree about whether the outside air is drier."""
+    rule = next(r for r in RULES if r["uid"] == "ecowitt-damp")
+    sql = {d["refId"]: d["model"].get("rawSql", "") for d in rule["data"]}
+    item = rule["annotations"]["item"]
+    assert "predicted_humidity_pct" in sql["D"]
+    assert "FROM indoor" in sql["H"] and "FROM channel" in sql["H"]
+    assert "dew point" not in item.lower() and "dewpoint" not in "".join(sql.values())
+    assert item.count("$values.D.Value") == 2
+    assert rule["annotations"]["summary"].endswith(item.split(": ", 1)[1] + ".")
+
+
 def test_a_shower_and_a_damp_room_never_fire_together() -> None:
     """Air the bathroom only speaks for a room that has dropped below the level Damp room clears
     at within the same six hours: such a room cannot be damp, and a damp room cannot qualify."""

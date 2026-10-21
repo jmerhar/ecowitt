@@ -34,16 +34,14 @@ BEAUFORT_NAMES = (
     "Hurricane force",
 )
 
-#: A room is worth airing when the outdoor air's dew point is this much lower than the room's...
-AIRING_DEWPOINT_DELTA_C = 2.0
-#: ...and the room is at least this humid. The Good time to air alert rule in
-#: grafana/alerts.json uses the same two numbers.
+#: A room is worth airing when it is at least this humid...
 AIRING_HUMIDITY_PCT = 65.0
-#: Airing is advised against only when it would do harm: leave a room at least
-#: AIRING_HUMIDITY_PCT humid and this many points damper than it is. Humidity sensors are good to
-#: a few points, and the humidity after airing adds the outdoor sensor's error to the room's, so
-#: a smaller difference says nothing. The page applies the same to the house's median room, and
-#: treats a smaller change either way as none.
+#: ...and airing would bring it at least this many points lower. Airing is advised against only
+#: when it would do harm: leave a room at least AIRING_HUMIDITY_PCT humid and this many points
+#: damper than it is. Humidity sensors are good to a few points, and the humidity after airing
+#: adds the outdoor sensor's error to the room's, so a smaller difference says nothing. The page
+#: applies the same to the house's median room, and treats a smaller change either way as none.
+#: The Good time to air and Damp room alert rules in grafana/alerts.json use the same numbers.
 DAMPER_BY_PCT = 5.0
 
 # What deserves a visitor's attention. Each threshold with an alert rule in grafana/alerts.json is
@@ -167,10 +165,9 @@ def tendency(change_hpa: float) -> Tendency:
 class Airing(Enum):
     """Whether opening a room's windows would make it drier."""
 
-    #: Damp, and the outdoor air is markedly drier: airing would help.
+    #: Damp, and airing would bring it DAMPER_BY_PCT points or more lower.
     OPEN = "open"
-    #: Damp, and the outdoor air holds about as much moisture as the room's, or more: airing
-    #: would not dry it.
+    #: Airing would leave it damp, and DAMPER_BY_PCT points or more damper than it is.
     KEEP_CLOSED = "keep_closed"
     #: Neither: dry enough already, or too little difference to matter.
     NO_NEED = "no_need"
@@ -180,27 +177,37 @@ class Airing(Enum):
     AIRED = "aired"
 
 
-def airing(humidity_pct: float, dewpoint_delta_c: float, after_pct: float | None) -> Airing:
-    """Advice for one room, from its humidity, how far its dew point is above outdoors', and
-    the humidity it would settle at once aired (None when that is unknown)."""
-    if humidity_pct >= AIRING_HUMIDITY_PCT and dewpoint_delta_c > AIRING_DEWPOINT_DELTA_C:
+def airing(humidity_pct: float, after_pct: float | None) -> Airing:
+    """Advice for one room, from its humidity and the humidity it would settle at once aired
+    (None when that is unknown)."""
+    if dries(humidity_pct, after_pct):
         return Airing.OPEN
     if _dampens(humidity_pct, after_pct):
         return Airing.KEEP_CLOSED
     return Airing.NO_NEED
 
 
+def dries(humidity_pct: float, after_pct: float | None) -> bool:
+    """Whether airing would dry a room: one at least AIRING_HUMIDITY_PCT humid, brought at least
+    DAMPER_BY_PCT points lower."""
+    return (
+        after_pct is not None
+        and humidity_pct >= AIRING_HUMIDITY_PCT
+        and after_pct <= humidity_pct - DAMPER_BY_PCT
+    )
+
+
 def house_airing(
-    rooms: list[tuple[float, float, float | None]],
+    rooms: list[tuple[float, float | None]],
     humidity_pct: float,
     after_pct: float | None,
     *,
     windows_open: bool = False,
     damper: bool = False,
 ) -> Airing:
-    """Advice for the whole house, from each room's humidity, dew-point difference and humidity
-    once aired, the median room's humidity now and once aired, whether the windows look open
-    (`windows_open`) and whether the air coming in is getting damper (`damper`).
+    """Advice for the whole house, from each room's humidity now and once aired, the median
+    room's humidity now and once aired, whether the windows look open (`windows_open`) and
+    whether the air coming in is getting damper (`damper`).
 
     With the windows open, close them once the air turns damper: the rooms follow it up, and
     by the time they read damp it is too late. Otherwise air when any room would be dried by it,
