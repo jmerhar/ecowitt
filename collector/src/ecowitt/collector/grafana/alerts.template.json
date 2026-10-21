@@ -303,9 +303,9 @@
           "for": "0s",
           "keepFiringFor": "0s",
           "annotations": {
-            "summary": "{{ $labels.room }} has stayed at 70% humidity or more for 6 hours (lowest {{ humanize $values.A.Value }}%), where mould grows: {{ if eq $values.F.Value 1.0 }}airing would bring it down to {{ printf \"%.0f%%\" $values.D.Value }}{{ else if eq $values.E.Value 1.0 }}airing would only bring it down to {{ printf \"%.0f\" $values.D.Value }}%, so heat or dehumidify it as well{{ else }}airing would not dry it, so heat or dehumidify it{{ end }}.",
+            "summary": "{{ $labels.room }} has stayed at 70% humidity or more for 6 hours (lowest {{ printf \"%.0f\" $values.A.Value }}%), where mould grows: {{ if eq $values.F.Value 1.0 }}airing would bring it down to {{ printf \"%.0f%%\" $values.D.Value }}{{ else if eq $values.E.Value 1.0 }}airing would only bring it down to {{ printf \"%.0f\" $values.D.Value }}%, so heat or dehumidify it as well{{ else }}airing would not dry it, so heat or dehumidify it{{ end }}.",
             "headline": "These rooms have stayed at 70% humidity or more for 6 hours, where mould grows.",
-            "item": "{{ $labels.room }} (lowest {{ humanize $values.A.Value }}%): {{ if eq $values.F.Value 1.0 }}airing would bring it down to {{ printf \"%.0f%%\" $values.D.Value }}{{ else if eq $values.E.Value 1.0 }}airing would only bring it down to {{ printf \"%.0f\" $values.D.Value }}%, so heat or dehumidify it as well{{ else }}airing would not dry it, so heat or dehumidify it{{ end }}",
+            "item": "{{ $labels.room }} (lowest {{ printf \"%.0f\" $values.A.Value }}%): {{ if eq $values.F.Value 1.0 }}airing would bring it down to {{ printf \"%.0f%%\" $values.D.Value }}{{ else if eq $values.E.Value 1.0 }}airing would only bring it down to {{ printf \"%.0f\" $values.D.Value }}%, so heat or dehumidify it as well{{ else }}airing would not dry it, so heat or dehumidify it{{ end }}",
             "description": "A room whose humidity has not dropped below 70% in the last 6 hours; it counts as dry again once it drops below 65%. Airing is advised when it would bring the room 5 points or more lower (less is within the sensors' error), and heating or a dehumidifier as well when it would leave the room at 65% or more."
           },
           "labels": {
@@ -443,7 +443,9 @@
             "summary": "{{ $labels.room }} has not updated for {{ humanizeDuration $values.A.Value }}: its battery or radio has probably failed.",
             "headline": "These sensors have stopped updating: a battery or radio has probably failed.",
             "item": "{{ $labels.room }}, for {{ humanizeDuration $values.A.Value }}",
-            "description": "A room or outdoor sensor whose temperature and humidity have been missing from the station's reports for 15 minutes, or whose readings have not changed for 6 hours. A console that loses a sensor either stops sending its readings or repeats its last ones; a still room at night can hold its readings for two or three hours, a lost sensor for good. Measured against the station's last report rather than the clock, so a station that stops uploading altogether does not flag every sensor; a sensor silent for more than 7 days drops out."
+            "description": "A room or outdoor sensor whose temperature and humidity have been missing from the station's reports for 15 minutes, or whose readings have not changed for 6 hours. A console that loses a sensor either stops sending its readings or repeats its last ones; a still room at night can hold its readings for two or three hours, a lost sensor for good. Measured against the station's last report rather than the clock, so a station that stops uploading altogether does not flag every sensor; a sensor silent for more than 7 days drops out.",
+            "resolved_title": "Sensors updating again",
+            "resolved": "{{ $labels.room }} is updating again."
           },
           "labels": {
             "app": "ecowitt",
@@ -504,7 +506,9 @@
             "summary": "{{ $labels.room }}'s battery is low.",
             "headline": "These sensors' batteries are low.",
             "item": "{{ $labels.room }}",
-            "description": "A sensor's low-battery flag, set for an hour."
+            "description": "A sensor's low-battery flag, set for an hour.",
+            "resolved_title": "Batteries fine again",
+            "resolved": "{{ $labels.room }}'s battery is no longer low."
           },
           "labels": {
             "app": "ecowitt",
@@ -565,7 +569,9 @@
             "summary": "{{ $labels.room }} is at {{ printf \"%.1f\" $values.A.Value }} %{symbol temperature}.",
             "headline": "These rooms are below %{8 temperature} %{symbol temperature}: pipes and plants are at risk.",
             "item": "{{ $labels.room }}: {{ printf \"%.1f\" $values.A.Value }} %{symbol temperature}",
-            "description": "A room below %{8 temperature} %{symbol temperature} for 15 minutes: pipes and plants are at risk."
+            "description": "A room below %{8 temperature} %{symbol temperature} for 15 minutes: pipes and plants are at risk.",
+            "resolved_title": "Rooms warm enough again",
+            "resolved": "{{ $labels.room }} is back above %{8 temperature} %{symbol temperature}."
           },
           "labels": {
             "app": "ecowitt",
@@ -626,7 +632,9 @@
             "summary": "{{ $labels.room }} is at {{ printf \"%.1f\" $values.A.Value }} %{symbol temperature}.",
             "headline": "These rooms are above %{32 temperature} %{symbol temperature}.",
             "item": "{{ $labels.room }}: {{ printf \"%.1f\" $values.A.Value }} %{symbol temperature}",
-            "description": "A room above %{32 temperature} %{symbol temperature} for 15 minutes."
+            "description": "A room above %{32 temperature} %{symbol temperature} for 15 minutes.",
+            "resolved_title": "Rooms cool enough again",
+            "resolved": "{{ $labels.room }} is back below %{32 temperature} %{symbol temperature}."
           },
           "labels": {
             "app": "ecowitt",
@@ -684,8 +692,10 @@
           "for": "0s",
           "keepFiringFor": "30m",
           "annotations": {
-            "summary": "Gusts of {{ humanize $values.A.Value }} %{symbol speed} at 10 m at {{ $labels.station }}.",
-            "description": "A gust above %{60 speed} %{symbol speed} at 10 m (the estimate the wind_10m table holds) in the last 10 minutes."
+            "summary": "Gusts of {{ printf \"%.0f\" $values.A.Value }} %{symbol speed} at 10 m at {{ $labels.station }}.",
+            "description": "A gust above %{60 speed} %{symbol speed} at 10 m (the estimate the wind_10m table holds) in the last 10 minutes.",
+            "resolved_title": "Wind easing",
+            "resolved": "The wind has eased at {{ $labels.station }}: no gust above %{60 speed} %{symbol speed} for over half an hour."
           },
           "labels": {
             "app": "ecowitt",
@@ -743,8 +753,10 @@
           "for": "0s",
           "keepFiringFor": "30m",
           "annotations": {
-            "summary": "Rain at {{ humanize $values.A.Value }} %{symbol rain_rate} at {{ $labels.station }}.",
-            "description": "A rain rate above %{10 rain_rate} %{symbol rain_rate} in the last 10 minutes."
+            "summary": "Rain at {{ printf \"%.%{decimals rain_rate}f\" $values.A.Value }} %{symbol rain_rate} at {{ $labels.station }}.",
+            "description": "A rain rate above %{10 rain_rate} %{symbol rain_rate} in the last 10 minutes.",
+            "resolved_title": "Rain easing",
+            "resolved": "The heavy rain has eased at {{ $labels.station }}: under %{10 rain_rate} %{symbol rain_rate} for over half an hour."
           },
           "labels": {
             "app": "ecowitt",
@@ -803,7 +815,9 @@
           "keepFiringFor": "1h",
           "annotations": {
             "summary": "Pressure at {{ $labels.station }} has fallen {{ printf \"%.%{decimals pressure}f\" $values.A.Value }} %{symbol pressure} in 3 hours: a storm or a front is likely.",
-            "description": "Sea-level pressure more than %{3 pressure} %{symbol pressure} lower than 3 hours ago."
+            "description": "Sea-level pressure more than %{3 pressure} %{symbol pressure} lower than 3 hours ago.",
+            "resolved_title": "Pressure steadier",
+            "resolved": "Pressure at {{ $labels.station }} is no longer falling fast."
           },
           "labels": {
             "app": "ecowitt",

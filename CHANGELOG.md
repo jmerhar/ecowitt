@@ -18,10 +18,19 @@ rules to be imported again. Either is listed under *Upgrading*.
   dehumidify a room that airing would leave at 65% or more. The dashboard's hint of drier air
   ahead asks for the same.
 - *Good time to air* says the humidity it gives is the rooms' median.
+- Alert messages give gusts in whole units and rain and a damp room's lowest humidity to the
+  decimals the dashboard shows, rather than every digit the estimate has (a gust of 63.78 km/h).
+
+### Added
+
+- Rules that send a resolve message carry its title and sentence, `resolved_title` and
+  `resolved`: *Wind easing*, "The wind has eased at Home: no gust above 60 km/h for over half
+  an hour", rather than the rule's name.
 
 ### Upgrading
 
-- Import the alert rules again for *Damp room* and *Good time to air*.
+- Import the alert rules again. A notification template that builds its own messages can use
+  `resolved_title` and `resolved` for resolved alerts.
 
 ## 3.2.0 — 2026-10-18
 

@@ -253,3 +253,26 @@ def test_no_query_hides_a_condition_in_its_value(rule: dict[str, Any]) -> None:
     for step in rule["data"]:
         if step["datasourceUid"] != "__expr__":
             assert not re.search(r"\b(?:-?99)\b", step["model"]["rawSql"]), step["refId"]
+
+
+@pytest.mark.parametrize("rule", BY_TITLE)
+def test_a_rule_that_resolves_says_so_in_its_own_words(rule: dict[str, Any]) -> None:
+    """A resolve message reads as what changed ("Wind easing"), not as the rule's name. It names
+    no value: Grafana fills it from the evaluation that cleared, not the one that fired."""
+    annotations = rule["annotations"]
+    sends = rule["labels"].get("resolve_message") != "off"
+    assert ("resolved" in annotations, "resolved_title" in annotations) == (sends, sends)
+    if sends:
+        assert "{{" not in annotations["resolved_title"], "the title is one for every alert"
+        assert "$values" not in annotations["resolved"]
+
+
+@pytest.mark.parametrize("rule", BY_TITLE)
+def test_values_are_printed_no_finer_than_the_sensors_read(rule: dict[str, Any]) -> None:
+    """humanize prints every digit it is given (a gust of 63.78 km/h): each value is printed with
+    a fixed number of decimals instead, or as a duration."""
+    for text in rule["annotations"].values():
+        for printed in re.findall(r"\{\{[^}]*\$values\.\w+\.Value[^}]*\}\}", text):
+            if printed.startswith(("{{ if ", "{{ else if ")):
+                continue
+            assert re.match(r'\{\{ (printf "%\.\d+f%*"|humanizeDuration) ', printed), printed
