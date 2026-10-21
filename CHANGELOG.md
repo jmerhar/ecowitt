@@ -6,6 +6,15 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 data in a way that needs acting on. Any release can also ask for the Grafana dashboard or alert
 rules to be imported again. Either is listed under *Upgrading*.
 
+## Unreleased
+
+### Fixed
+
+- CI installs the Bruno CLI's dependencies with the same two-week release age as the page's,
+  so a package published moments before cannot break the build. 3.3.0's images were never
+  published: CI could not install a dependency released, half-finished, minutes before it ran.
+  3.3.1 is 3.3.0 with this fix, and its *Upgrading* notes apply.
+
 ## 3.3.0 — 2026-10-21
 
 ### Fixed

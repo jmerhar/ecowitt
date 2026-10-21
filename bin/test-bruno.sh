@@ -29,4 +29,6 @@ for attempt in $(seq 1 120); do
 done
 
 cd "$root/bruno"
-npx --yes "$cli" run dashboard dashboard-site -r --env local --env-var "dashboard_url=http://127.0.0.1:$port"
+# The CLI is pinned but its dependencies resolve afresh; like the page's installs
+# (dashboard/web/.npmrc), take nothing published in the last two weeks.
+npx --yes --min-release-age=14 "$cli" run dashboard dashboard-site -r --env local --env-var "dashboard_url=http://127.0.0.1:$port"
