@@ -6,7 +6,7 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 data in a way that needs acting on. Any release can also ask for the Grafana dashboard or alert
 rules to be imported again. Either is listed under *Upgrading*.
 
-## Unreleased
+## 3.3.1 — 2026-10-21
 
 ### Fixed
 
