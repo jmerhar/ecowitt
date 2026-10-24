@@ -129,6 +129,29 @@ describe("Chart", () => {
     expect(made[1].options.series[1].value(null, 2)).toBe("2");
   });
 
+  it("cuts both axes of a two-axis chart into the same steps, so the right one's ticks meet the grid", () => {
+    const rain = viewFor("rain");
+    const data = align(rain, series({
+      series: [
+        { metric: "rain.amount", sensor: "bucket", name: null, unit: "mm", source: "station", t: [1], values: { increase: [1.6] } },
+        { metric: "rain.rate", sensor: "bucket", name: null, unit: "mmh", source: "station", t: [1], values: { max: [6.2] } },
+      ],
+    }), {});
+    render(Chart, { view: rain, data, symbols: SYMBOLS, timezone: "UTC" });
+    const { scales, axes } = made[0].options;
+    expect(scales.left.range(null, 0, 1.6)).toEqual([0, 2.5]);
+    expect(scales.right.range(null, 0, 6.2)).toEqual([0, 10]);
+    expect(axes[1].splits(null, 1, 0, 2.5)).toEqual([0, 0.5, 1, 1.5, 2, 2.5]);
+    expect(axes[2].splits(null, 2, 0, 10)).toEqual([0, 2, 4, 6, 8, 10]);
+  });
+
+  it("leaves a lone axis to uPlot's own ticks", () => {
+    const view = viewFor("temperature");
+    render(Chart, { view, data: align(view, series(), {}), symbols: SYMBOLS, timezone: "UTC" });
+    expect(made[0].options.scales).toEqual({ x: { time: true } });
+    expect(made[0].options.axes[1].splits).toBeUndefined();
+  });
+
   it("draws the model dashed across its gaps, and its points hollow", () => {
     const wind = viewFor("wind");
     const data = align(wind, series({

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { align, colour, MEASURED_WIND, PALETTE, spec, viewFor, VIEWS } from "./chart";
+import { align, axisDivisions, axisRange, axisTicks, colour, MEASURED_WIND, PALETTE, spec, viewFor, VIEWS } from "./chart";
 import { series } from "../testing";
 
 const LABELS = { "outdoor.temperature": "Temperature", "outdoor.dew_point": "Dew point" };
@@ -182,5 +182,46 @@ describe("views", () => {
     const line = { metric: "x", label: "", unit: "", style: "line" as const, axis: "left" as const, index: 0, values: [] };
     expect(colour(VIEWS[0], line)).toBe(PALETTE[0]);
     expect(colour(VIEWS[0], { ...line, index: 12 })).toBe(PALETTE[2]);
+  });
+});
+
+describe("two axes", () => {
+  it("share one number of divisions, the compass's quarters when one is a direction", () => {
+    expect(axisDivisions([{ scale: "left", unit: "mm" }, { scale: "right", unit: "mmh" }], 280)).toBe(5);
+    expect(axisDivisions([{ scale: "left", unit: "mm" }, { scale: "right", unit: "mmh" }], 1000)).toBe(8);
+    expect(axisDivisions([{ scale: "left", unit: "mm" }, { scale: "right", unit: "mmh" }], 100)).toBe(3);
+    expect(axisDivisions([{ scale: "left", unit: "kmh" }, { scale: "right", unit: "deg" }], 280)).toBe(4);
+  });
+
+  it("each span exactly that many round steps over their data", () => {
+    // The rain chart: 1.6 mm in a bucket and 6.2 mm/h, both standing on zero.
+    expect(axisRange("mm", 0, 1.6, 5)).toEqual([0, 2.5]);
+    expect(axisRange("mmh", 0, 6.2, 5)).toEqual([0, 10]);
+    expect(axisRange("mm", 0, 1.5, 6)).toEqual([0, 1.5]);
+    expect(axisRange("wm2", 0, 0.3, 3)).toEqual([0, 0.3]);
+  });
+
+  it("share spare steps above and below data that can go negative, but not below zero", () => {
+    expect(axisRange("c", -1, 2, 5)).toEqual([-2, 3]);
+    expect(axisRange("c", -1, 2, 6)).toEqual([-1, 2]);
+    expect(axisRange("hpa", 1012, 1013, 7)).toEqual([1011.8, 1013.2]);
+    expect(axisRange("mm", 0.1, 0.2, 7)).toEqual([0.08, 0.22]);
+    expect(axisRange("mm", 0, 0.2, 6)).toEqual([0, 0.3]);
+  });
+
+  it("still have a range with no data or a flat line", () => {
+    expect(axisRange("mm", null, null, 5)).toEqual([0, 5]);
+    expect(axisRange("mm", 0, 0, 5)).toEqual([0, 0.1]);
+    expect(axisRange("c", 20, 20, 4)).toEqual([20, 22]);
+  });
+
+  it("give a direction the compass", () => {
+    expect(axisRange("deg", 10, 200, 4)).toEqual([0, 360]);
+    expect(axisTicks(0, 360, 4)).toEqual([0, 90, 180, 270, 360]);
+  });
+
+  it("tick every step, without binary noise", () => {
+    expect(axisTicks(0, 1.5, 5)).toEqual([0, 0.3, 0.6, 0.9, 1.2, 1.5]);
+    expect(axisTicks(-2, 4, 6)).toEqual([-2, -1, 0, 1, 2, 3, 4]);
   });
 });

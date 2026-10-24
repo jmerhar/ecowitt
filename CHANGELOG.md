@@ -6,6 +6,14 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 data in a way that needs acting on. Any release can also ask for the Grafana dashboard or alert
 rules to be imported again. Either is listed under *Upgrading*.
 
+## Unreleased
+
+### Fixed
+
+- On the dashboard's charts with a second axis (wind, rain, sun), the right axis's values sit on
+  the grid lines. Both axes are divided into the same number of round steps; a wind direction
+  axis runs from 0° to 360° in quarters.
+
 ## 3.4.0 — 2026-10-24
 
 ### Changed

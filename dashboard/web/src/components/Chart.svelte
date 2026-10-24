@@ -4,7 +4,7 @@
   import uPlot from "uplot";
   import "uplot/dist/uPlot.min.css";
   import type { ChartData, PlotSpec, View } from "../lib/chart";
-  import { spec } from "../lib/chart";
+  import { axisDivisions, axisRange, axisTicks, spec } from "../lib/chart";
   import { axisLabels, moment } from "../lib/format";
   import { intlLocale } from "../lib/language";
   import { m } from "../paraglide/messages.js";
@@ -31,12 +31,23 @@
     const built = spec(view, data);
     const ink = css("--muted");
     const grid = css("--line");
+    // With a second axis both scales are cut into the same steps, so the right axis's ticks
+    // land on the left one's grid lines; a lone axis keeps uPlot's own choice.
+    const aligned = built.axes.length > 1;
+    const divisions = axisDivisions(built.axes, height);
+    const scales: uPlot.Scales = { x: { time: true } };
+    if (aligned) {
+      for (const a of built.axes) {
+        scales[a.scale] = { range: (_: uPlot, min, max) => axisRange(a.unit, min, max, divisions) };
+      }
+    }
     const axis = (scale: string, unit: string, side: number): uPlot.Axis => ({
       scale,
       side,
       stroke: ink,
       grid: { stroke: grid, show: side === 3 },
       ticks: { stroke: grid },
+      splits: aligned ? (_: uPlot, _axis: number, min: number, max: number) => axisTicks(min, max, divisions) : undefined,
       values: (_: uPlot, ticks: number[]) =>
         ticks.map((v) => `${v.toLocaleString(intlLocale())}${symbols[unit] ? ` ${symbols[unit]}` : ""}`),
       size: 70,
@@ -45,7 +56,7 @@
       width: element.clientWidth || 600,
       height,
       tzDate: (ts) => uPlot.tzDate(new Date(ts * 1000), timezone),
-      scales: { x: { time: true } },
+      scales,
       axes: [
         {
           stroke: ink,

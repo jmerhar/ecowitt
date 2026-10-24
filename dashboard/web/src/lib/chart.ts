@@ -274,3 +274,61 @@ export function spec(view: View, chart: ChartData): PlotSpec {
   }
   return { data, series, bands, axes: [...axes.values()] };
 }
+
+/** The steps an aligned axis takes between ticks: 1, 2, 2.5 and 5 times a power of ten. */
+const NICE_STEPS = [1, 2, 2.5, 5];
+
+/** A direction axis spans the compass in quarters, so the other axis is divided to match. */
+const DIRECTION_DIVISIONS = 4;
+
+/**
+ * How many divisions both axes of a two-axis chart share: one per 40 px or so of plot, or the
+ * direction axis's quarters. Only the left axis draws grid lines, so the right one's ticks must
+ * fall on them, which they do only when both scales are cut into the same number of parts.
+ */
+export function axisDivisions(axes: PlotSpec["axes"], height: number): number {
+  if (axes.some((a) => a.unit === "deg")) return DIRECTION_DIVISIONS;
+  return Math.min(8, Math.max(3, Math.round((height - 80) / 40)));
+}
+
+/** Round off the binary noise that adding steps leaves (0.30000000000000004). */
+function tidy(value: number): number {
+  return Number(value.toPrecision(12));
+}
+
+/**
+ * A scale's range on a two-axis chart: exactly `divisions` steps of a round size, covering the
+ * data, with any spare steps shared above and below it -- but never below zero for data that is
+ * never negative, so rain and radiation stand on the axis. A direction axis is the compass.
+ */
+export function axisRange(
+  unit: string,
+  min: number | null,
+  max: number | null,
+  divisions: number,
+): [number, number] {
+  if (unit === "deg") return [0, 360];
+  if (min === null || max === null || !Number.isFinite(min) || !Number.isFinite(max)) return [0, divisions];
+  if (max - min < 1e-9) max = min + (Math.abs(min) || 1) / 10;
+  const slack = 1e-9;
+  let power = 10 ** Math.floor(Math.log10((max - min) / divisions));
+  for (;;) {
+    for (const nice of NICE_STEPS) {
+      const step = nice * power;
+      const low = Math.floor(min / step + slack);
+      const high = Math.ceil(max / step - slack);
+      const spare = divisions - (high - low);
+      if (spare < 0) continue;
+      const below = min >= 0 ? Math.min(Math.floor(spare / 2), low) : Math.floor(spare / 2);
+      const start = (low - below) * step;
+      return [tidy(start), tidy(start + divisions * step)];
+    }
+    power *= 10;
+  }
+}
+
+/** The ticks of an aligned axis: its range cut into `divisions` equal steps. */
+export function axisTicks(low: number, high: number, divisions: number): number[] {
+  const step = (high - low) / divisions;
+  return Array.from({ length: divisions + 1 }, (_, i) => tidy(low + i * step));
+}
