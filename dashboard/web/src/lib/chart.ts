@@ -49,7 +49,7 @@ export const VIEWS: View[] = [
     id: "rain",
     label: m.view_rain,
     metrics: [
-      { id: "rain.daily", style: "bars", axis: "left" },
+      { id: "rain.amount", style: "bars", axis: "left" },
       { id: "rain.rate", style: "line", axis: "right" },
     ],
   },

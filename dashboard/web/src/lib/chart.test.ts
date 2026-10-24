@@ -32,14 +32,14 @@ describe("align", () => {
     ]);
     const gauges = series({
       series: [
-        { metric: "rain.daily", sensor: "bucket", name: null, unit: "mm", source: "station", t: [1], values: { max: [1] } },
-        { metric: "rain.daily", sensor: "piezo", name: null, unit: "mm", source: "station", t: [1], values: { max: [2] } },
+        { metric: "rain.amount", sensor: "bucket", name: null, unit: "mm", source: "station", t: [1], values: { increase: [1] } },
+        { metric: "rain.amount", sensor: "piezo", name: null, unit: "mm", source: "station", t: [1], values: { increase: [2] } },
         { metric: "rain.rate", sensor: "bucket", name: null, unit: "mm_h", source: "station", t: [1], values: { max: [0] } },
       ],
     });
-    expect(align(viewFor("rain"), gauges, { "rain.daily": "Rain today" }).lines.map((l) => l.label)).toEqual([
-      "Rain today (bucket)",
-      "Rain today (piezo)",
+    expect(align(viewFor("rain"), gauges, { "rain.amount": "Rain" }).lines.map((l) => l.label)).toEqual([
+      "Rain (bucket)",
+      "Rain (piezo)",
       "rain.rate",
     ]);
   });
@@ -158,7 +158,7 @@ describe("spec", () => {
     const view = viewFor("rain");
     const answer = series({
       series: [
-        { metric: "rain.daily", sensor: "bucket", name: null, unit: "mm", source: "station", t: [1], values: { max: [1] } },
+        { metric: "rain.amount", sensor: "bucket", name: null, unit: "mm", source: "station", t: [1], values: { increase: [1] } },
         { metric: "rain.rate", sensor: "bucket", name: null, unit: "mm_h", source: "station", t: [1], values: { max: [0] } },
       ],
     });

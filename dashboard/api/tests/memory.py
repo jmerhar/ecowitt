@@ -22,6 +22,7 @@ from ecowitt.core.store.query import (
     Point,
     ReadError,
     Span,
+    increases,
 )
 
 
@@ -124,6 +125,13 @@ class MemoryReader:
                 by_bucket.setdefault(origin + timedelta(seconds=offset * size), []).append(row)
             times = sorted(by_bucket)
             values = {pair: [_aggregate(pair, by_bucket[t]) for t in times] for pair in pairs}
+            for name, aggregate in pairs:
+                if aggregate is Aggregate.INCREASE:
+                    highs, lows = (
+                        [_aggregate((name, a), by_bucket[t]) for t in times]
+                        for a in (Aggregate.MAX, Aggregate.MIN)
+                    )
+                    values[name, aggregate] = increases(times, highs, lows, step)
             found.append(Buckets(tags, _name(rows), times, values))
         return found
 
@@ -202,6 +210,8 @@ def _aggregate(pair: tuple[str, Aggregate], rows: list[Row]) -> float | None:
             return min(values)
         case Aggregate.MAX:
             return max(values)
+        case Aggregate.INCREASE:
+            return None
     sin = statistics.fmean(math.sin(math.radians(v)) for v in values)
     cos = statistics.fmean(math.cos(math.radians(v)) for v in values)
     return math.degrees(math.atan2(sin, cos)) % 360

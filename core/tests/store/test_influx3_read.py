@@ -24,7 +24,7 @@ COLUMNS = {
     "outdoor": ["time", "STATION", "SENSOR", "NAME", "temp_c", "humidity_pct"],
     "pressure": ["time", "STATION", "sea_hpa"],
     "battery": ["time", "STATION", "SENSOR", "low"],
-    "rain": ["time", "STATION", "GAUGE", "rate_mm_h"],
+    "rain": ["time", "STATION", "GAUGE", "rate_mm_h", "yearly_mm"],
     "wind": ["time", "STATION", "dir_deg", "speed_kmh"],
     "station_info": ["time", "STATION", "timezone", "units_temperature", "sensor_ch1"],
 }
@@ -283,6 +283,42 @@ async def test_a_circular_mean_is_an_angle_between_0_and_360(
     assert (
         'atan2(avg(sin(radians("dir_deg"))), avg(cos(radians("dir_deg"))))' in db.queries[-1]["q"]
     )
+
+
+async def test_an_increase_is_the_rise_from_the_bucket_before(
+    reader: Influx3Store, db: Database
+) -> None:
+    db.rows = [
+        {
+            "gauge": "bucket",
+            "bucket": "2026-10-10T00:00:00",
+            "value_0": 2.0,
+            "low_1": 400.0,
+            "value_1": 401.0,
+        },
+        {
+            "gauge": "bucket",
+            "bucket": "2026-10-10T01:00:00",
+            "value_0": 0.0,
+            "low_1": 401.2,
+            "value_1": 402.5,
+        },
+        {"gauge": "piezo", "bucket": "2026-10-10T00:00:00", "value_0": 1.0},
+    ]
+    bucket, piezo = await reader.buckets(
+        "home",
+        "rain",
+        [("rate_mm_h", Aggregate.MAX), ("yearly_mm", Aggregate.INCREASE)],
+        start=START,
+        end=END,
+        step=timedelta(hours=1),
+        origin=START,
+    )
+    assert bucket.values[("rate_mm_h", Aggregate.MAX)] == [2.0, 0.0]
+    assert bucket.values[("yearly_mm", Aggregate.INCREASE)] == pytest.approx([1.0, 1.5])
+    assert piezo.values[("yearly_mm", Aggregate.INCREASE)] == [None]
+    sql = db.queries[-1]["q"]
+    assert 'max("yearly_mm") AS value_1, min("yearly_mm") AS low_1' in sql
 
 
 @pytest.mark.parametrize("aggregate", [Aggregate.MIN, Aggregate.MAX, Aggregate.MEAN])

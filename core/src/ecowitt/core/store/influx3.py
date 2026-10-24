@@ -35,6 +35,7 @@ from ecowitt.core.store.query import (
     Point,
     ReadError,
     Span,
+    increases,
 )
 
 logger = logging.getLogger(__name__)
@@ -198,12 +199,18 @@ class Influx3Store(InfluxStore):
         bucket = f"date_bin(INTERVAL '{seconds} seconds', time, {_timestamp(origin)})"
         select = [f"{bucket} AS bucket"]
         for i, (name, aggregate) in enumerate(wanted):
-            select.append(f"{_aggregate(name, aggregate)} AS value_{i}")
+            if aggregate is Aggregate.INCREASE:
+                # Each bucket's highest and lowest, from which `increases` works out the rise.
+                select.append(f"{_aggregate(name, Aggregate.MAX)} AS value_{i}")
+                select.append(f"{_aggregate(name, Aggregate.MIN)} AS low_{i}")
+            else:
+                select.append(f"{_aggregate(name, aggregate)} AS value_{i}")
         rows = await self._grouped(
             table, info, select, station, start, end, sensors, extra_group="bucket"
         )
         groups: dict[tuple[tuple[str, str], ...], Buckets] = {}
         names: dict[tuple[tuple[str, str], ...], str | None] = {}
+        lows: dict[tuple[tuple[str, str], ...], dict[int, list[float | None]]] = {}
         for row in rows:
             tags = _tags(row, info)
             key = tuple(sorted(tags.items()))
@@ -217,6 +224,15 @@ class Influx3Store(InfluxStore):
                 if value is not None and pair[1] is Aggregate.CIRCULAR:
                     value = value % 360.0
                 groups[key].values[pair].append(None if value is None else float(value))
+                if pair[1] is Aggregate.INCREASE:
+                    low = row.get(f"low_{i}")
+                    lows.setdefault(key, {}).setdefault(i, []).append(
+                        None if low is None else float(low)
+                    )
+        for key, group in groups.items():
+            for i, low in lows.get(key, {}).items():
+                pair = wanted[i]
+                group.values[pair] = increases(group.times, group.values[pair], low, step)
         return [
             Buckets(group.tags, names[key], group.times, group.values)
             for key, group in groups.items()

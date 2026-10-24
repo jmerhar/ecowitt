@@ -171,6 +171,12 @@ METRICS: dict[str, Metric] = {
             "rain.daily", "Rain today", ("rain",), "daily", Kind.RAIN, (Aggregate.MAX,),
             extremes=Sides.MAX,
         ),
+        # The rain that fell in each bucket, from the rise of the console's total for its year;
+        # it has no extremes, since the rows hold only running totals.
+        Metric(
+            "rain.amount", "Rain", ("rain",), "yearly", Kind.RAIN, (Aggregate.INCREASE,),
+            extremes=Sides.NONE,
+        ),
         Metric(
             "pressure.sea_level", "Pressure", ("pressure",), "sea", Kind.PRESSURE, _RANGE,
             model_base="sea",

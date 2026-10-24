@@ -426,6 +426,10 @@ msgid "Rain today"
 msgstr "Chuva hoje"
 
 msgctxt "chart metric"
+msgid "Rain"
+msgstr "Chuva"
+
+msgctxt "chart metric"
 msgid "Pressure"
 msgstr "Pressão"
 

@@ -22,6 +22,7 @@ export const META: Meta = {
     { id: "wind.gust", label: "Wind gust", quantity: "wind", unit: null, aggregates: ["max"], extremes: "max", per_sensor: false, model: true },
     { id: "wind.measured_gust", label: "Wind gust, measured", quantity: "wind", unit: null, aggregates: ["max"], extremes: "max", per_sensor: false, model: false },
     { id: "rain.daily", label: "Rain today", quantity: "rain", unit: null, aggregates: ["max"], extremes: "max", per_sensor: false, model: false },
+    { id: "rain.amount", label: "Rain", quantity: "rain", unit: null, aggregates: ["increase"], extremes: "none", per_sensor: false, model: false },
     { id: "rooms.temperature", label: "Temperature", quantity: "temperature", unit: null, aggregates: ["mean", "min", "max"], extremes: "both", per_sensor: true, model: false },
   ],
   units: {

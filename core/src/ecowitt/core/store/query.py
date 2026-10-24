@@ -34,6 +34,32 @@ class Aggregate(Enum):
     MAX = "max"
     #: The mean of an angle in degrees, taken as a vector so 350° and 10° average to 0°, not 180°.
     CIRCULAR = "circular"
+    #: How much a counter that only rises, such as a year's rain, rose in the bucket. See
+    #: `increases`.
+    INCREASE = "increase"
+
+
+def increases(
+    times: Sequence[datetime],
+    highs: Sequence[float | None],
+    lows: Sequence[float | None],
+    step: timedelta,
+) -> list[float | None]:
+    """How much a counter rose in each bucket, from each bucket's highest and lowest value.
+
+    A bucket that follows the one before without a gap rose from that bucket's highest value,
+    so what accrued between their reports is counted too; the first bucket, one after a gap and
+    one where the counter was reset (fell below the one before) rose from its own lowest value.
+    """
+    found: list[float | None] = []
+    for i, (time, high, low) in enumerate(zip(times, highs, lows, strict=True)):
+        if high is None or low is None:
+            found.append(None)
+            continue
+        before = highs[i - 1] if i and times[i - 1] + step == time else None
+        base = before if before is not None and before <= high else low
+        found.append(high - base)
+    return found
 
 
 class _Group:

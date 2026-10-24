@@ -6,6 +6,15 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 data in a way that needs acting on. Any release can also ask for the Grafana dashboard or alert
 rules to be imported again. Either is listed under *Upgrading*.
 
+## Unreleased
+
+### Changed
+
+- The dashboard's rain chart shows the rain that fell in each bar's span (5 minutes to a day,
+  depending on the range), worked out from the rise of the console's yearly total.
+  It showed the console's running total for the day, which held the morning's rain until
+  midnight. The API serves it as the metric `rain.amount`, with the aggregate `increase`.
+
 ## 3.3.1 — 2026-10-21
 
 ### Fixed

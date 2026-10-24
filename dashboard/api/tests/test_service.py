@@ -319,6 +319,30 @@ async def test_series_are_converted(board: Dashboard) -> None:
     assert (rain.sensor, rain.unit) == ("bucket", "mm_h")
 
 
+async def test_rain_comes_as_what_fell_in_each_bucket(reader: MemoryReader) -> None:
+    # A shower over an hour and a half, in 30-minute buckets; then the year's total holds.
+    reader.rows = [r for r in reader.rows if r.table != "rain"]
+    hour = timedelta(hours=1)
+    first = MIDNIGHT + 7 * hour
+    for at, total in [
+        (first, 400.0),
+        (first + hour / 2, 400.8),
+        (first + hour, 401.1),
+        (first + 3 * hour / 2, 402.3),
+        (first + 2 * hour, 402.3),
+        (LAST, 402.3),
+    ]:
+        reader.rows.append(row("rain", at, {"yearly_mm": total}, gauge="bucket"))
+    found = await Dashboard(reader, clock=lambda: NOW).series("example", ["rain.amount"], "7d")
+    (rain,) = found.series
+    assert (rain.metric, rain.sensor, rain.unit) == ("rain.amount", "bucket", "mm")
+    assert rain.values == {"increase": [0.0, 0.8, 0.3, 1.2, 0.0, 0.0]}
+    inches = await Dashboard(reader, clock=lambda: NOW).series(
+        "example", ["rain.amount"], "7d", {"rain": "in"}
+    )
+    assert inches.series[0].values["increase"][:4] == [0.0, 0.03, 0.01, 0.05]
+
+
 async def test_a_group_without_the_metric_has_no_series(reader: MemoryReader) -> None:
     reader.rows.append(row("derived", LAST, {"unchanged_s": 0.0}, sensor="ch2", name="ch2"))
     board = Dashboard(reader, clock=lambda: NOW)

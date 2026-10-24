@@ -121,7 +121,7 @@ describe("Chart", () => {
 
     const rain = viewFor("rain");
     const bars = align(rain, series({
-      series: [{ metric: "rain.daily", sensor: "bucket", name: null, unit: "", source: "station", t: [1], values: { max: [1] } }],
+      series: [{ metric: "rain.amount", sensor: "bucket", name: null, unit: "", source: "station", t: [1], values: { increase: [1] } }],
     }), {});
     render(Chart, { view: rain, data: bars, symbols: {}, timezone: "UTC" });
     expect(made[1].options.series[1].paths).toBe("bars");

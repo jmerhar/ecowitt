@@ -5,10 +5,10 @@ info:
 
 http:
   method: GET
-  url: "{{dashboard_url}}/api/v1/stations/{{station}}/series?metrics=wind.speed,wind.gust,wind.direction,rain.daily,pressure.sea_level&range=30d&lang={{lang}}"
+  url: "{{dashboard_url}}/api/v1/stations/{{station}}/series?metrics=wind.speed,wind.gust,wind.direction,rain.amount,pressure.sea_level&range=30d&lang={{lang}}"
   params:
     - name: metrics
-      value: wind.speed,wind.gust,wind.direction,rain.daily,pressure.sea_level
+      value: wind.speed,wind.gust,wind.direction,rain.amount,pressure.sea_level
       type: query
     - name: range
       value: 30d
