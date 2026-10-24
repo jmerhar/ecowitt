@@ -14,7 +14,8 @@ because its reader is SQL and InfluxDB 2.x has none. A station whose readings li
   - `extremes`: `min()` and `max()` per field, keeping `_time`;
   - `buckets`: `aggregateWindow(every:, offset:)` with the offset putting bucket edges on the
     station's midnight, `mean`/`min`/`max`, and the circular mean as `sin`/`cos` means joined
-    and turned back with `math.atan2`;
+    and turned back with `math.atan2`, and `increase` as each bucket's `max` and `min` handed to
+    `query.increases`, as the SQL reader does;
   - the catalogue: `schema.tagKeys` and `schema.fieldKeys` per measurement.
 - **Annotated CSV** is what `/api/v2/query` answers with; parse it into the same `Span`,
   `Extremes` and `Buckets` the SQL reader returns, so the dashboard does not change.

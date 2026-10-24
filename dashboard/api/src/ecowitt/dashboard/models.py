@@ -384,7 +384,7 @@ class Series(BaseModel):
     source: str = "station"
     #: Each bucket's start, in Unix seconds.
     t: list[int]
-    #: Per aggregate the metric has (mean, min, max, circular), one value per bucket.
+    #: Per aggregate the metric has (mean, min, max, circular, increase), one value per bucket.
     values: dict[str, list[float | None]]
 
 
