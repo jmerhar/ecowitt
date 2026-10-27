@@ -398,9 +398,10 @@ for others:
 - Each rule's `summary` annotation is a complete sentence, ready to send as the notification.
   Rules with an alert per room also have a `headline`, the same for every room, and an `item`
   naming the room: a message about several rooms reads better as the headline once and an item
-  per room. Rules that send a resolve message have a `resolved_title` (*Wind easing*) and a
-  `resolved` sentence for it, which name no value: Grafana fills them from the evaluation that
-  cleared.
+  per room. *Damp room* also has a `group`, a line of advice shared by the rooms airing would
+  affect alike: list each group once, followed by its rooms. Rules that send a resolve message
+  have a `resolved_title` (*Wind easing*) and a `resolved` sentence for it, which name no value:
+  Grafana fills them from the evaluation that cleared.
 - The weather rules (both airing rules, wind, rain, pressure) and *Air the bathroom* keep firing
   for 30 minutes, or an hour for pressure, after their condition clears, so a value hovering at a
   threshold does not send a stream of messages.

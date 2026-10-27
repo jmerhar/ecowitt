@@ -305,7 +305,8 @@
           "annotations": {
             "summary": "{{ $labels.room }} has stayed at 70% humidity or more for 6 hours (lowest {{ printf \"%.0f\" $values.A.Value }}%), where mould grows: {{ if eq $values.F.Value 1.0 }}airing would bring it down to {{ printf \"%.0f%%\" $values.D.Value }}{{ else if eq $values.E.Value 1.0 }}airing would only bring it down to {{ printf \"%.0f\" $values.D.Value }}%, so heat or dehumidify it as well{{ else }}airing would not dry it, so heat or dehumidify it{{ end }}.",
             "headline": "These rooms have stayed at 70% humidity or more for 6 hours, where mould grows.",
-            "item": "{{ $labels.room }} (lowest {{ printf \"%.0f\" $values.A.Value }}%): {{ if eq $values.F.Value 1.0 }}airing would bring it down to {{ printf \"%.0f%%\" $values.D.Value }}{{ else if eq $values.E.Value 1.0 }}airing would only bring it down to {{ printf \"%.0f\" $values.D.Value }}%, so heat or dehumidify it as well{{ else }}airing would not dry it, so heat or dehumidify it{{ end }}",
+            "group": "{{ if eq $values.F.Value 1.0 }}Airing would dry these rooms:{{ else if eq $values.E.Value 1.0 }}Airing would not dry these rooms enough, so heat or dehumidify them as well:{{ else }}Airing would not dry these rooms, so heat or dehumidify them:{{ end }}",
+            "item": "{{ $labels.room }} (lowest {{ printf \"%.0f%%\" $values.A.Value }}{{ if eq $values.E.Value 1.0 }}, {{ printf \"%.0f\" $values.D.Value }}% after airing{{ end }})",
             "description": "A room whose humidity has not dropped below 70% in the last 6 hours; it counts as dry again once it drops below 65%. Airing is advised when it would bring the room 5 points or more lower (less is within the sensors' error), and heating or a dehumidifier as well when it would leave the room at 65% or more."
           },
           "labels": {

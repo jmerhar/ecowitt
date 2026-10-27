@@ -13,6 +13,9 @@ rules to be imported again. Either is listed under *Upgrading*.
 - A sensor counts as not updating after 12 hours of unchanged readings rather than 6, in the
   *Sensor not updating* alert and on the dashboard: a closed room can hold its readings for over
   six hours. A sensor missing from the station's reports still counts after 15 minutes.
+- *Damp room* gives its advice once for all the rooms it applies to, rather than on every room's
+  line: the annotation `group` carries the advice, and `item` only the room, its lowest humidity
+  and, where airing helps, the humidity it would leave.
 
 ### Added
 
@@ -22,7 +25,9 @@ rules to be imported again. Either is listed under *Upgrading*.
 ### Upgrading
 
 - Import the alert rules again. To send the hardware alerts to the operator, add a route matching
-  `audience=operator` ahead of the one for `app=ecowitt`.
+  `audience=operator` ahead of the one for `app=ecowitt`. A notification template that lists the
+  rooms by their `item` should print each `group` once above its rooms, or *Damp room*'s lines
+  lose their advice.
 
 ## 3.4.1 — 2026-10-24
 

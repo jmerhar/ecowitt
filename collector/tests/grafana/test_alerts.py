@@ -92,7 +92,8 @@ def test_every_rule_refers_only_to_its_own_steps(rule: dict[str, Any]) -> None:
             else [expression["expression"]]
         )
         assert set(named) <= refs
-    for text in (rule["annotations"][k] for k in ("summary", "item") if k in rule["annotations"]):
+    texts = ("summary", "group", "item")
+    for text in (rule["annotations"][k] for k in texts if k in rule["annotations"]):
         assert set(VALUE_REF.findall(text)) <= refs
 
 
@@ -192,12 +193,46 @@ def test_damp_room_says_what_airing_would_do_to_each_room() -> None:
     two never disagree about whether the outside air is drier."""
     rule = next(r for r in RULES if r["uid"] == "ecowitt-damp")
     sql = {d["refId"]: d["model"].get("rawSql", "") for d in rule["data"]}
-    item = rule["annotations"]["item"]
+    annotations = rule["annotations"]
     assert "predicted_humidity_pct" in sql["D"]
     assert "FROM indoor" in sql["H"] and "FROM channel" in sql["H"]
-    assert "dew point" not in item.lower() and "dewpoint" not in "".join(sql.values())
-    assert item.count("$values.D.Value") == 2
-    assert rule["annotations"]["summary"].endswith(item.split(": ", 1)[1] + ".")
+    assert "dewpoint" not in "".join(sql.values())
+    for key in ("summary", "group", "item"):
+        assert "dew point" not in annotations[key].lower()
+    assert annotations["item"].count("$values.D.Value") == 1
+    assert annotations["summary"].count("$values.D.Value") == 2
+
+
+def test_damp_room_groups_the_rooms_by_what_airing_would_do() -> None:
+    """Rooms sharing a verdict are listed under it once: in most messages that is every room.
+
+    The group gives each of the summary's three verdicts, decided by the same steps in the same
+    order, so a room's group and its summary always agree.
+    """
+    annotations = next(r for r in RULES if r["uid"] == "ecowitt-damp")["annotations"]
+    branches = ".*".join(
+        re.escape(step)
+        for step in (
+            "{{ if eq $values.F.Value 1.0 }}",
+            "{{ else if eq $values.E.Value 1.0 }}",
+            "{{ else }}",
+        )
+    )
+    assert re.search(branches, annotations["group"])
+    assert re.search(branches, annotations["summary"])
+    assert "airing would not dry it," in annotations["summary"]
+
+
+@pytest.mark.parametrize("rule", BY_TITLE)
+def test_a_group_is_shared_by_rooms_and_heads_their_list(rule: dict[str, Any]) -> None:
+    """A group is printed once above its rooms, so it names none of them and introduces a list."""
+    annotations = rule["annotations"]
+    if "group" not in annotations:
+        return
+    assert "headline" in annotations
+    assert "$labels" not in annotations["group"]
+    for text in re.split(r"\{\{[^}]*\}\}", annotations["group"]):
+        assert not text or text.endswith(":"), text
 
 
 def test_a_shower_and_a_damp_room_never_fire_together() -> None:
