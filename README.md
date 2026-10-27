@@ -392,7 +392,9 @@ for others:
   `resolve_message=off` to the contact point without resolve messages too. *Damp room* and both
   airing rules carry `notify=daily`: they describe the house over hours, so route them with a long
   group interval and a 24-hour repeat interval; a room that turns damp while others still are then
-  waits for a later message rather than sending one of its own.
+  waits for a later message rather than sending one of its own. *Sensor not updating* and
+  *Battery low* carry `audience=operator`: they are about the station's hardware, so route them
+  to whoever runs it, ahead of a route sending `app=ecowitt` to the household.
 - Each rule's `summary` annotation is a complete sentence, ready to send as the notification.
   Rules with an alert per room also have a `headline`, the same for every room, and an `item`
   naming the room: a message about several rooms reads better as the headline once and an item

@@ -142,6 +142,18 @@ def test_every_rule_key_is_one_a_provisioning_file_reads(rule: dict[str, Any]) -
     assert set(rule) <= FILE_RULE_KEYS
 
 
+#: Rules about the station's own hardware, for whoever runs it rather than the household.
+OPERATOR_RULES = {"ecowitt-sensor-silent", "ecowitt-battery"}
+
+
+@pytest.mark.parametrize("rule", BY_TITLE)
+def test_only_the_hardware_rules_are_for_the_operator(rule: dict[str, Any]) -> None:
+    """A silent sensor or a flat battery is the operator's to fix; the rest is about the house."""
+    audience = rule["labels"].get("audience")
+
+    assert audience == ("operator" if rule["uid"] in OPERATOR_RULES else None)
+
+
 def test_a_silent_sensor_is_measured_against_the_station_not_the_clock() -> None:
     """A station that stops uploading must not flag every sensor, and a sensor that stops
     reporting must stay flagged rather than ageing out of a short window."""

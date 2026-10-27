@@ -449,7 +449,8 @@
           },
           "labels": {
             "app": "ecowitt",
-            "severity": "warning"
+            "severity": "warning",
+            "audience": "operator"
           },
           "isPaused": false
         },
@@ -512,7 +513,8 @@
           },
           "labels": {
             "app": "ecowitt",
-            "severity": "warning"
+            "severity": "warning",
+            "audience": "operator"
           },
           "isPaused": false
         },

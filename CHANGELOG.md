@@ -14,9 +14,15 @@ rules to be imported again. Either is listed under *Upgrading*.
   *Sensor not updating* alert and on the dashboard: a closed room can hold its readings for over
   six hours. A sensor missing from the station's reports still counts after 15 minutes.
 
+### Added
+
+- *Sensor not updating* and *Battery low* carry the label `audience=operator`, so a deployment
+  can send alerts about the station's hardware to whoever runs it rather than to the household.
+
 ### Upgrading
 
-- Import the alert rules again.
+- Import the alert rules again. To send the hardware alerts to the operator, add a route matching
+  `audience=operator` ahead of the one for `app=ecowitt`.
 
 ## 3.4.1 — 2026-10-24
 
