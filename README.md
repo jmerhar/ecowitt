@@ -372,7 +372,7 @@ for others:
 | Close the windows | the house has read as [aired](#airing-the-house) for 30 of the last 40 minutes, and the outdoor dew point has risen 0.7 °C or more in an hour or the rooms are 4 points or more above their lowest in 2 hours, for 10 minutes | info |
 | Damp room | a room has not dropped below 70% humidity in 6 hours; it counts as dry again only below 65%. The message gives the humidity airing would bring the room to when that is 5 points or more lower, as *Good time to air* judges the house, and says to heat or dehumidify it when airing would not dry it or would leave it at 65% or more | info |
 | Air the bathroom | a room's humidity rose 10 points or more within 10 minutes (a shower), and 40 to 90 minutes later it is still at 70% or more and 5 points or more above where it started: its window was not opened. Held for 30 minutes, so one shower sends one message; a room that has not dropped below 65% in 6 hours is left to *Damp room*, so the two never fire together | warning |
-| Sensor not updating | a room or outdoor sensor's temperature and humidity have been missing from the station's reports for 15 minutes, or its readings have not changed for 6 hours | warning |
+| Sensor not updating | a room or outdoor sensor's temperature and humidity have been missing from the station's reports for 15 minutes, or its readings have not changed for 12 hours | warning |
 | Battery low | a sensor's low-battery flag has been set for an hour | warning |
 | Room too cold / too hot | a room is below 8 °C or above 32 °C for 15 minutes | warning |
 | Strong wind | gusts above 70 km/h at 10 m (see [Wind at 10 m](#wind-at-10-m)), where IPMA starts a yellow wind warning, in at least 3 separate minutes of the last 10 | info |

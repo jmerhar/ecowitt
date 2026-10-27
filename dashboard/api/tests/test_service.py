@@ -127,13 +127,13 @@ async def test_a_dry_night_does_not_flag_the_rain_gauge_or_light_sensor(
 ) -> None:
     for sensor in ("rain", "solar", "wind"):
         reader.rows.append(
-            row("derived", LAST, {"unchanged_s": 30000.0}, sensor=sensor, name=sensor)
+            row("derived", LAST, {"unchanged_s": 50000.0}, sensor=sensor, name=sensor)
         )
     sensors = {
         s.sensor: s for s in (await Dashboard(reader, clock=lambda: NOW).now("example")).sensors
     }
     assert [sensors[s].updating for s in ("rain", "solar", "wind")] == [True, True, True]
-    assert sensors["rain"].unchanged_s == 30000.0
+    assert sensors["rain"].unchanged_s == 50000.0
     assert sensors["ch1"].updating is False, "a room still is"
 
 

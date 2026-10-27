@@ -6,6 +6,18 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 data in a way that needs acting on. Any release can also ask for the Grafana dashboard or alert
 rules to be imported again. Either is listed under *Upgrading*.
 
+## Unreleased
+
+### Changed
+
+- A sensor counts as not updating after 12 hours of unchanged readings rather than 6, in the
+  *Sensor not updating* alert and on the dashboard: a closed room can hold its readings for over
+  six hours. A sensor missing from the station's reports still counts after 15 minutes.
+
+### Upgrading
+
+- Import the alert rules again.
+
 ## 3.4.1 — 2026-10-24
 
 ### Fixed

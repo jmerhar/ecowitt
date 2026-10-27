@@ -76,7 +76,7 @@ UV_VERY_HIGH = 8.0
 
 #: A sensor whose values have not changed for this long is reported as not updating, as the
 #: Sensor not updating alert rule does.
-STALE_AFTER_S = 6 * 3600
+STALE_AFTER_S = 12 * 3600
 
 
 def compass(degrees: float) -> str:
