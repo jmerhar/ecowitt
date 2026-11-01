@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import httpx2
+from jigkit.influx import Influx2Sink
 
 from ecowitt.core.store.base import Store
-from ecowitt.core.store.influx2 import Influx2Store
 from ecowitt.core.store.influx3 import Influx3Store
 from ecowitt.core.store.query import Reader
 
@@ -28,7 +28,7 @@ def store_for(
     if kind == "influx3":
         return Influx3Store(url, database, token, client=client)
     if kind == "influx2":
-        return Influx2Store(url, database, token, org=org, client=client)
+        return Influx2Sink(url, database, token, org=org, client=client)
     raise ValueError(f"unknown store kind {kind!r}; expected one of {', '.join(KINDS)}")
 
 

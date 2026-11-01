@@ -9,8 +9,8 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
+from jigkit.influx import sink as influx_sink
 
-from ecowitt.core.store import influx3
 from ecowitt.core.store.factory import reader_for
 from ecowitt.core.store.influx3 import Influx3Store
 from ecowitt.core.store.query import Aggregate, Extreme, ReadError
@@ -374,7 +374,7 @@ async def test_the_catalogue_is_cached(
     await reader.span("home", "outdoor", ["temp_c"], start=START, end=END)
     catalogue = [r for r in influx.requests if "information_schema" in r.body]
     assert len(catalogue) == 1
-    monkeypatch.setattr(influx3, "COLUMNS_TTL_SECONDS", -1.0)
+    monkeypatch.setattr(influx_sink, "COLUMNS_TTL_SECONDS", -1.0)
     await reader.span("home", "outdoor", ["temp_c"], start=START, end=END)
     assert len([r for r in influx.requests if "information_schema" in r.body]) == 2
 

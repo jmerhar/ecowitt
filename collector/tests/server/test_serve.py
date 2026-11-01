@@ -11,13 +11,13 @@ from pathlib import Path
 
 import pytest
 import uvicorn
+from jigkit.influx import InfluxSink
 
 from ecowitt.collector import serve
 from ecowitt.collector.config import Settings
 from ecowitt.collector.ingest.app import LoggingHandler
 from ecowitt.collector.state import State
 from ecowitt.core.store.base import Row, dump_rows
-from ecowitt.core.store.influx import InfluxStore
 
 ROWS = [Row("indoor", (("station", "Home"),), 1791500484, {"temp_c": 21.0})]
 
@@ -293,13 +293,13 @@ async def test_run_without_a_handler_loads_the_configured_stations(
     state = State()
     monkeypatch.setattr(serve, "State", lambda: state)
     closed: list[bool] = []
-    real_aclose = InfluxStore.aclose
+    real_aclose = InfluxSink.aclose
 
-    async def track_close(self: InfluxStore) -> None:
+    async def track_close(self: InfluxSink) -> None:
         closed.append(True)
         await real_aclose(self)
 
-    monkeypatch.setattr(InfluxStore, "aclose", track_close)
+    monkeypatch.setattr(InfluxSink, "aclose", track_close)
     woken: list[bool] = []
     monkeypatch.setattr(serve.ModelFeed, "wake", lambda _self: woken.append(True))
     forecasts_woken: list[bool] = []

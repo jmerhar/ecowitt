@@ -1,74 +1,23 @@
-"""Encode rows as InfluxDB line protocol.
+"""Encode rows as InfluxDB line protocol, through jigkit's encoder.
 
-Both InfluxDB 2.x and 3 accept this format. Timestamps are whole seconds, so writes must ask
-for second precision.
+Every row carries whole seconds, so the text is what InfluxDB is sent at second precision.
 """
 
 from __future__ import annotations
 
-import math
-from collections.abc import Iterable
+from collections.abc import Sequence
 
-from ecowitt.core.readings import Value
+from jigkit.influx.lineprotocol import encode as encode_points
+from jigkit.influx.lineprotocol import encode_point as encode_one
+
 from ecowitt.core.store.base import Row
 
 
-def encode(points: Iterable[Row]) -> str:
+def encode(rows: Sequence[Row]) -> str:
     """Encode rows as newline-separated line protocol, skipping any that have no fields."""
-    lines = [line for point in points if (line := encode_point(point))]
-    return "\n".join(lines)
+    return encode_points(rows)[0]
 
 
-def encode_point(point: Row) -> str:
+def encode_point(row: Row) -> str:
     """Encode one row, or return an empty string if none of its fields can be written."""
-    fields = ",".join(
-        f"{_escape_key(name)}={encoded}"
-        for name, value in point.fields.items()
-        if (encoded := _value(value)) is not None
-    )
-    if not fields:
-        return ""
-    # Line protocol forbids an empty tag value, so such a tag is left off rather than written.
-    tags = "".join(
-        f",{_escape_key(key)}={_escape_key(value)}" for key, value in point.tags if value
-    )
-    return f"{_escape_measurement(point.table)}{tags} {fields} {point.timestamp}"
-
-
-def _value(value: Value) -> str | None:
-    """Encode a field value, or None for one line protocol cannot represent.
-
-    A measurement is a float even when it has no fraction: InfluxDB fixes a field's type on its
-    first write, so a humidity first seen as `60` would otherwise reject every later `60.5`. An
-    int is a code (`Kind.CODE`), which is never fractional, and is written as one.
-    """
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    if isinstance(value, int):
-        return f"{value}i"
-    if isinstance(value, float):
-        return repr(value) if math.isfinite(value) else None
-    escaped = _flatten(value).replace("\\", "\\\\").replace('"', '\\"')
-    return f'"{escaped}"'
-
-
-def _flatten(text: str) -> str:
-    """Replace line breaks with spaces: line protocol has no escape for them, and one would end
-    the line mid-point, making InfluxDB refuse the whole write."""
-    return text.replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
-
-
-def _escape_measurement(name: str) -> str:
-    """Escape a measurement name: commas and spaces would end it early."""
-    return _flatten(name).replace("\\", "\\\\").replace(",", "\\,").replace(" ", "\\ ")
-
-
-def _escape_key(name: str) -> str:
-    """Escape a tag key, tag value or field key: commas, equals signs and spaces."""
-    return (
-        _flatten(name)
-        .replace("\\", "\\\\")
-        .replace(",", "\\,")
-        .replace("=", "\\=")
-        .replace(" ", "\\ ")
-    )
+    return encode_one(row, row.precision)

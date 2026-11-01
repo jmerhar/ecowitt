@@ -9,6 +9,9 @@ description = "Code shared by Ecowitt Server's collector and dashboard: units, f
 requires-python = ">=3.14"
 dependencies = [
     "httpx2>=2.13",
+    # The InfluxDB sinks, the row format and the line protocol encoder. Pinned exactly;
+    # Dependabot proposes each new release.
+    "jigkit[influx]==0.2.0",
 ]
 
 [project.optional-dependencies]

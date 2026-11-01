@@ -33,5 +33,12 @@ def test_no_rows_survive_too() -> None:
 )
 def test_anything_else_is_refused(text: str) -> None:
     """A file in another format -- line protocol from before rows were spooled -- is not rows."""
-    with pytest.raises(ValueError, match="not a list of rows"):
+    with pytest.raises(ValueError, match="not a list of points"):
         load_rows(text)
+
+
+def test_rows_spooled_before_they_carried_a_precision_load_in_seconds() -> None:
+    """A deployment's spool may hold the four-element form from an older version."""
+    (row,) = load_rows('[["indoor",[["station","home"]],1791500484,{"temp_c":21.0}]]')
+
+    assert row == Row("indoor", (("station", "home"),), 1791500484, {"temp_c": 21.0})

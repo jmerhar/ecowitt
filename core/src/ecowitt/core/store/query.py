@@ -18,12 +18,13 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Protocol
 
+from jigkit.influx import QueryError
+
 from ecowitt.core.readings import Value
 from ecowitt.core.stationinfo import StationInfo
 
-
-class ReadError(Exception):
-    """The database could not answer: unreachable, refusing the token, or failing the query."""
+#: The database could not answer: unreachable, refusing the token, or failing the query.
+ReadError = QueryError
 
 
 class Aggregate(Enum):

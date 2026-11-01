@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
+from jigkit.influx import Influx2Sink
 
-from ecowitt.core.store.influx2 import Influx2Store
 from ecowitt.core.store.influx3 import Influx3Store
 from ecowitt.core.store.settings import KINDS, problems, store_from
 
@@ -47,7 +47,7 @@ def test_a_store_is_built_with_defaults_filled_in() -> None:
 def test_an_influx2_store_gets_its_organisation() -> None:
     store = store_from("influx2", {"url": "http://influx", "org": "home"})
 
-    assert isinstance(store, Influx2Store) and store.org == "home"
+    assert isinstance(store, Influx2Sink) and store.org == "home"
 
 
 def test_a_connection_with_problems_builds_nothing() -> None:
