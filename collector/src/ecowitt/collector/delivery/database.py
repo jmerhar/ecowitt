@@ -63,6 +63,11 @@ class ConfiguredStore:
         """Whether the current store would accept a write."""
         return await self._current.check() if self._current else NOT_CONFIGURED
 
+    async def flush(self) -> None:
+        """Send anything the current store holds back."""
+        if self._current is not None:
+            await self._current.flush()
+
     async def aclose(self) -> None:
         """Close the current store and every one it replaced."""
         for store in [*self._retired, *([self._current] if self._current else [])]:

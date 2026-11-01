@@ -38,8 +38,12 @@ updates:
       - "/dashboard/api"
     schedule:
       interval: "weekly"
+    # jigkit, released from the same hands, is taken at once; it moves in core and the collector
+    # together, in one grouped pull request.
     cooldown:
       default-days: 3
+      exclude:
+        - "jigkit"
     groups:
       python:
         patterns:

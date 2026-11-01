@@ -1,40 +1,30 @@
 """Getting reports into InfluxDB eventually: write now if possible, spool and replay if not.
 
-A report is written straight away while nothing is waiting. Once anything is, new reports join
-the end of the queue instead, and one background loop drains it oldest first with growing
-pauses between failed attempts -- so an outage costs one retry per pause rather than one per
-report, and the backlog lands in the order it arrived.
+jigkit's delivery loop: a report is written straight away while nothing is waiting, and once
+anything is, new reports join the queue and one background loop drains it oldest first with
+growing pauses between failed attempts. Every attempt, spooled report and refusal is counted in
+the collector's state, which the status page shows.
 """
 
 from __future__ import annotations
 
 import asyncio
-import logging
 from collections.abc import Awaitable, Callable
-from typing import Protocol
+
+from jigkit.delivery import FIRST_PAUSE_SECONDS, MAX_PAUSE_SECONDS, Writer
+from jigkit.delivery import Delivery as _Delivery
 
 from ecowitt.collector.delivery.spool import Spool
 from ecowitt.collector.state import State
-from ecowitt.core.store.base import Outcome, Row, dump_rows, load_rows
+from ecowitt.core.store.base import Row
 
-logger = logging.getLogger(__name__)
-
-FIRST_PAUSE_SECONDS = 1.0
-MAX_PAUSE_SECONDS = 60.0
+__all__ = ["FIRST_PAUSE_SECONDS", "MAX_PAUSE_SECONDS", "Delivery", "Writer"]
 
 
-class Writer(Protocol):
-    """Something that attempts one write and says what became of it -- a `Store`, in practice."""
+class Delivery(_Delivery):
+    """Writes reports, spooling the ones that cannot be written yet, counted in `state`.
 
-    async def write(self, rows: list[Row]) -> Outcome:
-        """Write rows once."""
-
-
-class Delivery:
-    """Writes reports, spooling the ones that cannot be written yet.
-
-    `on_written` is called with the rows of every write the database accepts, live or
-    replayed.
+    `on_written` is called with the rows of every write the database accepts, live or replayed.
     """
 
     def __init__(
@@ -46,83 +36,4 @@ class Delivery:
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
         on_written: Callable[[list[Row]], None] = lambda _: None,
     ) -> None:
-        self._store = store
-        self._on_written = on_written
-        self._spool = spool
-        self._state = state
-        self._sleep = sleep
-        self._wake = asyncio.Event()
-
-    async def submit(self, rows: list[Row]) -> None:
-        """Deliver one report's rows now, or queue them for the replay loop."""
-        if not rows:
-            return
-        if len(self._spool):
-            self._queue(rows)
-            return
-        outcome = await self._store.write(rows)
-        self._state.record_write(outcome is Outcome.OK)
-        if outcome is Outcome.OK:
-            self._on_written(rows)
-        elif outcome is Outcome.RETRY:
-            self._queue(rows)
-        else:
-            self._state.record_rejected_write()
-            self._spool.quarantine_body(dump_rows(rows))
-
-    async def run(self) -> None:
-        """Replay spooled reports for ever, oldest first. Cancel the task to stop it.
-
-        An unexpected error is logged and waited out like a failed write, never allowed to end
-        the loop: with it gone, every later report would queue with nothing to drain it.
-        """
-        pause = FIRST_PAUSE_SECONDS
-        while True:
-            try:
-                pause = await self._step(pause)
-            except Exception:
-                logger.exception("replaying the spool failed; trying again in %.0f s", pause)
-                await self._sleep(pause)
-                pause = min(pause * 2, MAX_PAUSE_SECONDS)
-
-    async def _step(self, pause: float) -> float:
-        """Replay the oldest report, or wait for one; return the pause the next failure takes."""
-        path = self._spool.oldest()
-        if path is None:
-            self._wake.clear()
-            await self._wake.wait()
-            return FIRST_PAUSE_SECONDS
-        try:
-            rows = load_rows(self._spool.read(path))
-        except OSError, UnicodeDecodeError:
-            logger.exception("cannot read spooled report %s; setting it aside", path.name)
-            self._spool.quarantine(path)
-            return pause
-        except ValueError:
-            # Not rows -- line protocol an older version spooled, or a file edited by hand -- so
-            # no store can be given it.
-            logger.error("spooled report %s is not rows; setting it aside", path.name)
-            self._spool.quarantine(path)
-            return pause
-
-        outcome = await self._store.write(rows)
-        self._state.record_write(outcome is Outcome.OK)
-        if outcome is Outcome.OK:
-            self._spool.ack(path)
-            self._on_written(rows)
-            pause = FIRST_PAUSE_SECONDS
-            if not len(self._spool):
-                logger.info("spool drained")
-        elif outcome is Outcome.REJECT:
-            self._state.record_rejected_write()
-            self._spool.quarantine(path)
-        else:
-            await self._sleep(pause)
-            pause = min(pause * 2, MAX_PAUSE_SECONDS)
-        return pause
-
-    def _queue(self, rows: list[Row]) -> None:
-        """Add a report to the spool and wake the replay loop."""
-        if self._spool.enqueue(dump_rows(rows)):
-            self._state.record_spooled()
-        self._wake.set()
+        super().__init__(store, spool, events=state, sleep=sleep, on_written=on_written)

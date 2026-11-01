@@ -9,6 +9,8 @@ description = "Ecowitt Server's collector: receive an Ecowitt station's reports 
 requires-python = ">=3.14"
 dependencies = [
     "ecowitt-core",
+    # The spool, the delivery loop and the heartbeat. Pinned exactly, with ecowitt-core's pin.
+    "jigkit[heartbeat]==0.2.0",
     "fastapi>=0.141,<0.144",
     "uvicorn[standard]>=0.30",
     "pydantic>=2.0",

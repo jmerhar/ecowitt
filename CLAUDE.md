@@ -20,15 +20,14 @@ core/src/ecowitt/core/   shared by the collector and the dashboard
                   the fields they are stored as
   windheight.py   wind estimated at 10 m: the anemometer-height factor, the `wind_10m` table
   ratelimit.py    the public listeners' per-address token bucket
-  testing.py      a stand-in HTTP server every project's tests use for InfluxDB and lookups
-  store/          where rows are written, behind one interface
-    base.py       Row, Outcome, and the Store protocol: encode(rows) -> payload, write(payload)
-    lineprotocol.py  rows -> InfluxDB line protocol
-    influx.py     InfluxStore: what every InfluxDB version shares -- HTTP, line protocol, and
-                  the OK / RETRY / REJECT classification of a write's outcome
-    influx3.py    Influx3Store: /api/v3/write_lp, bearer token
-    influx2.py    Influx2Store: /api/v2/write, bucket and organisation, `Token` scheme
-    factory.py    store_for(kind, ...): the implementation for a configured kind; reader_for
+  testing.py      jigkit's stand-in HTTP server, which every project's tests use for InfluxDB
+                  and lookups, under the name StubInflux
+  store/          where rows are written, on jigkit's sinks (jigkit.sinks, jigkit.influx)
+    base.py       Row (a jigkit Point in whole seconds), Outcome, the Store protocol (jigkit's
+                  Sink), dump_rows / load_rows
+    lineprotocol.py  rows -> InfluxDB line protocol, through jigkit's encoder
+    influx3.py    Influx3Store: jigkit's Influx3Sink plus the dashboard's questions
+    factory.py    store_for(kind, ...): Influx3Store or jigkit's Influx2Sink; reader_for
                   for the kinds that can be read back (InfluxDB 3)
     settings.py   each kind's connection settings, declared once for every setup form
     query.py      Reader: what a dashboard asks of a store (spans, extremes, time buckets)
@@ -82,13 +81,13 @@ collector/src/ecowitt/collector/   (`ecowitt` is a namespace: no ecowitt/__init_
   grafana/        the Grafana dashboard and alert rules as templates, every unit-dependent spot
                   a %{...} placeholder; render.py writes them for the stored units
 
-  delivery/       getting rows into the database (through a core Store)
+  delivery/       getting rows into the database (through a core Store), on jigkit
     database.py   ConfiguredStore: the store config.yaml names, swapped in place on a save
-    delivery.py   write now or spool; the replay loop that drains the spool
-    spool.py      the bounded on-disk queue, one atomically written file per report
-    heartbeat.py  calls a push monitor's URL after a station's readings are written, at most once
-                  per interval (the collector's own rows -- settings, the model, the forecast, the
-                  10 m wind -- do not count)
+    delivery.py   jigkit's write-now-or-spool loop, counted in the collector's State
+    spool.py      jigkit's bounded on-disk queue, also listing an older version's `.lp` files
+    heartbeat.py  jigkit's push-monitor heartbeat; only a station's readings count (the
+                  collector's own rows -- settings, the model, the forecast, the 10 m wind --
+                  do not)
     metadata.py   publishes each station's settings as station_info, only when they change
     recompute.py  the setup page's opt-in recompute of a station's 10 m wind over its history
 collector/tests/  one folder per subpackage (ingest/, admin/, delivery/), plus
