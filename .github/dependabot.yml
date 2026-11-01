@@ -1,5 +1,7 @@
 # Weekly updates, one grouped pull request per ecosystem, which gh-maintenance merges once its
 # checks pass. A pull request builds both images, so a dependency that breaks one fails there.
+# A release is taken once it is three days old, so a hijacked version has usually been pulled
+# before an update proposes it.
 version: 2
 updates:
   - package-ecosystem: "github-actions"
@@ -11,13 +13,13 @@ updates:
         patterns:
           - "*"
 
-  # The dashboard's page. Nothing younger than two weeks, as dashboard/web/.npmrc asks of npm.
+  # The dashboard's page.
   - package-ecosystem: "npm"
     directory: "/dashboard/web"
     schedule:
       interval: "weekly"
     cooldown:
-      default-days: 14
+      default-days: 3
     # svelte-check names the TypeScript majors it supports as a peer dependency, so a new major
     # cannot install until svelte-check accepts it; move both by hand then.
     ignore:
@@ -37,7 +39,7 @@ updates:
     schedule:
       interval: "weekly"
     cooldown:
-      default-days: 14
+      default-days: 3
     groups:
       python:
         patterns:

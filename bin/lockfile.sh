@@ -22,8 +22,8 @@ echo "Installing through: $registry"
 echo "Recording:          $public"
 
 rm -f "$web/package-lock.json"
-# The project's .npmrc goes in for its other settings (the minimum release age); the registry
-# given on the command line overrides its registry line.
+# The project's .npmrc goes in so any other setting it carries applies; the registry given on
+# the command line overrides its registry line.
 docker run --rm \
   -v "$web/package.json:/app/package.json" \
   -v "$web/.npmrc:/app/.npmrc:ro" \
