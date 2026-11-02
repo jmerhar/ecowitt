@@ -14,6 +14,7 @@ from typing import Protocol
 from urllib.parse import parse_qsl
 
 from fastapi import FastAPI
+from jigkit.ratelimit import RateLimiter
 from starlette.background import BackgroundTask
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
@@ -21,7 +22,6 @@ from starlette.responses import JSONResponse, PlainTextResponse, Response
 from ecowitt.collector.config import MAX_BODY_BYTES, MAX_BODY_FIELDS, Settings
 from ecowitt.collector.http import BodyTooLarge, read_capped_body
 from ecowitt.collector.state import State
-from ecowitt.core.ratelimit import RateLimiter
 
 logger = logging.getLogger(__name__)
 

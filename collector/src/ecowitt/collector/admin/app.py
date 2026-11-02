@@ -28,6 +28,7 @@ import httpx2
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from jigkit.ratelimit import RateLimiter
 from pydantic import ValidationError
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, RedirectResponse, Response
@@ -56,7 +57,6 @@ from ecowitt.collector.ingest.handler import Sink, StationHandler
 from ecowitt.collector.ingest.pending import PendingStations
 from ecowitt.collector.state import State
 from ecowitt.core import weathermodel, windheight
-from ecowitt.core.ratelimit import RateLimiter
 from ecowitt.core.store import settings as store_settings
 from ecowitt.core.store.query import Reader, ReadError
 from ecowitt.core.units import SYMBOLS, Kind, Units, from_canonical

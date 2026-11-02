@@ -8,6 +8,8 @@ version = "3.5.0"
 description = "Ecowitt Server's public dashboard: a read-only API over what the collector stored"
 requires-python = ">=3.14"
 dependencies = [
+    # The per-address rate limiter. Pinned exactly, with ecowitt-core's pin.
+    "jigkit==0.3.0",
     "ecowitt-core",
     "fastapi>=0.141,<0.144",
     "uvicorn[standard]>=0.30",

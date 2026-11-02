@@ -27,8 +27,8 @@ from fastapi.responses import (
 )
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from jigkit.ratelimit import RateLimiter
 
-from ecowitt.core.ratelimit import RateLimiter
 from ecowitt.core.store import settings as store_settings
 from ecowitt.core.store.query import Reader, ReadError
 from ecowitt.core.units import DistanceUnit, PressureUnit, RainUnit, TemperatureUnit, WindUnit

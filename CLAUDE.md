@@ -19,7 +19,6 @@ core/src/ecowitt/core/   shared by the collector and the dashboard
   weathermodel.py the `model`, `forecast` and `forecast_daily` tables: Open-Meteo's variables and
                   the fields they are stored as
   windheight.py   wind estimated at 10 m: the anemometer-height factor, the `wind_10m` table
-  ratelimit.py    the public listeners' per-address token bucket
   testing.py      jigkit's stand-in HTTP server, which every project's tests use for InfluxDB
                   and lookups, under the name StubInflux
   store/          where rows are written, on jigkit's sinks (jigkit.sinks, jigkit.influx)
