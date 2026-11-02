@@ -31,15 +31,7 @@ export function themeAt(choice: ThemeChoice, sun: Sun | null, now: Date, last: T
 
 /**
  * Show a theme: `data-theme` on the root element, which app.css keys its colours on, and the
- * browser's bar in the page's background. Null hands both back to the system: the bar to the
- * colours index.html gives each scheme, kept on each tag as it is first overridden.
+ * browser's bar in the page's background (--bg). Null hands both back to the system: the bar to
+ * the colours index.html gives each scheme.
  */
-export function applyTheme(theme: Theme, root: HTMLElement = document.documentElement): void {
-  if (theme) root.dataset.theme = theme;
-  else delete root.dataset.theme;
-  const background = theme ? getComputedStyle(root).getPropertyValue("--bg").trim() : "";
-  root.ownerDocument.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((tag) => {
-    if (tag.dataset.scheme === undefined) tag.dataset.scheme = tag.content;
-    tag.content = background || tag.dataset.scheme;
-  });
-}
+export { applyTheme } from "@jmerhar/jigkit/theme";

@@ -7,6 +7,7 @@
  * ambiguous to most of the world.
  */
 
+import { whichDay as dayOf, zoneCity } from "@jmerhar/jigkit/format";
 import { intlLocale } from "./language";
 import { m } from "../paraglide/messages.js";
 
@@ -123,10 +124,7 @@ export function today(iso: string, timezone: string, locale = intlLocale()): str
 }
 
 /** The place a time zone is named after: "Europe/Lisbon" is Lisbon, "America/New_York" New York. */
-export function zoneCity(timezone: string): string {
-  const city = timezone.split("/").pop() ?? timezone;
-  return city.replaceAll("_", " ");
-}
+export { zoneCity };
 
 /** A duration in hours and minutes: "11 h 22 min". */
 export function duration(seconds: number | null | undefined): string {
@@ -158,27 +156,7 @@ export function coming(iso: string, timezone: string, now: Date = new Date()): s
 
 /** Whether a moment falls on today, tomorrow or another day, by the station's calendar. */
 export function whichDay(iso: string, timezone: string, now: Date = new Date()): "today" | "tomorrow" | "other" {
-  const day = calendarDate(new Date(iso), timezone);
-  const today = calendarDate(now, timezone);
-  if (day === today) return "today";
-  // The calendar's next date, not the date a day from now: a day can be 23 or 25 hours long.
-  const [y, mo, d] = today.split("-").map(Number);
-  return day === new Date(Date.UTC(y, mo - 1, d + 1)).toISOString().slice(0, 10) ? "tomorrow" : "other";
-}
-
-/**
- * A moment's date in a time zone, as YYYY-MM-DD: read from its parts, not from any locale's
- * pattern, which can change with a browser's locale data.
- */
-function calendarDate(moment: Date, timezone: string): string {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    timeZone: timezone,
-  }).formatToParts(moment);
-  const part = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
-  return `${part("year")}-${part("month")}-${part("day")}`;
+  return dayOf(iso, now, timezone);
 }
 
 /** Names as a sentence lists them: "Kitchen", "Kitchen and Bathroom", "Attic, Kitchen and Bathroom". */

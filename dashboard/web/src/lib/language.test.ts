@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
-import { chooseLanguage, chosenLanguage, intlLocale, LANGUAGE_KEY, match, settleLanguage, useLanguageStrategies } from "./language";
+import { chooseLanguage, chosenLanguage, intlLocale, LANGUAGE_KEY, settleLanguage, useLanguageStrategies } from "./language";
 import { browserStorage, load, save, DEFAULTS } from "./prefs";
 import { getLocale, overwriteGetLocale } from "../paraglide/runtime.js";
 import { m } from "../paraglide/messages.js";
@@ -29,20 +29,6 @@ const refusing = {
     throw new DOMException("denied");
   },
 } as unknown as Storage;
-
-describe("match", () => {
-  it.each([
-    [["pt-PT"], "pt-PT"],
-    [["PT-pt"], "pt-PT"],
-    [["pt"], "pt-PT"],
-    [["pt-BR", "en"], "pt-PT"],
-    [["de", "en-US", "pt"], "en"],
-    [["de", "fr"], undefined],
-    [[], undefined],
-  ])("finds the first language the page has among %j", (wanted, found) => {
-    expect(match(wanted)).toBe(found);
-  });
-});
 
 describe("the page's language", () => {
   afterEach(() => {
@@ -123,8 +109,9 @@ describe("the page's language", () => {
       useLanguageStrategies(() => ["pt"]);
       expect([getLocale(), m.settings()]).toEqual(["pt-PT", "Definições"]);
       expect(chosenLanguage()).toBeNull();
+      // A choice that cannot be kept would reload into the same language, so nothing happens.
       chooseLanguage("pt-PT", undefined, reload);
-      expect(reload).toHaveBeenCalled();
+      expect(reload).not.toHaveBeenCalled();
       expect(load()).toEqual(DEFAULTS);
       expect(() => save(DEFAULTS)).not.toThrow();
     } finally {

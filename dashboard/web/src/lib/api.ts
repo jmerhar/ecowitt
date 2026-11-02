@@ -3,6 +3,7 @@
  * and a client that fetches them. Values arrive converted and rounded; times are UTC.
  */
 
+import { ApiClient, ApiError, type Query } from "@jmerhar/jigkit/api";
 import { m } from "../paraglide/messages.js";
 
 export type Units = {
@@ -303,25 +304,22 @@ export type Meta = {
 export type UnitChoice = Partial<Units>;
 
 /** The API refused or could not answer; `status` is 0 when it could not be reached at all. */
-export class ApiError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message);
-  }
-}
+export { ApiError };
 
 /**
  * Fetches the API's answers, relative to `base` (the page's own origin by default), with their
  * words in `language`: the page's own, so that they match its text whatever the browser accepts.
  */
-export class Api {
-  constructor(
-    private readonly base = "/api/v1",
-    private readonly fetcher: typeof fetch = (...args) => fetch(...args),
-    private readonly language = "en",
-  ) {}
+export class Api extends ApiClient {
+  constructor(base = "/api/v1", fetcher?: typeof fetch, language = "en") {
+    super({
+      base,
+      fetcher,
+      query: () => ({ lang: language }),
+      unreachable: () => m.error_unreachable(),
+      failed: (status) => m.error_status({ status }),
+    });
+  }
 
   meta(): Promise<Meta> {
     return this.get("/meta");
@@ -358,31 +356,7 @@ export class Api {
     return this.get(`/stations/${encodeURIComponent(station)}/extremes`, { ...units, period });
   }
 
-  private async get<T>(path: string, query: Record<string, string | undefined> = {}): Promise<T> {
-    const params = new URLSearchParams();
-    for (const [key, value] of Object.entries({ ...query, lang: this.language })) {
-      if (value) params.set(key, value);
-    }
-    // The query's text, not URLSearchParams.size: Safari before 17 has no size, and would send
-    // every request without its parameters.
-    const search = params.toString();
-    const url = this.base + path + (search ? `?${search}` : "");
-    let response: Response;
-    try {
-      response = await this.fetcher(url, { headers: { Accept: "application/json" } });
-    } catch {
-      throw new ApiError(0, m.error_unreachable());
-    }
-    if (!response.ok) {
-      let detail: string = m.error_status({ status: response.status });
-      try {
-        const body = (await response.json()) as { detail?: unknown };
-        if (typeof body.detail === "string") detail = body.detail;
-      } catch {
-        // A proxy's error page is not JSON; the status says enough.
-      }
-      throw new ApiError(response.status, detail);
-    }
-    return (await response.json()) as T;
+  private get<T>(path: string, query: Query = {}): Promise<T> {
+    return this.request<T>("GET", path, undefined, query);
   }
 }

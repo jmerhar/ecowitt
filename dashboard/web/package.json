@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@bybas/weather-icons": "2.0.0",
+    "@jmerhar/jigkit": "0.8.2",
     "@lucide/svelte": "1.64.0",
     "uplot": "1.6.32"
   }

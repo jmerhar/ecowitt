@@ -4,6 +4,7 @@
  * the defaults stand in.
  */
 
+import { browserStorage } from "@jmerhar/jigkit/storage";
 import type { UnitChoice } from "./api";
 import { THEME_CHOICES, type Theme, type ThemeChoice } from "./theme";
 
@@ -49,18 +50,8 @@ export const DEFAULTS: Prefs = {
 
 const KEY = "ecowitt-dashboard";
 
-/**
- * The browser's storage, or undefined where it refuses it: with cookies blocked, merely reading
- * window.localStorage throws, which as a default argument would throw before any try around its
- * use.
- */
-export function browserStorage(): Storage | undefined {
-  try {
-    return globalThis.localStorage;
-  } catch {
-    return undefined;
-  }
-}
+/** The browser's storage, or undefined where reading it is refused (cookies blocked, say). */
+export { browserStorage };
 
 /** The saved choices, each missing or malformed one replaced by its default. */
 export function load(storage: Storage | undefined = browserStorage()): Prefs {
