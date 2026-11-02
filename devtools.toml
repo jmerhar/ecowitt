@@ -1,0 +1,61 @@
+# Shared build tooling from jmerhar/devtools, fetched into .devtools/ by bin/devtools-fetch.sh.
+[fetch]
+ref = "v1"
+files = [
+  "make/devtools.mk",
+  "config/ruff.toml",
+  "bin/lint.sh",
+  "bin/ci-ruff.sh",
+  "bin/check-compose.sh",
+  "bin/check-lockfile.sh",
+  "bin/lockfile.sh",
+  "bin/version.py",
+  "bin/release.sh",
+  "bin/github-release.sh",
+  "bin/test-bruno.sh",
+  "bin/app-icons.sh",
+]
+coverage = true
+
+# Every check `make lint` runs.
+[lint]
+checks = ["shellcheck", "ruff", "lockfile", "version", "compose"]
+ruff = ".venv/bin/ruff"
+
+# Each combination of compose files that is run, validated by `make lint` and CI.
+[compose]
+stacks = [
+  ["docker-compose.yml"],
+  ["docker-compose.yml", "docker-compose.build.yml"],
+]
+
+# The dashboard pages, whose lockfile resolves only to the public registry.
+[npm]
+dirs = ["dashboard/web"]
+
+# Where the release version is written; the compose file follows both images' major version.
+[version]
+pyprojects = ["core/pyproject.toml", "collector/pyproject.toml", "dashboard/api/pyproject.toml"]
+npm = ["dashboard/web"]
+images = ["ghcr.io/jmerhar/ecowitt", "ghcr.io/jmerhar/ecowitt-dashboard"]
+
+[release]
+title = "Ecowitt Server"
+
+# The collection's dashboard requests against the API over the tests' example station
+# (dashboard/api/tests/fixture_server.py). The API alone is exercised, so the pages it would
+# serve are an empty scratch directory. The admin requests need a running collector.
+[bruno]
+server_dir = "dashboard/api"
+server = "tests.fixture_server"
+server_args = ["{scratch}"]
+health = "/healthz"
+folders = ["dashboard", "dashboard-site"]
+url_var = "dashboard_url"
+port = 2597
+python = ".venv/bin/python"
+
+# The dashboard's home-screen icons, rendered from the drawing (`make app-icons`).
+[icons]
+svg = "dashboard/web/icons/app-icon.svg"
+out = "dashboard/web/public/icons"

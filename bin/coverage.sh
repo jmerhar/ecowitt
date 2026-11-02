@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Run every suite with coverage and print the summary.
 #
-# The summary and the gate are shared tooling from jmerhar/coverage, configured by
-# coverage.toml, so the numbers here are the ones CI enforces.
+# The summary and the gate are shared tooling from jmerhar/coverage, fetched with the rest of the
+# shared tooling and configured by coverage.toml, so the numbers here are the ones CI enforces.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 
-bin/coverage-tooling.sh
+bin/devtools-fetch.sh
 
 # One run per Python project, each measuring only its own package: core must reach its gate
 # through its own tests, not through the collector's. Each entry is the project's directory and
@@ -28,4 +28,4 @@ bin/test-js.sh
 bin/test-web.sh
 
 echo
-python3 .coverage-report.py "$@"
+python3 .devtools/coverage/coverage-report.py "$@"

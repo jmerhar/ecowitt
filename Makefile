@@ -1,8 +1,11 @@
-.PHONY: help install web-install lockfile app-icons grafana messages dev dashboard-dev up down logs shell build test test-js test-web test-legacy-browser test-bruno coverage lint check release clean
+.PHONY: install web-install lockfile app-icons grafana messages dev dashboard-dev up down logs shell build test test-js test-web test-legacy-browser test-bruno coverage lint check release clean
 
-help: ## Show available commands
-	@grep -E '^[a-zA-Z_-]+:.*##|^##@' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*## "}; /^##@/ {printf "\n\033[1m%s\033[0m\n", substr($$0, 5); next} {printf "  \033[36mmake %-16s\033[0m %s\n", $$1, $$2}'
+# help, devtools-update and coverage-tooling come from jmerhar/devtools; make fetches them on the
+# first run and whenever devtools.toml changes.
+.DEFAULT_GOAL := help
+include .devtools/make/devtools.mk
+.devtools/make/devtools.mk: devtools.toml bin/devtools-fetch.sh
+	bin/devtools-fetch.sh
 
 ##@ Setup
 
@@ -16,10 +19,10 @@ web-install: ## Install the dashboard pages' node_modules from the lockfile (nee
 	cd dashboard/web && npm ci --no-audit --no-fund --registry="$$(cd / && npm config get registry)"
 
 lockfile: ## Regenerate the pages' package-lock.json (Linux binaries, public registry URLs)
-	bin/lockfile.sh
+	.devtools/bin/lockfile.sh
 
 app-icons: ## Render the dashboard's home-screen icons from dashboard/web/icons/app-icon.svg
-	bin/app-icons.sh
+	.devtools/bin/app-icons.sh
 
 grafana: ## Render grafana/weather.json and alerts.json from the templates in the collector package
 	.venv/bin/python bin/grafana.py
@@ -68,20 +71,20 @@ test-legacy-browser: ## Load the pages' legacy build in Chromium 59 (needs Docke
 	bin/test-legacy-browser.sh
 
 test-bruno: ## Run the Bruno collection's dashboard requests against the API over test data (needs Node)
-	bin/test-bruno.sh
+	.devtools/bin/test-bruno.sh
 
 coverage: ## Run every suite with coverage and print the summary
 	bin/coverage.sh --format md
 
 lint: ## ShellCheck, ruff, the lockfile's registry, the versions, and the compose files
-	bin/lint.sh
+	.devtools/bin/lint.sh
 
 check: lint coverage ## Everything (gate a commit on this; coverage runs every suite)
 
 ##@ Releasing
 
 release: ## Cut release VERSION=X.Y.Z: version the manifests, date the changelog, commit and tag
-	bin/release.sh $(VERSION)
+	.devtools/bin/release.sh $(VERSION)
 
 ##@ Housekeeping
 
@@ -91,5 +94,5 @@ clean: ## Remove build and coverage artefacts (all regenerable)
 	       */junit .ruff_cache */.pytest_cache \
 	       dashboard/api/htmlcov dashboard/api/coverage.xml dashboard/api/coverage.json \
 	       dashboard/api/.coverage dashboard/api/junit dashboard/api/.pytest_cache \
-	       coverage-upload .coverage-report.py
+	       coverage-upload
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +

@@ -134,7 +134,7 @@ dashboard/web/    the dashboard's page: Svelte 5, Vite, TypeScript, uPlot; a thi
                   loaded from node_modules rather than a CDN
   src/components/ one per card or section; Chart.svelte is the only one that touches uPlot
   src/testing.ts  API answers for the tests, and a fake Api
-  icons/          app-icon.svg, the home-screen icon; bin/app-icons.sh renders public/icons/*.png
+  icons/          app-icon.svg, the home-screen icon; `make app-icons` renders public/icons/*.png
   build/          legacy-css.ts, the Vite plugin that gives the stylesheet its legacy fallbacks;
                   paraglide.ts, how messages compile, and compile-messages.ts, which writes them
                   for svelte-check (bin/test-web.sh and `npm run check` run it first)
@@ -147,13 +147,13 @@ bruno/            the Bruno collection: a request, with assertions, for every re
                   the dashboard and the admin listener; environments/ keeps only local and example
                   (tests/test_bruno.py in dashboard/api and collector/tests/server guard both)
 TODO/             one note per planned feature; delete a note when its feature ships
-bin/              every script the Makefile and CI run; its Python is linted with the shared
-                  ruff.toml (bin/ci-ruff.sh). lockfile.sh / check-lockfile.sh write and guard
-                  the page's package-lock.json; test-web.sh type-checks and tests the page;
-                  version.py keeps every manifest's version and the compose file's major image
-                  tag in step, release.sh cuts a release
-                  and github-release.sh (CI, on a tag) publishes its notes; grafana.py writes
-                  grafana/*.json from the templates; messages.py updates the API's catalogues
+bin/              the scripts the Makefile and CI run that are ecowitt's own; test-web.sh
+                  type-checks and tests the page; grafana.py writes grafana/*.json from the
+                  templates; messages.py updates the API's catalogues
+devtools.toml     the shared scripts fetched from jmerhar/devtools into .devtools/ (gitignored):
+                  lint, ruff, the compose and lockfile checks, `make lockfile`, the version kept
+                  in step across every manifest and the compose file's major image tag,
+                  `make release` and the GitHub release CI publishes on a tag
 CHANGELOG.md      every release's notes; new work goes under `## Unreleased`
 ```
 
@@ -327,8 +327,8 @@ CHANGELOG.md      every release's notes; new work goes under `## Unreleased`
   they are. `make test-legacy-browser` loads the page in Chromium 59 and is the guard.
 - **`dashboard/web/package-lock.json` must resolve only to registry.npmjs.org.** A development
   machine may reach npm only through a proxy, and a plain `npm install` writes the proxy's host
-  into every entry -- breaking CI and publishing it. Regenerate it with `bin/lockfile.sh` only;
-  `bin/check-lockfile.sh` (lint and CI) asserts the public registry rather than naming any host.
+  into every entry -- breaking CI and publishing it. Regenerate it with `make lockfile` only;
+  the lockfile check (lint and CI) asserts the public registry rather than naming any host.
 
 ## Commands
 
