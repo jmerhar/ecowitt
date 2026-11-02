@@ -6,6 +6,18 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 data in a way that needs acting on. Any release can also ask for the Grafana dashboard or alert
 rules to be imported again. Either is listed under *Upgrading*.
 
+## Unreleased
+
+### Changed
+
+- The collector's InfluxDB writing, its spool and replay, the heartbeat and the listeners' rate
+  limit, and the dashboard pages' shared pieces, now come from
+  [jigkit](https://github.com/jmerhar/jigkit). Readings are written exactly as before, at second
+  precision, and a spool left by an earlier version is still replayed.
+- On the dashboard, choosing a language in a browser that keeps no site data no longer reloads
+  the page into the same language.
+- Updated dependencies.
+
 ## 3.5.0 — 2026-10-27
 
 ### Changed
