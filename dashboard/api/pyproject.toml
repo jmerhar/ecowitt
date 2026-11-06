@@ -9,7 +9,7 @@ description = "Ecowitt Server's public dashboard: a read-only API over what the 
 requires-python = ">=3.14"
 dependencies = [
     # The per-address rate limiter. Pinned exactly, with ecowitt-core's pin.
-    "jigkit==0.10.0",
+    "jigkit==0.12.0",
     "ecowitt-core",
     "fastapi>=0.141,<0.163",
     "uvicorn[standard]>=0.30",
