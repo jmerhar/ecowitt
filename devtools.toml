@@ -14,6 +14,7 @@ files = [
   "bin/github-release.sh",
   "bin/test-bruno.sh",
   "bin/app-icons.sh",
+  "bin/ci.py",
 ]
 coverage = true
 
@@ -59,3 +60,85 @@ python = ".venv/bin/python"
 [icons]
 svg = "dashboard/web/icons/app-icon.svg"
 out = "dashboard/web/public/icons"
+
+# CI, run by jmerhar/devtools' python-docker-app.yml (.github/workflows/ci.yml): each suite is a job,
+# the images are built once all of them and the coverage gate pass, and a version tag gets its
+# GitHub release.
+[ci]
+junit = ["*/junit/*.xml", "dashboard/api/junit/*.xml"]
+coverage_description = "HTML coverage report"
+# The images take no revision argument.
+revision_arg = ""
+
+# One suite per Python project, each measuring only its own package: core must reach its gate
+# through its own tests, not through the collector's.
+[[ci.suite]]
+name = "core"
+python = true
+install = 'pip install -e "core[test]" -e "collector[test]" -e "dashboard/api[test]"'
+run = "bin/test-python.sh core -v --cov=ecowitt.core --junitxml=junit/core.xml --cov-report=term-missing --cov-report=xml --cov-report=json --cov-report=html"
+env = { PYTHON = "python", COVERAGE_CORE = "sysmon" }
+coverage = ["core/coverage.xml", "core/coverage.json", "core/htmlcov", "core/junit"]
+
+[[ci.suite]]
+name = "collector"
+python = true
+install = 'pip install -e "core[test]" -e "collector[test]" -e "dashboard/api[test]"'
+run = "bin/test-python.sh collector -v --cov=ecowitt.collector --junitxml=junit/collector.xml --cov-report=term-missing --cov-report=xml --cov-report=json --cov-report=html"
+env = { PYTHON = "python", COVERAGE_CORE = "sysmon" }
+coverage = ["collector/coverage.xml", "collector/coverage.json", "collector/htmlcov", "collector/junit"]
+
+[[ci.suite]]
+name = "dashboard"
+python = true
+install = 'pip install -e "core[test]" -e "collector[test]" -e "dashboard/api[test]"'
+run = "bin/test-python.sh dashboard/api -v --cov=ecowitt.dashboard --junitxml=junit/dashboard.xml --cov-report=term-missing --cov-report=xml --cov-report=json --cov-report=html"
+env = { PYTHON = "python", COVERAGE_CORE = "sysmon" }
+coverage = ["dashboard/api/coverage.xml", "dashboard/api/coverage.json", "dashboard/api/htmlcov", "dashboard/api/junit"]
+
+# The collector's status page scripts, under node:test.
+[[ci.suite]]
+name = "pages"
+node = true
+run = "bin/test-js.sh"
+coverage = ["collector/coverage-js"]
+
+[[ci.suite]]
+name = "web"
+node = true
+install = "npm ci --no-audit --no-fund --prefix dashboard/web"
+run = "bin/test-web.sh"
+coverage = ["dashboard/web/coverage"]
+
+# The pages' legacy build, loaded in Chromium 59.
+[[ci.suite]]
+name = "legacy-browser"
+python = true
+node = true
+install = 'pip install -e core -e "dashboard/api[test]" && npm ci --no-audit --no-fund --prefix dashboard/web'
+run = "bin/test-legacy-browser.sh"
+env = { PYTHON = "python" }
+
+# The Bruno collection's dashboard requests, with their assertions, against the real API.
+[[ci.suite]]
+name = "bruno"
+python = true
+node = true
+install = 'pip install -e core -e "dashboard/api[test]"'
+run = ".devtools/bin/test-bruno.sh"
+env = { PYTHON = "python" }
+
+[[ci.suite]]
+name = "lint"
+python = true
+install = "pip install ruff"
+run = ".devtools/bin/lint.sh"
+env = { RUFF = "ruff" }
+
+[[ci.image]]
+image = "ghcr.io/jmerhar/ecowitt"
+dockerfile = "collector/Dockerfile"
+
+[[ci.image]]
+image = "ghcr.io/jmerhar/ecowitt-dashboard"
+dockerfile = "dashboard/Dockerfile"
