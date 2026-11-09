@@ -8,7 +8,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from ecowitt.dashboard.app import _manifest, build_app
+from ecowitt.dashboard.app import build_app
 from ecowitt.dashboard.settings import Settings
 
 from .conftest import REPO
@@ -51,9 +51,10 @@ def test_there_is_no_manifest_before_setup(settings: Settings, reader: MemoryRea
         assert fresh.get("/manifest.webmanifest").status_code == 404
 
 
-def test_every_icon_named_exists_at_its_size_and_is_opaque() -> None:
+def test_every_icon_named_exists_at_its_size_and_is_opaque(client: TestClient) -> None:
     """A home screen fills a transparent icon with a colour of its own, so none may have alpha."""
-    named = [(i["src"], i["sizes"]) for i in _manifest("x")["icons"]]  # type: ignore[union-attr]
+    icons = client.get("/manifest.webmanifest").json()["icons"]
+    named = [(i["src"], i["sizes"]) for i in icons]
     page = (WEB / "index.html").read_text(encoding="utf-8")
     touch = re.search(r'rel="apple-touch-icon" href="([^"]+)"', page)
     assert touch is not None

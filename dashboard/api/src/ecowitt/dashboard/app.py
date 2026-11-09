@@ -13,7 +13,7 @@ import logging
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated
 from urllib.parse import parse_qsl
 
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Query, Request
@@ -28,6 +28,7 @@ from fastapi.responses import (
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from jigkit.ratelimit import RateLimiter
+from jigkit.web import manifest_router
 
 from ecowitt.core.store import settings as store_settings
 from ecowitt.core.store.query import Reader, ReadError
@@ -195,27 +196,25 @@ def build_app(
 
     index_page = settings.web_dir / "index.html"
 
-    @app.get("/manifest.webmanifest", include_in_schema=False)
-    async def manifest(
-        display: Display = "standalone",
-        accept_language: Annotated[str | None, Header()] = None,
-    ) -> Response:
-        """What a phone or tablet needs to add the page to its home screen as an app, named for
-        the site. Served once set up, since until then the page is the setup form. The page asks
-        for `display=fullscreen` where the visitor wants the app without the system's bars. The
-        browser fetches it itself, so its description is in the browser's language."""
+    async def site_title(_: Request) -> str:
+        """The site's title, which names the app on a home screen. There is nothing to install
+        until setup is done, since until then the page is the setup form."""
         if site.dashboard is None:
             raise HTTPException(404)
-        language = i18n.negotiate(None, accept_language)
-        return JSONResponse(
-            _manifest(site.dashboard.title, display, language),
-            media_type="application/manifest+json",
-            headers={
-                "Cache-Control": "public, max-age=3600",
-                "Content-Language": language.tag,
-                "Vary": "Accept-Language",
-            },
+        return site.dashboard.title
+
+    # The page asks for `display=fullscreen` where the visitor wants the app without the
+    # system's bars.
+    app.include_router(
+        manifest_router(
+            MANIFEST_WORDS,
+            background_color=APP_BACKGROUND,
+            theme_color=APP_BACKGROUND,
+            default=i18n.ENGLISH.tag,
+            name=site_title,
+            displays=("standalone", "fullscreen"),
         )
+    )
 
     @app.get("/", include_in_schema=False)
     async def index() -> Response:
@@ -324,48 +323,11 @@ def build_app(
 #: splash screen a phone shows while it opens matches the icon.
 APP_BACKGROUND = "#16181a"
 
-#: How the home-screen app opens: with the system's bars, or without them.
-Display = Literal["standalone", "fullscreen"]
-
-
-def _manifest(
-    title: str, display: Display = "standalone", language: Language = i18n.ENGLISH
-) -> dict[str, object]:
-    """The web app manifest for a site of this title, opening as `display` asks, its words in
-    `language`."""
-    icon = "/icons/icon-{size}.png"
-    return {
-        "name": title,
-        "short_name": title,
-        "description": messages.app_description(language),
-        "lang": language.tag,
-        "start_url": "/",
-        "scope": "/",
-        "display": display,
-        "background_color": APP_BACKGROUND,
-        "theme_color": APP_BACKGROUND,
-        "icons": [
-            {
-                "src": icon.format(size=192),
-                "sizes": "192x192",
-                "type": "image/png",
-                "purpose": "any",
-            },
-            {
-                "src": icon.format(size=512),
-                "sizes": "512x512",
-                "type": "image/png",
-                "purpose": "any",
-            },
-            # The same drawing: it keeps to the centre, so a launcher's crop leaves it whole.
-            {
-                "src": icon.format(size=512),
-                "sizes": "512x512",
-                "type": "image/png",
-                "purpose": "maskable",
-            },
-        ],
-    }
+#: The app's name and description in each language, for its manifest; the site's title replaces
+#: the name once setup is done.
+MANIFEST_WORDS = {
+    tag: ("Ecowitt", messages.app_description(language)) for tag, language in i18n.LANGUAGES.items()
+}
 
 
 async def _setup_action(request: Request, site: Site, form: Form) -> Response:
