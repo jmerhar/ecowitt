@@ -17,6 +17,8 @@ files = [
   "bin/ci.py",
   "fetch/devtools-fetch.sh",
   "bin/devtools-check.py",
+  "make/npm.mk",
+  "bin/npm-ci.sh",
 ]
 coverage = true
 

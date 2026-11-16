@@ -1,7 +1,7 @@
-.PHONY: install web-install lockfile app-icons grafana messages dev dashboard-dev up down logs shell build test test-js test-web test-legacy-browser test-bruno coverage lint check release clean
+.PHONY: install web-install app-icons grafana messages dev dashboard-dev up down logs shell build test test-js test-web test-legacy-browser test-bruno coverage lint check release clean
 
-# help, devtools-update and coverage-tooling come from jmerhar/devtools; make fetches them on the
-# first run and whenever devtools.toml changes.
+# help, devtools-update, coverage-tooling, node-modules and lockfile come from jmerhar/devtools;
+# make fetches them on the first run and whenever devtools.toml changes.
 .DEFAULT_GOAL := help
 include .devtools/make/devtools.mk
 .devtools/make/devtools.mk: devtools.toml bin/devtools-fetch.sh
@@ -16,10 +16,7 @@ install: ## Create the shared virtualenv and install every project with its test
 	@echo "Installed. 'make test' runs the suite, 'make dev' serves locally."
 
 web-install: ## Install the dashboard pages' node_modules from the lockfile (needs Node 24)
-	cd dashboard/web && npm ci --no-audit --no-fund --registry="$$(cd / && npm config get registry)"
-
-lockfile: ## Regenerate the pages' package-lock.json (Linux binaries, public registry URLs)
-	.devtools/bin/lockfile.sh
+	$(MAKE) node-modules
 
 app-icons: ## Render the dashboard's home-screen icons from dashboard/web/icons/app-icon.svg
 	.devtools/bin/app-icons.sh
