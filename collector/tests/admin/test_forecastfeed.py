@@ -167,4 +167,4 @@ async def test_run_survives_an_unexpected_error_and_wakes_on_demand(
             with contextlib.suppress(asyncio.CancelledError):
                 await task
 
-    assert "weather forecast refresh failed" in caplog.text
+    assert "weather forecast: config gone" in caplog.text

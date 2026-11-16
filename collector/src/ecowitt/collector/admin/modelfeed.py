@@ -16,13 +16,12 @@ within moments rather than at the next cycle.
 from __future__ import annotations
 
 import asyncio
-import contextlib
-import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
 import httpx2
+from jigkit.scheduler import Job, LoggingReporter, Schedule
 
 from ecowitt.collector.admin import lookups
 from ecowitt.collector.admin.calibration import CalibrationMonitor
@@ -34,8 +33,6 @@ from ecowitt.core import weathermodel
 from ecowitt.core.readings import Reading
 from ecowitt.core.store.base import Row
 from ecowitt.core.windheight import ModelWind
-
-logger = logging.getLogger(__name__)
 
 #: How far back a station is fetched when first seen, and the most any gap is filled.
 HISTORY_SECONDS = 7 * 86400
@@ -83,7 +80,7 @@ class ModelFeed:
         self._wake = asyncio.Event()
 
     def wake(self) -> None:
-        """Refresh now rather than at the end of the current pause."""
+        """Refresh now rather than when the interval is next up."""
         self._wake.set()
 
     async def refresh(self) -> int:
@@ -169,16 +166,9 @@ class ModelFeed:
         return readings
 
     async def run(self) -> None:
-        """Refresh for ever, every interval or sooner when woken. Cancel the task to stop it."""
-        while True:
-            self._wake.clear()
-            try:
-                await self.refresh()
-            except Exception:  # noqa: BLE001 - a lookup must never take the server down
-                logger.exception("weather model refresh failed")
-            await self._pause()
+        """Refresh for ever, every interval or sooner when woken. Cancel the task to stop it.
 
-    async def _pause(self) -> None:
-        """Wait out the interval, or until woken."""
-        with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(self._wake.wait(), timeout=self._interval)
+        A refresh that raises is logged and tried again at the next interval.
+        """
+        job = Job("refresh", self._interval, self.refresh, on_wake=True)
+        await Schedule(LoggingReporter("weather model"), [job], wake=self._wake).run()

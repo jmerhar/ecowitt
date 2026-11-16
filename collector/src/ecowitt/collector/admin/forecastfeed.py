@@ -11,14 +11,13 @@ replaces the previous one's row for the same moment and lead.
 from __future__ import annotations
 
 import asyncio
-import contextlib
-import logging
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 import httpx2
+from jigkit.scheduler import Job, LoggingReporter, Schedule
 
 from ecowitt.collector.admin import lookups
 from ecowitt.collector.admin.stationconfig import Station, StationConfig
@@ -28,8 +27,6 @@ from ecowitt.collector.state import State
 from ecowitt.core import weathermodel
 from ecowitt.core.readings import Reading
 from ecowitt.core.store.base import Row
-
-logger = logging.getLogger(__name__)
 
 HOUR_SECONDS = 3600
 
@@ -58,7 +55,7 @@ class ForecastFeed:
         self._wake = asyncio.Event()
 
     def wake(self) -> None:
-        """Refresh now rather than at the end of the current pause."""
+        """Refresh now rather than when the interval is next up."""
         self._wake.set()
 
     async def refresh(self) -> int:
@@ -121,16 +118,9 @@ class ForecastFeed:
         )
 
     async def run(self) -> None:
-        """Refresh for ever, every interval or sooner when woken. Cancel the task to stop it."""
-        while True:
-            self._wake.clear()
-            try:
-                await self.refresh()
-            except Exception:  # noqa: BLE001 - a forecast must never take the server down
-                logger.exception("weather forecast refresh failed")
-            await self._pause()
+        """Refresh for ever, every interval or sooner when woken. Cancel the task to stop it.
 
-    async def _pause(self) -> None:
-        """Wait out the interval, or until woken."""
-        with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(self._wake.wait(), timeout=self._interval)
+        A refresh that raises is logged and tried again at the next interval.
+        """
+        job = Job("refresh", self._interval, self.refresh, on_wake=True)
+        await Schedule(LoggingReporter("weather forecast"), [job], wake=self._wake).run()

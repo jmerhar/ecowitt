@@ -271,14 +271,14 @@ async def test_run_survives_an_unexpected_error_and_keeps_its_cycle(
         task = asyncio.create_task(model.run())
         try:
             async with asyncio.timeout(5):
-                while caplog.text.count("weather model refresh failed") < 3:
+                while caplog.text.count("weather model: config gone") < 3:
                     await asyncio.sleep(0.005)
         finally:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await task
 
-    assert caplog.text.count("weather model refresh failed") >= 3
+    assert caplog.text.count("weather model: config gone") >= 3
 
 
 async def test_waking_refreshes_without_waiting_out_the_interval() -> None:
