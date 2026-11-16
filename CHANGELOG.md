@@ -6,6 +6,15 @@ the dashboard image (`ghcr.io/jmerhar/ecowitt-dashboard`), which share one versi
 data in a way that needs acting on. Any release can also ask for the Grafana dashboard or alert
 rules to be imported again. Either is listed under *Upgrading*.
 
+## Unreleased
+
+### Changed
+
+- The weather model and forecast refresh on [jigkit](https://github.com/jmerhar/jigkit)'s
+  scheduler. A refresh that fails unexpectedly is logged as a warning naming the error, with its
+  traceback at debug level.
+- Updated dependencies.
+
 ## 3.6.0 — 2026-11-02
 
 ### Changed
