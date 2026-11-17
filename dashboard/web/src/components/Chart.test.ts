@@ -2,7 +2,7 @@ import { render } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Chart from "./Chart.svelte";
 import { align, viewFor } from "../lib/chart";
-import { series, SYMBOLS } from "../testing";
+import { at, series, SYMBOLS } from "../testing";
 
 const made: { options: any; data: any; destroyed: boolean; sizes: unknown[] }[] = [];
 
@@ -44,7 +44,7 @@ describe("Chart", () => {
     const data = align(view, series(), { "outdoor.temperature": "Temperature" });
     render(Chart, { view, data, symbols: SYMBOLS, timezone: "Europe/Lisbon" });
     expect(made).toHaveLength(1);
-    const { options, data: columns } = made[0];
+    const { options, data: columns } = at(made, 0);
     expect(columns[0]).toEqual([100, 400, 700]);
     expect(options.bands).toEqual([{ series: [1, 2], fill: expect.stringMatching(/33$/) }]);
     expect(options.series.map((s: { label?: string }) => s.label)).toEqual([
@@ -60,7 +60,7 @@ describe("Chart", () => {
     expect(options.series[0].value(null, null)).toBe("–");
     expect(options.axes[0].values(null, [1791633600], 0, 0, 3600)).toEqual(["13:00\n10 Oct"]);
     resize();
-    expect(made[0].sizes).toHaveLength(1);
+    expect(at(made, 0).sizes).toHaveLength(1);
   });
 
   it("draws again in the new colours when the theme changes", async () => {
@@ -70,7 +70,7 @@ describe("Chart", () => {
     expect(made).toHaveLength(1);
     document.documentElement.dataset.theme = "dark";
     await vi.waitFor(() => expect(made).toHaveLength(2));
-    expect(made[0].destroyed).toBe(true);
+    expect(at(made, 0).destroyed).toBe(true);
     shown.unmount();
     delete document.documentElement.dataset.theme;
     await new Promise((resolve) => setTimeout(resolve));
@@ -88,7 +88,7 @@ describe("Chart", () => {
       const view = viewFor("temperature");
       const shown = render(Chart, { view, data: align(view, series(), {}), symbols: SYMBOLS, timezone: "UTC" });
       expect(listeners).toHaveLength(1);
-      listeners[0]();
+      at(listeners, 0)();
       expect(made).toHaveLength(2);
       shown.unmount();
       expect(removed).toEqual(listeners);
@@ -102,10 +102,10 @@ describe("Chart", () => {
     const view = viewFor("temperature");
     const shown = render(Chart, { view, data: align(view, series(), {}), symbols: SYMBOLS, timezone: "UTC" });
     window.dispatchEvent(new Event("resize"));
-    expect(made[0].sizes).toHaveLength(1);
+    expect(at(made, 0).sizes).toHaveLength(1);
     shown.unmount();
     window.dispatchEvent(new Event("resize"));
-    expect(made[0].sizes).toHaveLength(1);
+    expect(at(made, 0).sizes).toHaveLength(1);
   });
 
   it("draws points without a line and bars with uPlot's bar paths", () => {
@@ -114,19 +114,19 @@ describe("Chart", () => {
       series: [{ metric: "wind.direction", sensor: null, name: null, unit: "deg", source: "station", t: [1], values: { circular: [5] } }],
     }), {});
     render(Chart, { view: wind, data: points, symbols: SYMBOLS, timezone: "UTC" });
-    const dot = made[0].options.series[1];
+    const dot = at(made, 0).options.series[1];
     expect(dot.paths()).toBeNull();
     expect(dot.points.show).toBe(true);
-    expect(made[0].options.axes[1].side).toBe(1);
+    expect(at(made, 0).options.axes[1].side).toBe(1);
 
     const rain = viewFor("rain");
     const bars = align(rain, series({
       series: [{ metric: "rain.amount", sensor: "bucket", name: null, unit: "", source: "station", t: [1], values: { increase: [1] } }],
     }), {});
     render(Chart, { view: rain, data: bars, symbols: {}, timezone: "UTC" });
-    expect(made[1].options.series[1].paths).toBe("bars");
-    expect(made[1].options.axes[1].values(null, [1])).toEqual(["1"]);
-    expect(made[1].options.series[1].value(null, 2)).toBe("2");
+    expect(at(made, 1).options.series[1].paths).toBe("bars");
+    expect(at(made, 1).options.axes[1].values(null, [1])).toEqual(["1"]);
+    expect(at(made, 1).options.series[1].value(null, 2)).toBe("2");
   });
 
   it("cuts both axes of a two-axis chart into the same steps, so the right one's ticks meet the grid", () => {
@@ -138,7 +138,7 @@ describe("Chart", () => {
       ],
     }), {});
     render(Chart, { view: rain, data, symbols: SYMBOLS, timezone: "UTC" });
-    const { scales, axes } = made[0].options;
+    const { scales, axes } = at(made, 0).options;
     expect(scales.left.range(null, 0, 1.6)).toEqual([0, 2.5]);
     expect(scales.right.range(null, 0, 6.2)).toEqual([0, 10]);
     expect(axes[1].splits(null, 1, 0, 2.5)).toEqual([0, 0.5, 1, 1.5, 2, 2.5]);
@@ -148,8 +148,8 @@ describe("Chart", () => {
   it("leaves a lone axis to uPlot's own ticks", () => {
     const view = viewFor("temperature");
     render(Chart, { view, data: align(view, series(), {}), symbols: SYMBOLS, timezone: "UTC" });
-    expect(made[0].options.scales).toEqual({ x: { time: true } });
-    expect(made[0].options.axes[1].splits).toBeUndefined();
+    expect(at(made, 0).options.scales).toEqual({ x: { time: true } });
+    expect(at(made, 0).options.axes[1].splits).toBeUndefined();
   });
 
   it("draws the model dashed across its gaps, and its points hollow", () => {
@@ -162,7 +162,7 @@ describe("Chart", () => {
       ],
     }), {});
     render(Chart, { view: wind, data, symbols: SYMBOLS, timezone: "UTC" });
-    const [, station, speed, direction] = made[0].options.series;
+    const [, station, speed, direction] = at(made, 0).options.series;
     expect(station).toMatchObject({ spanGaps: false, dash: undefined });
     expect(speed).toMatchObject({ spanGaps: true, dash: [6, 4], width: 1.5 });
     expect(direction.points).toMatchObject({ show: true, size: 6, width: 1.5 });
@@ -172,18 +172,18 @@ describe("Chart", () => {
   it("picks out a line on a legend click, keeping its band with it", () => {
     const view = viewFor("temperature");
     render(Chart, { view, data: align(view, series(), {}), symbols: SYMBOLS, timezone: "UTC" });
-    const { options } = made[0];
+    const { options } = at(made, 0);
     expect(options.legend.isolate).toBe(true);
     // Series 1 and 2 are the temperature band's edges, 3 its line, 4 the dew point.
     const shown = [true, false, false, true, false];
     const plot = {
       series: shown.map((show) => ({ show })),
-      setSeries: vi.fn((i: number, { show }: { show: boolean }) => (plot.series[i].show = show)),
+      setSeries: vi.fn((i: number, { show }: { show: boolean }) => (at(plot.series, i).show = show)),
     };
     options.hooks.setSeries[0](plot);
     expect(plot.series.map((s) => s.show)).toEqual([true, true, true, true, false]);
     expect(plot.setSeries).toHaveBeenCalledWith(1, { show: true }, false);
-    plot.series[3].show = false;
+    at(plot.series, 3).show = false;
     plot.setSeries.mockClear();
     options.hooks.setSeries[0](plot);
     expect(plot.series.slice(1, 3).map((s) => s.show)).toEqual([false, false]);
@@ -197,8 +197,8 @@ describe("Chart", () => {
     const chart = render(Chart, { view, data: first, symbols: SYMBOLS, timezone: "UTC" });
     await chart.rerender({ view, data: { ...first }, symbols: SYMBOLS, timezone: "UTC" });
     expect(made).toHaveLength(2);
-    expect(made[0].destroyed).toBe(true);
+    expect(at(made, 0).destroyed).toBe(true);
     chart.unmount();
-    expect(made[1].destroyed).toBe(true);
+    expect(at(made, 1).destroyed).toBe(true);
   });
 });

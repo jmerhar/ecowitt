@@ -194,3 +194,10 @@ export function speaking(locale: Locale): void {
   overwriteGetLocale(() => locale);
   onTestFinished(() => overwriteGetLocale(pageLocale));
 }
+
+/** The item at an index a test expects to be there, failing the test when it is not. */
+export function at<T>(items: ArrayLike<T>, index: number): T {
+  const item = Array.from(items).at(index);
+  if (item === undefined) throw new Error(`no item at ${index} of ${items.length}`);
+  return item;
+}

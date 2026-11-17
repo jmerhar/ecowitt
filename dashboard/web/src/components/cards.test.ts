@@ -9,7 +9,7 @@ import Rooms from "./Rooms.svelte";
 import AiringCard from "./AiringCard.svelte";
 import Sensors from "./Sensors.svelte";
 import UnitsMenu from "./UnitsMenu.svelte";
-import { META, now, speaking, SYMBOLS, UNITS } from "../testing";
+import { at, META, now, speaking, SYMBOLS, UNITS } from "../testing";
 import type { SummaryPart } from "../lib/api";
 import { skyIcon } from "../lib/sky";
 
@@ -36,7 +36,8 @@ describe("NowCard", () => {
       now: now({ outdoor: { ...base.outdoor!, humidity: 93, dew_point: 18 } }),
       symbols: SYMBOLS, timezone: tz, onselect: vi.fn(),
     });
-    const [humidity, dew] = [...container.querySelectorAll<HTMLElement>(".bar")];
+    const bars = container.querySelectorAll<HTMLElement>(".bar");
+    const [humidity, dew] = [at(bars, 0), at(bars, 1)];
     expect(humidity).toHaveClass("cool");
     expect(humidity).toHaveAttribute("title", "Humid");
     expect(humidity.querySelector("span")!.style.width).toBe("93%");
@@ -297,7 +298,7 @@ describe("Rooms", () => {
   });
 
   it("keeps a room without the value last, whichever way the column runs", () => {
-    const rooms = [{ ...now().rooms[0], humidity: null }, ...now().rooms.slice(1)];
+    const rooms = [{ ...at(now().rooms, 0), humidity: null }, ...now().rooms.slice(1)];
     const names = () => screen.getAllByRole("row").slice(1).map((r) => r.querySelector("td")!.textContent);
     const first = render(Rooms, { rooms, units: UNITS, symbols: SYMBOLS, sort: { column: "humidity", descending: false } });
     expect(names()).toEqual(["Attic", "Bathroom", "Lounge"]);
@@ -314,7 +315,7 @@ describe("Rooms", () => {
 
   it("has no airing column while no room has advice", () => {
     render(Rooms, {
-      rooms: [{ ...now().rooms[0], airing: null }, { ...now().rooms[0], sensor: "ch9" }],
+      rooms: [{ ...at(now().rooms, 0), airing: null }, { ...at(now().rooms, 0), sensor: "ch9" }],
       units: UNITS, symbols: SYMBOLS,
     });
     expect(screen.queryByRole("columnheader", { name: "Airing" })).not.toBeInTheDocument();
@@ -324,7 +325,7 @@ describe("Rooms", () => {
   });
 
   it("leaves the change muted when it is under a point", () => {
-    const room = { ...now().rooms[0], humidity: 58.6 };
+    const room = { ...at(now().rooms, 0), humidity: 58.6 };
     render(Rooms, { rooms: [room], units: UNITS, symbols: SYMBOLS });
     expect(screen.getByText("58%")).toHaveClass("muted");
   });
@@ -487,11 +488,11 @@ describe("Sensors", () => {
   });
 
   it("stays folded when all is well, and counts several problems", () => {
-    const fine = render(Sensors, { sensors: [now().sensors[0]] });
+    const fine = render(Sensors, { sensors: [at(now().sensors, 0)] });
     expect(fine.container.querySelector("details")).not.toHaveAttribute("open");
     expect(screen.getByText("All reporting")).toBeInTheDocument();
     fine.unmount();
-    render(Sensors, { sensors: [now().sensors[1], { ...now().sensors[1], sensor: "ch2" }] });
+    render(Sensors, { sensors: [at(now().sensors, 1), { ...at(now().sensors, 1), sensor: "ch2" }] });
     expect(screen.getByText("2 need attention")).toBeInTheDocument();
   });
 });
@@ -502,7 +503,7 @@ describe("in European Portuguese", () => {
     const one = render(Sensors, { sensors: now().sensors });
     expect(screen.getByText("1 precisa de atenção")).toBeInTheDocument();
     one.unmount();
-    const flat = { ...now().sensors[0], sensor: "ch2", battery_low: true };
+    const flat = { ...at(now().sensors, 0), sensor: "ch2", battery_low: true };
     render(Sensors, { sensors: [...now().sensors, flat] });
     expect(screen.getByText("2 precisam de atenção")).toBeInTheDocument();
   });
@@ -540,7 +541,7 @@ describe("in European Portuguese", () => {
     speaking("pt-PT");
     render(UnitsMenu, { meta: META, chosen: {}, onchange: vi.fn() });
     expect(screen.getByLabelText("Definições")).toHaveAttribute("title", "Definições");
-    expect((screen.getByLabelText("Idioma") as HTMLSelectElement).options[0].textContent).toBe("Do navegador");
+    expect(at((screen.getByLabelText("Idioma") as HTMLSelectElement).options, 0).textContent).toBe("Do navegador");
   });
 });
 

@@ -110,7 +110,8 @@
     // A band's edges are drawn only as its fill; their legend rows would read "high: –".
     const rows = element.querySelectorAll<HTMLElement>(".u-legend .u-series");
     built.series.forEach((s, i) => {
-      if (s.edge && rows[i + 1]) rows[i + 1].style.display = "none";
+      const row = rows[i + 1];
+      if (s.edge && row) row.style.display = "none";
     });
   }
 
@@ -122,8 +123,8 @@
     series.forEach((s, i) => {
       if (!s.edge) return;
       const line = series.findIndex((t, j) => j > i && !t.edge);
-      const show = u.series[line + 1].show;
-      if (u.series[i + 1].show !== show) u.setSeries(i + 1, { show }, false);
+      const show = u.series[line + 1]?.show;
+      if (show !== undefined && u.series[i + 1]?.show !== show) u.setSeries(i + 1, { show }, false);
     });
   }
 

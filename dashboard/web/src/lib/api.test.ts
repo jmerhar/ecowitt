@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { Api, ApiError } from "./api";
-import { speaking } from "../testing";
+import { at, speaking } from "../testing";
 
 function answering(status: number, body: unknown, text = false) {
   return vi.fn(async (..._: unknown[]) =>
@@ -31,7 +31,7 @@ describe("Api", () => {
   it("asks for every answer in its language, whatever the browser accepts", async () => {
     const fetcher = answering(200, {});
     await new Api("/api/v1", fetcher as unknown as typeof fetch, "pt-PT").forecast("Home");
-    expect(fetcher.mock.calls[0][0]).toBe("/api/v1/stations/Home/forecast?lang=pt-PT");
+    expect(at(fetcher.mock.calls, 0)[0]).toBe("/api/v1/stations/Home/forecast?lang=pt-PT");
   });
 
   it("sends the query where URLSearchParams has no size, as in Safari before 17", async () => {
@@ -40,7 +40,7 @@ describe("Api", () => {
     try {
       const fetcher = answering(200, {});
       await new Api("/api/v1", fetcher as unknown as typeof fetch).series("Home", ["a.b"], "24h");
-      expect(fetcher.mock.calls[0][0]).toBe("/api/v1/stations/Home/series?metrics=a.b&range=24h&lang=en");
+      expect(at(fetcher.mock.calls, 0)[0]).toBe("/api/v1/stations/Home/series?metrics=a.b&range=24h&lang=en");
     } finally {
       Object.defineProperty(URLSearchParams.prototype, "size", size!);
     }

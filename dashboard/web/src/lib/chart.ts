@@ -20,7 +20,7 @@ export type View = {
   metrics: { id: string; style: Style; axis: "left" | "right"; label?: () => string }[];
 };
 
-export const VIEWS: View[] = [
+export const VIEWS: [View, ...View[]] = [
   {
     id: "temperature",
     label: m.view_temperature,
@@ -122,7 +122,8 @@ function main(series: Series): string {
   for (const name of ["mean", "max", "circular", "min"]) {
     if (name in series.values) return name;
   }
-  return Object.keys(series.values)[0];
+  // A series with no aggregates at all names none, and draws as gaps.
+  return Object.keys(series.values)[0] ?? "";
 }
 
 /**
@@ -199,7 +200,7 @@ export const PALETTE = [
 /** The colour of a line: its metric's place in the view, then the line's within the metric. */
 export function colour(view: View, line: Line): string {
   const metricIndex = Math.max(0, view.metrics.findIndex((metric) => metric.id === line.metric));
-  return PALETTE[(metricIndex + line.index) % PALETTE.length];
+  return PALETTE[(metricIndex + line.index) % PALETTE.length]!;
 }
 
 /** What uPlot needs, minus the functions only a browser can run (paths, tzDate). */

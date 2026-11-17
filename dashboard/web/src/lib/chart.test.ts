@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { align, axisDivisions, axisRange, axisTicks, colour, MEASURED_WIND, PALETTE, spec, viewFor, VIEWS } from "./chart";
-import { series } from "../testing";
+import { at, series } from "../testing";
 
 const LABELS = { "outdoor.temperature": "Temperature", "outdoor.dew_point": "Dew point" };
 
@@ -8,7 +8,7 @@ describe("align", () => {
   it("puts every series on one time column, with gaps where a bucket is missing", () => {
     const chart = align(viewFor("temperature"), series(), LABELS);
     expect(chart.times).toEqual([100, 400, 700]);
-    const [temperature, dew] = chart.lines;
+    const [temperature, dew] = [at(chart.lines, 0), at(chart.lines, 1)];
     expect(temperature).toMatchObject({ label: "Temperature", values: [10, 11, 12], low: [9, 10, 11], high: [11, 12, 13] });
     expect(dew).toMatchObject({ label: "Dew point", values: [5, null, 6], style: "line" });
     expect(dew.low).toBeUndefined();
@@ -48,15 +48,15 @@ describe("align", () => {
     const direction = series({
       series: [{ metric: "wind.direction", sensor: null, name: null, unit: "deg", source: "station", t: [1], values: { circular: [90] } }],
     });
-    expect(align(viewFor("wind"), direction, {}).lines[0].values).toEqual([90]);
+    expect(at(align(viewFor("wind"), direction, {}).lines, 0).values).toEqual([90]);
     const minOnly = series({
       series: [{ metric: "wind.speed", sensor: null, name: null, unit: "kmh", source: "station", t: [1], values: { min: [3] } }],
     });
-    expect(align(viewFor("wind"), minOnly, {}).lines[0].values).toEqual([3]);
+    expect(at(align(viewFor("wind"), minOnly, {}).lines, 0).values).toEqual([3]);
     const odd = series({
       series: [{ metric: "wind.gust", sensor: null, name: null, unit: "kmh", source: "station", t: [1], values: { p90: [7] } }],
     });
-    expect(align(viewFor("wind"), odd, {}).lines[0].values).toEqual([7]);
+    expect(at(align(viewFor("wind"), odd, {}).lines, 0).values).toEqual([7]);
   });
 });
 
@@ -78,9 +78,10 @@ describe("the weather model's lines", () => {
       ["Dew point", "line", false],
       ["Temperature (model)", "line", true],
     ]);
-    expect(chart.lines[2].values).toEqual([9, null, null, 13]);
-    expect(chart.lines[2].low).toBeUndefined();
-    expect(colour(view, chart.lines[2])).toBe(colour(view, chart.lines[0]));
+    const model = at(chart.lines, 2);
+    expect(model.values).toEqual([9, null, null, 13]);
+    expect(model.low).toBeUndefined();
+    expect(colour(view, model)).toBe(colour(view, at(chart.lines, 0)));
   });
 
   it("are dashed, thinner, and no band", () => {
@@ -151,7 +152,7 @@ describe("spec", () => {
     expect(built.bands).toEqual([{ series: [1, 2], fill: `${PALETTE[0]}33` }]);
     expect(built.data).toHaveLength(5);
     expect(built.axes).toEqual([{ scale: "left", unit: "c" }]);
-    expect(built.series[3].stroke).toBe(PALETTE[1]);
+    expect(at(built.series, 3).stroke).toBe(PALETTE[1]);
   });
 
   it("gives points no line and bars a fill, each on its own axis", () => {

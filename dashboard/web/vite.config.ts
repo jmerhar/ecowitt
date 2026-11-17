@@ -7,6 +7,7 @@ import legacy from "@vitejs/plugin-legacy";
 import { legacyCssPlugin } from "./build/legacy-css.ts";
 import { paraglideOptions } from "./build/paraglide.ts";
 import { svelteTesting } from "@testing-library/svelte/vite";
+import { test } from "@jmerhar/frontend-config/vitest";
 import { defineConfig } from "vitest/config";
 
 const api = "http://127.0.0.1:2553";
@@ -34,30 +35,26 @@ export default defineConfig({
     proxy: { "/api": api, "/setup": api, "/healthz": api },
   },
   // The licences of everything bundled into the page, which theirs ask to travel with it, at
-  // /licenses.md beside it.
+  // /licenses.md beside it. The shared Vite preset is not used: plugin-legacy sets the build's
+  // target from modernTargets, older browsers than the preset's, and overrides any other.
   build: { license: { fileName: "licenses.md" } },
+  // The shared Vitest preset: jsdom, and v8 coverage in coverage/ for the shared gate and Codecov.
   test: {
-    environment: "jsdom",
-    setupFiles: ["src/test-setup.ts"],
-    include: ["src/**/*.test.ts", "build/**/*.test.ts", "legacy-browser/**/*.test.mjs"],
+    ...test({
+      include: ["src/**/*.test.ts", "build/**/*.test.ts", "legacy-browser/**/*.test.mjs"],
+      setupFiles: ["src/test-setup.ts"],
+      coverage: {
+        include: ["src/**/*.{ts,svelte}", "build/**/*.ts"],
+        exclude: [
+          "build/compile-messages.ts",
+          "src/test-setup.ts",
+          "src/main.ts",
+          "src/testing.ts",
+          "src/paraglide/**",
+        ],
+      },
+    }),
     // Vitest empties every stylesheet it imports, ?raw included; theme.test.ts reads this one.
     css: { include: [/app\.css/] },
-    coverage: {
-      provider: "v8",
-      include: ["src/**/*.{ts,svelte}", "build/**/*.ts"],
-      exclude: [
-        "src/**/*.test.ts",
-        "build/**/*.test.ts",
-        "build/compile-messages.ts",
-        "src/test-setup.ts",
-        "src/main.ts",
-        "src/testing.ts",
-        "src/paraglide/**",
-      ],
-      // json-summary and json are the istanbul files coverage.toml's shared tooling reads;
-      // lcov is what Codecov takes.
-      reporter: ["text", "json-summary", "json", "lcov", ["html", { subdir: "html" }]],
-      reportsDirectory: "coverage",
-    },
   },
 });

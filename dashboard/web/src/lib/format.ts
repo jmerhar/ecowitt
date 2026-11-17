@@ -161,8 +161,9 @@ export function whichDay(iso: string, timezone: string, now: Date = new Date()):
 
 /** Names as a sentence lists them: "Kitchen", "Kitchen and Bathroom", "Attic, Kitchen and Bathroom". */
 export function list(names: string[]): string {
-  if (names.length < 2) return names.join("");
-  return m.list_and({ items: names.slice(0, -1).join(", "), last: names[names.length - 1] });
+  const last = names.at(-1);
+  if (names.length < 2 || last === undefined) return names.join("");
+  return m.list_and({ items: names.slice(0, -1).join(", "), last });
 }
 
 /** A day at the station, as a forecast names it: "Today", "Tomorrow", or "Thu 15 Oct". */

@@ -70,9 +70,9 @@
     <SlidersHorizontalIcon size={18} aria-hidden="true" />
   </summary>
   <div class="panel">
-    {#each Object.keys(LABELS) as quantity (quantity)}
+    {#each Object.entries(LABELS) as [quantity, label] (quantity)}
       <label>
-        {LABELS[quantity]()}
+        {label()}
         <select
           value={chosen[quantity as keyof Units] ?? ""}
           onchange={(e) => choose(quantity, e.currentTarget.value)}>

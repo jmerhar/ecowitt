@@ -4,7 +4,7 @@ import History from "./History.svelte";
 import Records from "./Records.svelte";
 import Forecast from "./Forecast.svelte";
 import { ApiError } from "../lib/api";
-import { extremes, fakeApi, forecast, META, series, speaking, SYMBOLS } from "../testing";
+import { at, extremes, fakeApi, forecast, META, series, speaking, SYMBOLS } from "../testing";
 
 vi.mock("./Chart.svelte", async () => ({ default: (await import("./ChartStub.svelte")).default }));
 
@@ -228,7 +228,8 @@ describe("Forecast", () => {
     expect(screen.getByText(/Best for this location, made 14:00/)).toBeInTheDocument();
     const cells = (row: HTMLElement) =>
       [...row.querySelectorAll("td")].map((c) => c.textContent!.replace(/\s+/g, " ").trim());
-    const [first, second] = screen.getAllByRole("row").slice(1);
+    const rows = screen.getAllByRole("row").slice(1);
+    const [first, second] = [at(rows, 0), at(rows, 1)];
     // The day that began at 23:00 UTC on 9 Oct is 10 Oct in Lisbon; a chance of rain worth
     // showing comes after the amount, a small one not at all.
     expect(cells(first)).toEqual(["Sat 10 Oct", "Light rain", "13 °C", "21 °C", "2.4 mm 70%", "78%", "41 km/h N"]);
@@ -254,8 +255,8 @@ describe("Forecast", () => {
     const base = forecast();
     api.forecast.mockResolvedValue(forecast({
       model: null,
-      hours: [{ ...base.hours[0], weather_code: null, description: null, compass: null }],
-      days: [{ ...base.days[1], weather_code: null, compass: null }],
+      hours: [{ ...at(base.hours, 0), weather_code: null, description: null, compass: null }],
+      days: [{ ...at(base.days, 1), weather_code: null, compass: null }],
     }));
     const { container } = render(Forecast, { ...props, api });
     await screen.findByRole("list", { name: "The next 24 hours" });
@@ -269,8 +270,8 @@ describe("Forecast", () => {
     const base = forecast();
     api.forecast.mockResolvedValue(forecast({
       hours: [
-        { ...base.hours[0], precipitation_probability: null, precipitation: 0.6 },
-        { ...base.hours[1], precipitation_probability: null, precipitation: 0 },
+        { ...at(base.hours, 0), precipitation_probability: null, precipitation: 0.6 },
+        { ...at(base.hours, 1), precipitation_probability: null, precipitation: 0 },
       ],
     }));
     const { container } = render(Forecast, { ...props, api });

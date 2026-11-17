@@ -73,7 +73,8 @@ function withFallbacks(rule: StyleRule): Rule[] | undefined {
   const spacing = flexSpacing(declarations);
   if (spelled.length === declarations.length && !scoped && !spacing.length) return undefined;
 
-  const plain = rule.selectors.map((s) => s.map((c) => (isScopeWhere(c) ? c.selectors[0][0] : c)));
+  // isScopeWhere admits only a :where() holding exactly one class, which is what replaces it.
+  const plain = rule.selectors.map((s) => s.map((c) => (isScopeWhere(c) ? c.selectors[0]![0]! : c)));
   const own = { ...rule, declarations: { importantDeclarations: rule.declarations?.importantDeclarations ?? [], declarations: spelled } };
   const out: Rule[] = [{ type: "style", value: own }];
   if (scoped) {
@@ -98,7 +99,8 @@ function withFallbacks(rule: StyleRule): Rule[] | undefined {
 function isScopeWhere(component: Selector[number]): component is Extract<Selector[number], { kind: "where" }> {
   if (component.type !== "pseudo-class" || component.kind !== "where") return false;
   const [only, ...rest] = component.selectors;
-  return rest.length === 0 && only.length === 1 && only[0].type === "class" && only[0].name.startsWith("svelte-");
+  const first = only?.length === 1 ? only[0] : undefined;
+  return rest.length === 0 && first?.type === "class" && first.name.startsWith("svelte-");
 }
 
 /** A gap's `grid-` spelling, to put before it; nothing for other declarations. */
