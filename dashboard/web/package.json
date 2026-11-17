@@ -12,7 +12,7 @@
     "coverage": "vitest run --coverage"
   },
   "devDependencies": {
-    "@inlang/paraglide-js": "3.2.1",
+    "@inlang/paraglide-js": "3.2.2",
     "@inlang/plugin-message-format": "4.6.0",
     "@jmerhar/frontend-config": "^0.1.0",
     "@sveltejs/vite-plugin-svelte": "7.3.1",
@@ -20,19 +20,19 @@
     "@testing-library/svelte": "5.4.2",
     "@vitejs/plugin-legacy": "8.2.4",
     "@vitest/coverage-v8": "5.1.0",
-    "jsdom": "31.0.0",
+    "jsdom": "31.0.1",
     "lightningcss": "1.33.0",
     "svelte": "5.57.3",
     "svelte-check": "4.7.8",
     "terser": "5.51.2",
     "typescript": "6.0.3",
-    "vite": "8.3.6",
+    "vite": "8.3.8",
     "vitest": "5.1.0"
   },
   "dependencies": {
     "@bybas/weather-icons": "2.0.0",
-    "@jmerhar/jigkit": "0.17.0",
-    "@lucide/svelte": "1.70.0",
+    "@jmerhar/jigkit": "0.21.0",
+    "@lucide/svelte": "1.73.0",
     "uplot": "1.6.32"
   },
   "allowScripts": {
