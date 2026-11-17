@@ -148,16 +148,15 @@ image = "ghcr.io/jmerhar/ecowitt-dashboard"
 dockerfile = "dashboard/Dockerfile"
 
 # .github/dependabot.yml, generated from these by `make devtools-fix`: GitHub Actions, then each
-# update below, every one grouped into a single weekly pull request that takes a release once it is
-# three days old, and which gh-maintenance merges once its checks pass. A pull request builds both
-# images, so a dependency that breaks one fails there.
+# update below. Each takes a release once it is three days old, in one weekly pull request of minor
+# and patch releases and another of majors, which waits for a hand migration. gh-maintenance merges
+# the first once its checks pass. A pull request builds both images, so a dependency that breaks one
+# fails there.
 [[dependabot.update]]
 ecosystem = "npm"
 directory = "/dashboard/web"
 group = "web"
-comment = """The dashboard's page. svelte-check names the TypeScript majors it supports as a peer
-dependency, so a new major cannot install until svelte-check accepts it; move both by hand then."""
-ignore = [{ dependency = "typescript", update_types = ["version-update:semver-major"] }]
+comment = "The dashboard's page."
 
 [[dependabot.update]]
 ecosystem = "pip"
