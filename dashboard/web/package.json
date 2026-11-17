@@ -33,5 +33,9 @@
     "@jmerhar/jigkit": "0.17.0",
     "@lucide/svelte": "1.70.0",
     "uplot": "1.6.32"
+  },
+  "allowScripts": {
+    "core-js": false,
+    "fsevents": false
   }
 }
