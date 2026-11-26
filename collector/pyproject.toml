@@ -11,7 +11,7 @@ dependencies = [
     "ecowitt-core",
     # The spool, the delivery loop and the heartbeat. Pinned exactly, with ecowitt-core's pin.
     "jigkit[heartbeat]==0.21.0",
-    "fastapi>=0.141,<0.164",
+    "fastapi>=0.141,<0.166",
     "uvicorn[standard]>=0.30",
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
